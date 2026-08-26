@@ -223,7 +223,7 @@ If HomeLedger is useful to you, consider supporting its development:
 - ⭐ **Star this repo** — helps with visibility
 - 🐛 **Report bugs** — open an issue
 - 💡 **Suggest features** — discussions welcome
-- ❤️ **Sponsor** — [GitHub Sponsors](https://github.com/sponsors/YOUR_USERNAME) | [Buy Me a Coffee](https://buymeacoffee.com/YOUR_USERNAME)
+- ❤️ **Sponsor** — [GitHub Sponsors](https://github.com/sponsors/TastingRogue) | [Buy Me a Coffee](https://buymeacoffee.com/TastingRogue)
 
 ## License
 
