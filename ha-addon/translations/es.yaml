@@ -1,0 +1,22 @@
+# Smart Finance - Traducciones al español para la UI de configuración del Add-on
+configuration:
+  TZ:
+    name: Zona horaria
+    description: >-
+      Zona horaria utilizada para las tareas programadas y el formato de fechas.
+      Ejemplo: America/Mexico_City
+  JWT_SECRET:
+    name: Clave secreta JWT
+    description: >-
+      Clave secreta utilizada para firmar los tokens de autenticación.
+      Debe tener al menos 32 caracteres. Usa una cadena aleatoria y segura.
+  ADMIN_EMAIL:
+    name: Correo del administrador
+    description: >-
+      Dirección de correo electrónico para el usuario administrador.
+      Se crea automáticamente en el primer inicio.
+  ADMIN_PASSWORD:
+    name: Contraseña del administrador
+    description: >-
+      Contraseña para el usuario administrador.
+      Usa una contraseña segura de al menos 8 caracteres.

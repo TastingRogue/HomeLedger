@@ -1,0 +1,230 @@
+# HomeLedger
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
+
+> Self-hosted personal finance management. Track accounts, transactions, budgets, goals, and subscriptions — all from your own server.
+
+**[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Support the Project](#support-the-project)**
+
+---
+
+Self-hosted personal finance management web application. Designed as a modular, open-source product that works completely independently. Optionally integrates with Home Assistant as an addon and custom integration.
+
+## Features
+
+- **Multi-account**: Debit, Credit, Investment, Vouchers, Cash — with dynamic balance tracking
+- **Transactions**: Full income/expense recording with split by type, month grouping, card grid + table views
+- **Transfers**: Movements between accounts with fund validation and edit support
+- **Subscriptions**: Recurring payment management with auto-charge, catch-up after downtime, and visual calendar
+- **Budgets**: Category-based spending control with progress bars and dashboard integration
+- **Savings Goals**: Objective tracking with fund/withdraw actions and progress visualization
+- **Credit Monitoring**: Utilization bars, health status, and linked subscriptions
+- **Bank Import**: CSV/XLSX/OFX/QIF/JSON with parsers for BBVA, Santander, and Nu Mexico
+- **Categories**: Fully editable (including system categories), with type classification (Expense/Income/Both)
+- **Alerts**: Auto-generated (low balance, high credit, due payments, completed goals) with manual evaluation trigger
+- **Reports**: 6-month trends, category donut, savings rate ring, monthly comparison bars
+- **Backup**: Full JSON export/import with preview and validation
+- **Attachments**: Upload receipts/invoices (images, PDFs) and link to transactions/transfers
+- **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
+- **Multi-currency**: MXN, USD, EUR, COP, ARS, CLP, PEN, BRL — switchable from settings
+- **Lenguage**: Spanish + English with full interface translation
+- **Responsive**: Scales to any screen resolution with dynamic font sizing
+- **Home Assistant**: Addon + Custom Integration with sensors and services
+- **API REST**: All endpoints under `/api/v1` with JWT + API key auth
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Frontend | SvelteKit 5 (SSR + SPA) |
+| Backend API | Fastify 5 |
+| Database | SQLite (better-sqlite3) + Drizzle ORM |
+| Language | TypeScript (full-stack) |
+| Validation | Zod |
+| Auth | JWT + bcrypt + refresh tokens |
+| Scheduler | node-cron (auto-charges, alerts, budget resets) |
+| Charts | Chart.js (dynamic import for SSR compat) |
+| Testing | Vitest + fast-check |
+| Packaging | Docker multi-arch |
+| Icons | Custom SVG Icon component (Lucide-style) |
+
+## Requirements
+
+- Node.js >= 20
+- npm >= 9
+
+## Quick Start
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/smart-finance/smart-finance.git
+cd smart-finance
+
+# Install dependencies
+npm install
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your values (JWT_SECRET required, min 32 chars)
+
+# Start in development mode
+npm run dev:backend   # API on http://localhost:3000
+npm run dev -w packages/frontend  # Frontend on http://localhost:5173
+```
+
+The first user registered automatically becomes admin. The database is created automatically on first run.
+
+### Docker (recommended for production)
+
+```bash
+# Clone and configure
+git clone https://github.com/smart-finance/smart-finance.git
+cd smart-finance
+cp .env.example .env
+# Edit .env with secure values
+
+# Start with Docker Compose
+docker compose up -d
+
+# Available at http://localhost:3000
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | — (required) |
+| `ADMIN_EMAIL` | Admin user email | `admin@smartfinance.local` |
+| `ADMIN_PASSWORD` | Admin password | — |
+| `TZ` | Timezone | `America/Mexico_City` |
+| `DATA_DIR` | Directory for SQLite database | `./data` |
+| `PORT` | Server port | `3000` |
+
+## Project Structure
+
+```
+smart-finance/
+├── packages/
+│   ├── backend/          # Fastify API server
+│   │   ├── src/
+│   │   │   ├── server.ts         # Entry point
+│   │   │   ├── routes/v1/        # API route handlers
+│   │   │   ├── services/         # Business logic
+│   │   │   ├── db/               # Schema, migrations, connection
+│   │   │   ├── middleware/       # Auth, rate-limit, errors
+│   │   │   ├── scheduler/        # Cron jobs (auto-charge, alerts, budgets)
+│   │   │   ├── importers/        # Bank file parsers
+│   │   │   └── validators/       # Zod schemas
+│   │   └── data/                 # SQLite DB + attachments
+│   ├── frontend/         # SvelteKit app
+│   │   ├── src/
+│   │   │   ├── routes/           # Pages (app layout + auth)
+│   │   │   ├── lib/api/          # API client functions
+│   │   │   ├── lib/stores/       # Preferences, user profile
+│   │   │   ├── lib/components/   # Icon, Dropdown, DatePicker, Charts
+│   │   │   ├── lib/i18n/         # Translation dictionaries (es/en)
+│   │   │   ├── lib/utils/        # Currency formatting, date utils
+│   │   │   └── app.css           # Global design system
+│   │   └── package.json
+│   └── shared/           # Shared TypeScript types
+├── ha-addon/             # Home Assistant Add-on
+├── ha-integration/       # HA Custom Integration (Python)
+├── Dockerfile            # Multi-stage build
+├── docker-compose.yml    # Deployment config
+└── .env.example          # Environment template
+```
+
+## Available Scripts
+
+```bash
+# From monorepo root
+npm run dev:backend       # Backend with hot-reload (tsx watch)
+npm run dev -w packages/frontend  # Frontend with Vite HMR
+npm run build -w packages/frontend  # Production build
+npm run test              # Run all tests (vitest)
+
+# Database
+npm run db:generate -w packages/backend   # Generate migration
+npm run db:migrate -w packages/backend    # Apply migrations
+```
+
+## API Endpoints
+
+Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: <key>`.
+
+| Resource | Methods |
+|----------|---------|
+| `/auth` | register, login, refresh, logout, me (GET/PUT), change-password, revoke-all-sessions |
+| `/accounts` | CRUD + deactivate |
+| `/transactions` | CRUD + quick create |
+| `/transfers` | CRUD (create, list, update, delete) |
+| `/subscriptions` | CRUD + delete + calendar |
+| `/goals` | CRUD + fund + withdraw |
+| `/budgets` | CRUD + summary |
+| `/categories` | CRUD + analysis |
+| `/alerts` | list, mark read, mark all read, evaluate, delete, settings |
+| `/reports` | dashboard, cashflow, trends, categories, budget-vs-actual |
+| `/attachments` | upload, list, download, link, delete |
+| `/imports` | upload, preview, confirm |
+| `/backup` | export, import |
+| `/ha` | status, webhook, sensors |
+
+## Scheduler Jobs
+
+| Job | Schedule | Description |
+|-----|----------|-------------|
+| Auto-charge | Daily 00:05 + on startup | Processes due subscriptions, catches up missed charges |
+| Alert evaluation | Every hour + on startup | Evaluates all alert conditions for all users |
+| Budget reset | Monthly | Resets budget periods |
+
+## Multi-currency & i18n
+
+- **Currency**: Configurable per user (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL)
+- **Language**: Spanish / English — switchable from Settings, persisted in localStorage
+- **Timezone**: America/Mexico_City (configurable in server environment)
+
+Currency and language preferences are stored client-side and apply immediately without page reload.
+
+## Custom Components
+
+| Component | Purpose |
+|-----------|---------|
+| `Icon.svelte` | 20+ SVG icons inline (no external dependencies) |
+| `Dropdown.svelte` | Custom dark-themed dropdown menu |
+| `DatePicker.svelte` | Calendar with month navigation, time picker, dynamic positioning |
+| `ComboChart.svelte` | Combined bar + line chart (reactive to data changes) |
+| `DoughnutChart.svelte` | Donut with center text (reactive) |
+| `LineChart.svelte` | Line chart with gradient fill |
+| `BarChart.svelte` | Standard bar chart |
+
+## Home Assistant
+
+### Add-on
+
+Install the addon from the HA addon repository. Configure `JWT_SECRET` and `ADMIN_PASSWORD` in addon options.
+
+### Custom Integration (HACS)
+
+Install via HACS to get sensors in Home Assistant:
+- Monthly expenses/income
+- Consolidated balance
+- Credit utilization
+- Next payment
+- Pending alerts
+
+## Support the Project
+
+If HomeLedger is useful to you, consider supporting its development:
+
+- ⭐ **Star this repo** — helps with visibility
+- 🐛 **Report bugs** — open an issue
+- 💡 **Suggest features** — discussions welcome
+- ❤️ **Sponsor** — [GitHub Sponsors](https://github.com/sponsors/YOUR_USERNAME) | [Buy Me a Coffee](https://buymeacoffee.com/YOUR_USERNAME)
+
+## License
+
+MIT

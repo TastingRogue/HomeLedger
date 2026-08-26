@@ -1,0 +1,33 @@
+{
+  "name": "homeledger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HomeLedger - Self-hosted personal finance management application",
+  "workspaces": [
+    "packages/backend",
+    "packages/frontend",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w packages/backend",
+    "dev:frontend": "npm run dev -w packages/frontend",
+    "build": "npm run build -w packages/shared && npm run build -w packages/backend && npm run build -w packages/frontend",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,svelte,json}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,svelte,json}\""
+  },
+  "devDependencies": {
+    "vitest": "^3.1.3",
+    "fast-check": "^4.1.1",
+    "prettier": "^3.5.3",
+    "eslint": "^9.27.0",
+    "@eslint/js": "^9.27.0",
+    "typescript-eslint": "^8.32.1",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

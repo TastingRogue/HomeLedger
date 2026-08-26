@@ -1,0 +1,54 @@
+# Smart Finance - Home Assistant Add-on Configuration
+# https://developers.home-assistant.io/docs/add-ons/configuration
+
+name: Smart Finance
+description: "Gestión de finanzas personales auto-hospedada. Controla cuentas, transacciones, presupuestos, suscripciones y metas de ahorro desde Home Assistant."
+version: "0.1.0"
+slug: smart_finance
+url: "https://github.com/smart-finance/smart-finance"
+
+# Architectures supported
+arch:
+  - amd64
+  - aarch64
+  - armv7
+
+# Container configuration
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: "Interfaz web de Smart Finance"
+
+# Ingress support (embedded in HA UI)
+ingress: true
+ingress_port: 3000
+panel_icon: "mdi:finance"
+panel_title: "Smart Finance"
+
+# Options (user-configurable in HA UI)
+options:
+  TZ: "America/Mexico_City"
+  JWT_SECRET: ""
+  ADMIN_EMAIL: "admin@smartfinance.local"
+  ADMIN_PASSWORD: ""
+
+# Schema validation for options
+schema:
+  TZ: str
+  JWT_SECRET: str
+  ADMIN_EMAIL: email
+  ADMIN_PASSWORD: password
+
+# Data persistence
+map:
+  - type: data
+    read_only: false
+
+# Startup configuration
+startup: application
+boot: auto
+
+# Resource limits (optional)
+resources:
+  cpu_percent: 25
+  memory: 256

@@ -1,0 +1,117 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Conectar a Smart Finance",
+        "description": "Ingresa la URL y API key de tu instancia de Smart Finance",
+        "data": {
+          "api_url": "URL del API",
+          "api_key": "API Key",
+          "name": "Nombre de la integración"
+        },
+        "data_description": {
+          "api_url": "URL base de tu instancia de Smart Finance (ej: http://192.168.1.100:3000)",
+          "api_key": "API key generada en Smart Finance > Configuración > API Keys",
+          "name": "Nombre para identificar esta instancia en Home Assistant"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar al servidor de Smart Finance",
+      "invalid_auth": "API key inválida o sin permisos",
+      "unknown": "Error inesperado"
+    },
+    "abort": {
+      "already_configured": "Esta instancia de Smart Finance ya está configurada"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "monthly_expenses": {
+        "name": "Gastos del Mes"
+      },
+      "monthly_income": {
+        "name": "Ingresos del Mes"
+      },
+      "monthly_savings": {
+        "name": "Ahorro del Mes"
+      },
+      "remaining_budget": {
+        "name": "Presupuesto Restante"
+      },
+      "net_worth": {
+        "name": "Patrimonio Neto"
+      },
+      "total_balance": {
+        "name": "Balance Consolidado"
+      },
+      "credit_card_utilization": {
+        "name": "Utilización Tarjetas de Crédito"
+      }
+    },
+    "binary_sensor": {
+      "over_budget": {
+        "name": "Presupuesto Excedido"
+      },
+      "high_credit_utilization": {
+        "name": "Utilización Alta de Crédito"
+      },
+      "payment_due_soon": {
+        "name": "Pago Próximo a Vencer"
+      },
+      "low_balance": {
+        "name": "Balance Bajo"
+      }
+    }
+  },
+  "services": {
+    "create_transaction": {
+      "name": "Crear Transacción",
+      "description": "Crea una nueva transacción en Smart Finance",
+      "fields": {
+        "name": {
+          "name": "Nombre",
+          "description": "Nombre o descripción de la transacción"
+        },
+        "amount": {
+          "name": "Monto",
+          "description": "Monto de la transacción en MXN"
+        },
+        "type": {
+          "name": "Tipo",
+          "description": "Tipo de transacción: Ingreso o Gasto"
+        },
+        "account_id": {
+          "name": "ID de Cuenta",
+          "description": "ID de la cuenta asociada"
+        },
+        "category_id": {
+          "name": "ID de Categoría",
+          "description": "ID de la categoría"
+        }
+      }
+    },
+    "create_quick_expense": {
+      "name": "Gasto Rápido",
+      "description": "Registra un gasto rápido (solo monto, cuenta y categoría)",
+      "fields": {
+        "amount": {
+          "name": "Monto",
+          "description": "Monto del gasto en MXN"
+        },
+        "account_id": {
+          "name": "ID de Cuenta",
+          "description": "ID de la cuenta"
+        },
+        "category_id": {
+          "name": "ID de Categoría",
+          "description": "ID de la categoría"
+        }
+      }
+    },
+    "refresh_data": {
+      "name": "Actualizar Datos",
+      "description": "Fuerza una actualización de los datos desde Smart Finance"
+    }
+  }
+}

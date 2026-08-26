@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787542154273,
+      "tag": "0000_first_beyonder",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787695997000,
+      "tag": "0001_rename_ahorros_to_debito",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787696100000,
+      "tag": "0002_add_category_type",
+      "breakpoints": true
+    }
+  ]
+}

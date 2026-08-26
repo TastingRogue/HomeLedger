@@ -1,0 +1,35 @@
+# =============================================================================
+# Smart Finance - Docker Compose
+# Usage: docker compose up -d
+# =============================================================================
+
+services:
+  smart-finance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-finance
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - smart-finance-data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATA_DIR=/data
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-strong-random-secret}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@smartfinance.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-to-a-strong-password}
+      - TZ=${TZ:-America/Mexico_City}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  smart-finance-data:
+    driver: local

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs (will be rebuilt in Docker)
+packages/shared/dist
+packages/backend/dist
+packages/frontend/build
+packages/frontend/.svelte-kit
+
+# Data and databases
+data
+*.db
+
+# Version control
+.git
+.gitignore
+
+# IDE and editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files (use docker-compose env vars instead)
+.env
+.env.local
+
+# Documentation and specs
+.kiro
+docs
+*.md
+LICENSE
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and dev tooling
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
