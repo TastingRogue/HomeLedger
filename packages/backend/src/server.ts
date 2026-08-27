@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import staticPlugin from '@fastify/static';
-
+import fs from 'fs';
+import path from 'path';
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
 import {
@@ -78,26 +78,54 @@ export async function buildApp() {
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
 
-  // Serve frontend static files in production
-  try {
-    await app.register(staticPlugin, {
-      root: '/app/packages/frontend/build',
-      prefix: '/',
-      constraints: {},
-    });
-    
-    // SPA routing: serve index.html for non-API routes
-    app.setNotFoundHandler(async (request, reply) => {
-      if (!request.url.startsWith('/api/')) {
-        reply.header('Content-Type', 'text/html');
-        return reply.sendFile('index.html');
+  // Serve frontend static files manually (without @fastify/static for Fastify 5.x compatibility)
+  const frontendPath = '/app/packages/frontend/build';
+  const frontendExists = fs.existsSync(frontendPath);
+  
+  if (frontendExists) {
+    // Serve static files from /app/packages/frontend/build
+    app.get('/:filename', async (request, reply) => {
+      const filename = request.params.filename as string;
+      const filePath = path.join(frontendPath, filename);
+      
+      // Only serve files from build directory, prevent directory traversal
+      if (!path.resolve(filePath).startsWith(path.resolve(frontendPath))) {
+        return reply.code(404).send({ error: 'Not Found' });
       }
-      return reply.code(404).send({ error: 'Not Found' });
+      
+      try {
+        return reply.sendFile(filePath);
+      } catch {
+        return reply.code(404).send({ error: 'Not Found' });
+      }
     });
-    
-    app.log.info('Frontend static files served');
-  } catch (error) {
-    app.log.warn('Frontend static files not available (expected in development)');
+
+    // SPA routing: serve index.html for root and non-existent routes
+    app.get('/', async (request, reply) => {
+      try {
+        reply.header('Content-Type', 'text/html; charset=utf-8');
+        return reply.sendFile('index.html', frontendPath);
+      } catch {
+        return reply.code(404).send({ error: 'Not Found' });
+      }
+    });
+
+    // Catch-all for SPA: serve index.html for any non-API route
+    app.setNotFoundHandler(async (request, reply) => {
+      if (request.url.startsWith('/api/')) {
+        return reply.code(404).send({ error: 'Not Found' });
+      }
+      try {
+        reply.header('Content-Type', 'text/html; charset=utf-8');
+        return reply.sendFile('index.html', frontendPath);
+      } catch {
+        return reply.code(404).send({ error: 'Not Found' });
+      }
+    });
+
+    app.log.info(`Frontend static files served from ${frontendPath}`);
+  } else {
+    app.log.warn('Frontend build directory not found (expected in development)');
   }
 
   return app;
