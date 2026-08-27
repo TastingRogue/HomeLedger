@@ -87,12 +87,12 @@ export async function buildApp() {
     });
     
     // SPA routing: serve index.html for non-API routes
-    app.setNotFoundHandler((request, reply) => {
+    app.setNotFoundHandler(async (request, reply) => {
       if (!request.url.startsWith('/api/')) {
         reply.header('Content-Type', 'text/html');
         return reply.sendFile('index.html');
       }
-      reply.code(404).send({ error: 'Not Found' });
+      return reply.code(404).send({ error: 'Not Found' });
     });
     
     app.log.info('Frontend static files served');
