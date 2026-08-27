@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import staticFiles from '@fastify/static';
+import staticPlugin from '@fastify/static';
+
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
 import {
@@ -79,7 +80,7 @@ export async function buildApp() {
 
   // Serve frontend static files in production
   try {
-    await app.register(staticFiles, {
+    await app.register(staticPlugin, {
       root: '/app/packages/frontend/build',
       prefix: '/',
       constraints: {},
@@ -88,6 +89,7 @@ export async function buildApp() {
     // SPA routing: serve index.html for non-API routes
     app.setNotFoundHandler((request, reply) => {
       if (!request.url.startsWith('/api/')) {
+        reply.header('Content-Type', 'text/html');
         return reply.sendFile('index.html');
       }
       reply.code(404).send({ error: 'Not Found' });
