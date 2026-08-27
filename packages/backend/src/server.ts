@@ -1,7 +1,5 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import fs from 'fs';
-import path from 'path';
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
 import {
@@ -78,64 +76,20 @@ export async function buildApp() {
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
 
-  // Serve frontend static files manually (without @fastify/static for Fastify 5.x compatibility)
-  const frontendPath = '/app/packages/frontend/build';
-  const frontendExists = fs.existsSync(frontendPath);
-  
-  if (frontendExists) {
-    // Serve static files from /app/packages/frontend/build
-    app.get('/:filename', async (request, reply) => {
-      const { filename } = request.params as { filename: string };
-      const filePath = path.join(frontendPath, filename);
+  // Load and mount SvelteKit frontend as middleware
+  try {
+    const { handler } = await import('../../../packages/frontend/build/handler.js');
+    app.all('/*', async (request, reply) => {
+      // Convert Fastify request/reply to Node.js request/response for SvelteKit
+      const nodeReq = request.raw;
+      const nodeRes = reply.raw;
       
-      // Only serve files from build directory, prevent directory traversal
-      if (!path.resolve(filePath).startsWith(path.resolve(frontendPath))) {
-        return reply.code(404).send({ error: 'Not Found' });
-      }
-      
-      try {
-        const data = fs.readFileSync(filePath);
-        const mimeType = filename.endsWith('.js') ? 'application/javascript' : 
-                        filename.endsWith('.css') ? 'text/css' :
-                        filename.endsWith('.html') ? 'text/html' :
-                        filename.endsWith('.json') ? 'application/json' : 'application/octet-stream';
-        reply.header('Content-Type', mimeType);
-        return reply.send(data);
-      } catch {
-        return reply.code(404).send({ error: 'Not Found' });
-      }
+      // Call SvelteKit handler
+      handler(nodeReq, nodeRes);
     });
-
-    // SPA routing: serve index.html for root
-    app.get('/', async (_request, reply) => {
-      try {
-        const indexPath = path.join(frontendPath, 'index.html');
-        const data = fs.readFileSync(indexPath);
-        reply.header('Content-Type', 'text/html; charset=utf-8');
-        return reply.send(data);
-      } catch {
-        return reply.code(404).send({ error: 'Not Found' });
-      }
-    });
-
-    // Catch-all for SPA: serve index.html for any non-API route
-    app.setNotFoundHandler(async (request, reply) => {
-      if (request.url.startsWith('/api/')) {
-        return reply.code(404).send({ error: 'Not Found' });
-      }
-      try {
-        const indexPath = path.join(frontendPath, 'index.html');
-        const data = fs.readFileSync(indexPath);
-        reply.header('Content-Type', 'text/html; charset=utf-8');
-        return reply.send(data);
-      } catch {
-        return reply.code(404).send({ error: 'Not Found' });
-      }
-    });
-
-    app.log.info(`Frontend static files served from ${frontendPath}`);
-  } else {
-    app.log.warn('Frontend build directory not found (expected in development)');
+    app.log.info('SvelteKit frontend mounted');
+  } catch (error) {
+    app.log.warn('Frontend handler not available (expected in development)');
   }
 
   return app;
