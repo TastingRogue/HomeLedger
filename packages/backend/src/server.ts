@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import staticFiles from '@fastify/static';
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
 import {
@@ -75,6 +76,27 @@ export async function buildApp() {
   await app.register(alertRoutes, { prefix: '/api/v1/alerts' });
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
+
+  // Serve frontend static files in production
+  try {
+    await app.register(staticFiles, {
+      root: '/app/packages/frontend/build',
+      prefix: '/',
+      constraints: {},
+    });
+    
+    // SPA routing: serve index.html for non-API routes
+    app.setNotFoundHandler((request, reply) => {
+      if (!request.url.startsWith('/api/')) {
+        return reply.sendFile('index.html');
+      }
+      reply.code(404).send({ error: 'Not Found' });
+    });
+    
+    app.log.info('Frontend static files served');
+  } catch (error) {
+    app.log.warn('Frontend static files not available (expected in development)');
+  }
 
   return app;
 }
