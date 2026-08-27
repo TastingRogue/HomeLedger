@@ -64,6 +64,9 @@ COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/packages/backend ./packages/backend
 COPY --from=build /app/packages/frontend ./packages/frontend
 
+# Copy database migrations (not compiled by TypeScript)
+COPY packages/backend/src/db/migrations ./packages/backend/dist/db/migrations
+
 # Copy root package files for reference
 COPY package.json package-lock.json ./
 

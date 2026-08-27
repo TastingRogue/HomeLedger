@@ -6,43 +6,43 @@ export {
   AccountType,
   AccountStatus,
   CreditHealthStatus,
-} from './types/accounts';
-export type { Account } from './types/accounts';
+} from './types/accounts.js';
+export type { Account } from './types/accounts.js';
 
 // Transacciones
-export { TransactionType } from './types/transactions';
-export type { Transaction, TransactionSplit } from './types/transactions';
+export { TransactionType } from './types/transactions.js';
+export type { Transaction, TransactionSplit } from './types/transactions.js';
 
 // Transferencias
-export type { Transfer } from './types/transfers';
+export type { Transfer } from './types/transfers.js';
 
 // Suscripciones
 export {
   SubscriptionCycle,
   SubscriptionStatus,
-} from './types/subscriptions';
-export type { Subscription } from './types/subscriptions';
+} from './types/subscriptions.js';
+export type { Subscription } from './types/subscriptions.js';
 
 // Presupuestos
-export { BudgetPeriod } from './types/budgets';
+export { BudgetPeriod } from './types/budgets.js';
 export type {
   Budget,
   BudgetCategory,
   BudgetWithProgress,
   BudgetSummary,
-} from './types/budgets';
+} from './types/budgets.js';
 
 // Metas de ahorro
-export { GoalType, GoalStatus } from './types/goals';
-export type { Goal } from './types/goals';
+export { GoalType, GoalStatus } from './types/goals.js';
+export type { Goal } from './types/goals.js';
 
 // Categorías
-export { PREDEFINED_CATEGORIES } from './types/categories';
+export { PREDEFINED_CATEGORIES } from './types/categories.js';
 export type {
   Category,
   Subcategory,
   PredefinedCategory,
-} from './types/categories';
+} from './types/categories.js';
 
 // Reglas de auto-categorización
 export type {
@@ -55,32 +55,32 @@ export type {
   RuleMatch,
   ApplyResult,
   TestResult,
-} from './types/rules';
+} from './types/rules.js';
 
 // Alertas
-export { AlertType, AlertSeverity } from './types/alerts';
-export type { Alert, AlertSettings } from './types/alerts';
+export { AlertType, AlertSeverity } from './types/alerts.js';
+export type { Alert, AlertSettings } from './types/alerts.js';
 
 // Activos y patrimonio neto
-export { AssetType, LiabilityType } from './types/assets';
+export { AssetType, LiabilityType } from './types/assets.js';
 export type {
   Asset,
   Liability,
   NetWorthSnapshot,
   NetWorthSummary,
-} from './types/assets';
+} from './types/assets.js';
 
 // Préstamos
-export { LoanStatus } from './types/loans';
+export { LoanStatus } from './types/loans.js';
 export type {
   Loan,
   LoanPayment,
   AmortizationEntry,
-} from './types/loans';
+} from './types/loans.js';
 
 // Usuarios
-export { UserRole } from './types/users';
-export type { User, ApiKey, TokenPayload } from './types/users';
+export { UserRole } from './types/users.js';
+export type { User, ApiKey, TokenPayload } from './types/users.js';
 
 // API: Respuestas, DTOs, Filtros
 export type {
@@ -98,4 +98,4 @@ export type {
   PaginationParams,
   TransactionFilters,
   DateRange,
-} from './types/api';
+} from './types/api.js';
