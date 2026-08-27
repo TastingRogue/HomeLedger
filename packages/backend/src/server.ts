@@ -85,7 +85,7 @@ export async function buildApp() {
   if (frontendExists) {
     // Serve static files from /app/packages/frontend/build
     app.get('/:filename', async (request, reply) => {
-      const filename = request.params.filename as string;
+      const { filename } = request.params as { filename: string };
       const filePath = path.join(frontendPath, filename);
       
       // Only serve files from build directory, prevent directory traversal
@@ -94,17 +94,25 @@ export async function buildApp() {
       }
       
       try {
-        return reply.sendFile(filePath);
+        const data = fs.readFileSync(filePath);
+        const mimeType = filename.endsWith('.js') ? 'application/javascript' : 
+                        filename.endsWith('.css') ? 'text/css' :
+                        filename.endsWith('.html') ? 'text/html' :
+                        filename.endsWith('.json') ? 'application/json' : 'application/octet-stream';
+        reply.header('Content-Type', mimeType);
+        return reply.send(data);
       } catch {
         return reply.code(404).send({ error: 'Not Found' });
       }
     });
 
-    // SPA routing: serve index.html for root and non-existent routes
-    app.get('/', async (request, reply) => {
+    // SPA routing: serve index.html for root
+    app.get('/', async (_request, reply) => {
       try {
+        const indexPath = path.join(frontendPath, 'index.html');
+        const data = fs.readFileSync(indexPath);
         reply.header('Content-Type', 'text/html; charset=utf-8');
-        return reply.sendFile('index.html', frontendPath);
+        return reply.send(data);
       } catch {
         return reply.code(404).send({ error: 'Not Found' });
       }
@@ -116,8 +124,10 @@ export async function buildApp() {
         return reply.code(404).send({ error: 'Not Found' });
       }
       try {
+        const indexPath = path.join(frontendPath, 'index.html');
+        const data = fs.readFileSync(indexPath);
         reply.header('Content-Type', 'text/html; charset=utf-8');
-        return reply.sendFile('index.html', frontendPath);
+        return reply.send(data);
       } catch {
         return reply.code(404).send({ error: 'Not Found' });
       }
