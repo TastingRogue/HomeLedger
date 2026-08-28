@@ -26,6 +26,7 @@ import { loanRoutes } from './routes/v1/loans.routes.js';
 import { alertRoutes } from './routes/v1/alerts.routes.js';
 import { haRoutes } from './routes/v1/ha.routes.js';
 import { attachmentRoutes } from './routes/v1/attachments.routes.js';
+import { receiptRoutes } from './routes/v1/receipts.routes.js';
 
 /**
  * Creates and configures the Fastify application instance.
@@ -75,21 +76,20 @@ export async function buildApp() {
   await app.register(alertRoutes, { prefix: '/api/v1/alerts' });
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
+  await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
 
-  // Load and mount SvelteKit frontend as middleware
+  // Load and mount SvelteKit frontend as middleware.
+  // Fastify must be hijacked when SvelteKit writes directly to the raw response;
+  // otherwise Fastify can try to send its own response after the SvelteKit handler.
   try {
     const { handler } = await import('../../../packages/frontend/build/handler.js');
     app.all('/*', async (request, reply) => {
-      // Convert Fastify request/reply to Node.js request/response for SvelteKit
-      const nodeReq = request.raw;
-      const nodeRes = reply.raw;
-      
-      // Call SvelteKit handler
-      handler(nodeReq, nodeRes);
+      reply.hijack();
+      handler(request.raw, reply.raw);
     });
     app.log.info('SvelteKit frontend mounted');
   } catch (error) {
-    app.log.warn('Frontend handler not available (expected in development)');
+    app.log.warn({ error }, 'Frontend handler not available (expected in development)');
   }
 
   return app;
