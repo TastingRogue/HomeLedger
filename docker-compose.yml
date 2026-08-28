@@ -1,13 +1,13 @@
 # =============================================================================
 # HomeLedger - Docker Compose
-# Multi-container personal finance management application
-# Usage: docker compose up --pull always
-# 
+# Single-container production deployment: Fastify API + SvelteKit frontend
+# Usage: docker compose up --build -d
+#
 # Environment variables (set in .env or via CLI):
 #   PORT: Application port (default: 3000)
 #   JWT_SECRET: JWT signing secret (required for production)
 #   ADMIN_EMAIL: Initial admin email
-#   ADMIN_PASSWORD: Initial admin password  
+#   ADMIN_PASSWORD: Initial admin password
 #   TZ: Timezone (default: America/Mexico_City)
 # =============================================================================
 
@@ -22,34 +22,34 @@ services:
       #   - linux/arm64
     container_name: homeledger
     restart: unless-stopped
-    
-    # Ports: expose API on port 3000
+
+    # Fastify serves both the API and the SvelteKit frontend.
     ports:
       - "${PORT:-3000}:3000"
-    
-    # Persistent storage for SQLite database
+
+    # Persistent storage for SQLite database and attachments.
     volumes:
       - homeledger-data:/data
-    
-    # Environment configuration
+
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - HOST=0.0.0.0
-      - DATA_DIR=/data
-      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-strong-random-secret}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@homeledger.local}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-to-a-strong-password}
-      - TZ=${TZ:-America/Mexico_City}
-    
-    # Health check using curl (lightweight)
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-strong-random-secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@homeledger.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-to-a-strong-password}
+      TZ: ${TZ:-America/Mexico_City}
+
+    # Check both the API and the frontend. This prevents Docker Desktop from
+    # reporting a backend-only container as healthy when the UI is unavailable.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health", "||", "exit", "1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/v1/health >/dev/null && curl -fsS http://localhost:3000/ >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
-    
+      start_period: 15s
+
     # Resource limits (optional)
     # deploy:
     #   resources:
@@ -60,7 +60,6 @@ services:
     #       cpus: '0.5'
     #       memory: 512M
 
-# Named volume for persistent database
 volumes:
   homeledger-data:
     driver: local
