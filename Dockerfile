@@ -1,6 +1,6 @@
 # =============================================================================
 # HomeLedger - Multi-stage Dockerfile
-# Produces a minimal production image (~80-120MB) with backend API + frontend
+# Produces a minimal production image with backend API + SvelteKit frontend
 # Supports multi-arch: linux/amd64, linux/arm64
 # =============================================================================
 
@@ -42,6 +42,10 @@ COPY packages/frontend ./packages/frontend
 # Build shared → backend → frontend (order matters)
 RUN npm run build
 
+# Fail the image build instead of producing a backend-only image if the
+# SvelteKit production handler was not generated.
+RUN test -f /app/packages/frontend/build/handler.js
+
 # Prune dev dependencies for production
 RUN npm prune --omit=dev
 
@@ -79,7 +83,7 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV DATA_DIR=/data
 
-# Expose API port
+# Expose the combined API + frontend port
 EXPOSE 3000
 
 # Use tini as init system for proper signal handling
@@ -88,5 +92,6 @@ ENTRYPOINT ["/sbin/tini", "--"]
 # Switch to non-root user
 USER smartfinance
 
-# Start the backend server (which also serves the frontend in production)
+# Start the backend server. Fastify serves the SvelteKit frontend from the
+# same container, so Docker Compose only needs one application service.
 CMD ["node", "packages/backend/dist/server.js"]
