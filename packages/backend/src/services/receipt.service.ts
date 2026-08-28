@@ -46,8 +46,10 @@ function parseDate(value: string | null): string | null {
   if (!value) return null;
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value); if (iso) return iso[0];
   const local = /(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/.exec(value); if (!local) return value;
-  const year = local[3].length === 2 ? `20${local[3]}` : local[3];
-  return `${year}-${local[2].padStart(2, '0')}-${local[1].padStart(2, '0')}`;
+  const day = local[1]; const month = local[2]; const rawYear = local[3];
+  if (!day || !month || !rawYear) return value;
+  const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 function decodeXml(value: string): string { return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>'); }
 
@@ -65,7 +67,10 @@ function parseCfdi(xml: string): ParsedReceipt {
   const conceptRegex = /<cfdi:Concepto\b([^>]*)\/?>(?:.*?<\/cfdi:Concepto>)?/gis;
   let match: RegExpExecArray | null;
   while ((match = conceptRegex.exec(xml))) {
-    const attrs = match[1]; const description = firstMatch(attrs, [/\bDescripcion="([^"]+)"/i]); if (!description) continue;
+    const attrs = match[1];
+    if (!attrs) continue;
+    const description = firstMatch(attrs, [/\bDescripcion="([^"]+)"/i]);
+    if (!description) continue;
     items.push({ description: decodeXml(description), quantity: numberValue(firstMatch(attrs, [/\bCantidad="([^"]+)"/i])), unitPrice: numberValue(firstMatch(attrs, [/\bValorUnitario="([^"]+)"/i])), total: numberValue(firstMatch(attrs, [/\bImporte="([^"]+)"/i])) });
   }
   return { merchant: issuerName ? decodeXml(issuerName) : null, receiptDate: parseDate(date), subtotal: numberValue(subtotal), tax: null, total: numberValue(total), currency: decodeXml(currency), documentType: 'cfdi', confidence: 1, rawText: xml, uuid, issuerRfc, issuerName: issuerName ? decodeXml(issuerName) : null, items };
