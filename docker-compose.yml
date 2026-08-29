@@ -10,7 +10,7 @@ services:
       dockerfile: Dockerfile
     container_name: homeledger-backend
     restart: unless-stopped
-    command: npm run dev -w packages/backend
+    command: npm run dev -w packages/backend -- src/server.ts
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     volumes:
