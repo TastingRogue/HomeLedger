@@ -8,7 +8,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: build
     container_name: homeledger-backend
     restart: unless-stopped
     command: npm run dev -w packages/backend
@@ -36,7 +35,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: build
     container_name: homeledger-frontend
     restart: unless-stopped
     command: npm run dev -w packages/frontend -- --host 0.0.0.0
