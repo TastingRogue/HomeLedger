@@ -1,5 +1,5 @@
 # =============================================================================
-# HomeLedger - Docker Compose
+# HomeLedger - Docker Compose (local development)
 # Backend API: http://localhost:3000
 # Frontend:    http://localhost:5173
 # =============================================================================
@@ -8,6 +8,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: build
     container_name: homeledger-backend
     restart: unless-stopped
     command: npm run dev -w packages/backend
@@ -25,7 +26,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-to-a-strong-password}
       TZ: ${TZ:-America/Mexico_City}
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/v1/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -35,6 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: build
     container_name: homeledger-frontend
     restart: unless-stopped
     command: npm run dev -w packages/frontend -- --host 0.0.0.0
@@ -47,7 +49,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5173/ >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:5173/ >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
