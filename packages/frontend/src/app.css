@@ -51,6 +51,12 @@
   --border-default: #1e2a3a;
   --border-subtle: #172033;
 
+  /* ─── Sidebar (distinct from content surfaces) ─── */
+  --sidebar-bg: #0a0f16;
+  --sidebar-border: var(--border-default);
+  --sidebar-active-bg: rgba(139, 92, 246, 0.15);
+  --sidebar-active-text: #a78bfa;
+
   /* ─── Radius ─── */
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -102,28 +108,61 @@
    ═══════════════════════════════════════════ */
 :root[data-theme='light'] {
   /* ─── Backgrounds ─── */
-  --bg-deep: #f1f4f9;
-  --bg-default: #f7f9fc;
+  /* A cool, low-chroma slate scale: the app canvas is a soft gray-blue and
+     cards sit on top as clean white, giving clear elevation without harsh lines. */
+  --bg-deep: #eef1f6;
+  --bg-default: #f5f7fb;
   --bg-surface: #ffffff;
-  --bg-elevated: #f2f5fa;
-  --bg-hover: #e9eef5;
+  --bg-elevated: #f3f5f9;
+  --bg-hover: #e7ecf3;
   --bg-card: #ffffff;
 
   /* ─── Text ─── */
-  --text-primary: #0f1a2a;
-  --text-secondary: #475569;
-  --text-muted: #7688a0;
+  --text-primary: #16202e;
+  --text-secondary: #4a5769;
+  --text-muted: #8492a6;
   --text-link: #2563eb;
 
+  /* ─── Accents (slightly deepened for contrast on light surfaces) ─── */
+  --accent-blue: #2563eb;
+  --accent-purple: #7c3aed;
+  --accent-green: #16a34a;
+  --accent-orange: #ea8a06;
+  --accent-red: #dc2626;
+  --accent-yellow: #ca9a04;
+  --accent-cyan: #0891b2;
+  --text-link: #2563eb;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-success: #16a34a;
+  --color-warning: #ea8a06;
+  --color-danger: #dc2626;
+  --color-income: #16a34a;
+  --color-expense: #dc2626;
+
+  /* ─── Tag backgrounds (a touch stronger so they read on white) ─── */
+  --tag-blue-bg: rgba(37, 99, 235, 0.10);
+  --tag-green-bg: rgba(22, 163, 74, 0.10);
+  --tag-red-bg: rgba(220, 38, 38, 0.10);
+  --tag-orange-bg: rgba(234, 138, 6, 0.12);
+  --tag-purple-bg: rgba(124, 58, 237, 0.10);
+  --tag-yellow-bg: rgba(202, 154, 4, 0.14);
+
   /* ─── Borders ─── */
-  --border-default: #dbe3ee;
-  --border-subtle: #e8edf4;
+  --border-default: #dde3ec;
+  --border-subtle: #e9edf3;
+
+  /* ─── Sidebar ─── */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e4e9f0;
+  --sidebar-active-bg: rgba(124, 58, 237, 0.10);
+  --sidebar-active-text: #7c3aed;
 
   /* ─── Shadows (softer on light) ─── */
-  --shadow-sm: 0 1px 3px rgba(15, 26, 42, 0.08);
-  --shadow-md: 0 4px 12px rgba(15, 26, 42, 0.10);
-  --shadow-lg: 0 8px 24px rgba(15, 26, 42, 0.12);
-  --shadow-card: 0 2px 8px rgba(15, 26, 42, 0.06);
+  --shadow-sm: 0 1px 2px rgba(20, 32, 46, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 32, 46, 0.08);
+  --shadow-lg: 0 10px 28px rgba(20, 32, 46, 0.10);
+  --shadow-card: 0 1px 3px rgba(20, 32, 46, 0.06);
 }
 
 /* ─── Reset ─── */

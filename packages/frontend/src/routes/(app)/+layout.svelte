@@ -167,8 +167,8 @@
     left: -235px;
     width: 235px;
     height: 100vh;
-    background: #0a0f16;
-    border-right: 1px solid var(--border-default);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
     display: flex;
     flex-direction: column;
     z-index: 200;
@@ -192,7 +192,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.85rem 0.75rem;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--sidebar-border);
   }
 
   .brand {
@@ -282,8 +282,8 @@
   }
 
   .nav-link.active {
-    background: rgba(139, 92, 246, 0.15);
-    color: #a78bfa;
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
     font-weight: 500;
   }
 
@@ -305,7 +305,7 @@
   /* ─── Sidebar Footer ─── */
   .sidebar-footer {
     padding: 0.75rem;
-    border-top: 1px solid var(--border-default);
+    border-top: 1px solid var(--sidebar-border);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
