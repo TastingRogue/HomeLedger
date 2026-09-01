@@ -1,66 +1,58 @@
 # =============================================================================
-# HomeLedger - Docker Compose
-# Multi-container personal finance management application
-# Usage: docker compose up --pull always
-# 
-# Environment variables (set in .env or via CLI):
-#   PORT: Application port (default: 3000)
-#   JWT_SECRET: JWT signing secret (required for production)
-#   ADMIN_EMAIL: Initial admin email
-#   ADMIN_PASSWORD: Initial admin password  
-#   TZ: Timezone (default: America/Mexico_City)
+# HomeLedger - Docker Compose (local development)
+# Backend API: http://localhost:3000
+# Frontend:    http://localhost:5173
 # =============================================================================
-
 services:
-  homeledger:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-      # Uncomment for multi-arch builds
-      # platforms:
-      #   - linux/amd64
-      #   - linux/arm64
-    container_name: homeledger
+    container_name: homeledger-backend
     restart: unless-stopped
-    
-    # Ports: expose API on port 3000
+    command: npx tsx watch packages/backend/src/server.ts
     ports:
-      - "${PORT:-3000}:3000"
-    
-    # Persistent storage for SQLite database
+      - "${BACKEND_PORT:-3000}:3000"
     volumes:
       - homeledger-data:/data
-    
-    # Environment configuration
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - HOST=0.0.0.0
-      - DATA_DIR=/data
-      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-strong-random-secret}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@homeledger.local}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-to-a-strong-password}
-      - TZ=${TZ:-America/Mexico_City}
-    
-    # Health check using curl (lightweight)
+      NODE_ENV: development
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATA_DIR: /data
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-strong-random-secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@homeledger.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-to-a-strong-password}
+      TZ: ${TZ:-America/Mexico_City}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health", "||", "exit", "1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    
-    # Resource limits (optional)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 1G
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 512M
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
-# Named volume for persistent database
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homeledger-frontend
+    restart: unless-stopped
+    command: npm run dev -w packages/frontend -- --host 0.0.0.0
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      NODE_ENV: development
+      VITE_API_PROXY_TARGET: http://backend:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:5173/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 volumes:
   homeledger-data:
     driver: local

@@ -2,14 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
-import {
-  registerAuthMiddleware,
-  registerRateLimitMiddleware,
-  registerErrorHandler,
-} from './middleware/index.js';
+import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
-
-// Route plugins
 import { authRoutes } from './routes/v1/auth.routes.js';
 import { accountRoutes } from './routes/v1/accounts.routes.js';
 import { transactionRoutes } from './routes/v1/transactions.routes.js';
@@ -26,39 +20,15 @@ import { loanRoutes } from './routes/v1/loans.routes.js';
 import { alertRoutes } from './routes/v1/alerts.routes.js';
 import { haRoutes } from './routes/v1/ha.routes.js';
 import { attachmentRoutes } from './routes/v1/attachments.routes.js';
+import { receiptRoutes } from './routes/v1/receipts.routes.js';
 
-/**
- * Creates and configures the Fastify application instance.
- * Exported for testing purposes.
- */
 export async function buildApp() {
-  const app = Fastify({
-    logger: {
-      level: process.env['LOG_LEVEL'] || 'info',
-    },
-  });
-
-  // CORS - allow all origins for development
-  await app.register(cors, {
-    origin: true,
-    credentials: true,
-  });
-
-  // Global middleware
+  const app = Fastify({ logger: { level: process.env['LOG_LEVEL'] || 'info' } });
+  await app.register(cors, { origin: true, credentials: true });
   await registerRateLimitMiddleware(app);
   registerAuthMiddleware(app);
   registerErrorHandler(app);
-
-  // Health check endpoint
-  app.get('/api/v1/health', async () => {
-    return {
-      status: 'ok',
-      version: '0.1.0',
-      timestamp: new Date().toISOString(),
-    };
-  });
-
-  // Register route plugins under /api/v1 prefix
+  app.get('/api/v1/health', async () => ({ status: 'ok', version: '0.1.0', timestamp: new Date().toISOString() }));
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(accountRoutes, { prefix: '/api/v1/accounts' });
   await app.register(transactionRoutes, { prefix: '/api/v1/transactions' });
@@ -75,36 +45,28 @@ export async function buildApp() {
   await app.register(alertRoutes, { prefix: '/api/v1/alerts' });
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
+  await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
 
-  // Load and mount SvelteKit frontend as middleware
   try {
-    const { handler } = await import('../../../packages/frontend/build/handler.js');
+    // SvelteKit generates this file during the frontend workspace build.
+    // Keep the module specifier dynamic so backend TypeScript does not require the generated file to exist yet.
+    const frontendHandlerModule = '../../../packages/frontend/build/handler.js';
+    const { handler } = await import(frontendHandlerModule);
     app.all('/*', async (request, reply) => {
-      // Convert Fastify request/reply to Node.js request/response for SvelteKit
-      const nodeReq = request.raw;
-      const nodeRes = reply.raw;
-      
-      // Call SvelteKit handler
-      handler(nodeReq, nodeRes);
+      reply.hijack();
+      handler(request.raw, reply.raw);
     });
     app.log.info('SvelteKit frontend mounted');
   } catch (error) {
-    app.log.warn('Frontend handler not available (expected in development)');
+    app.log.warn({ error }, 'Frontend handler not available (expected in development)');
   }
-
   return app;
 }
 
-/**
- * Starts the server: initializes database, runs seeds, and listens on configured port.
- */
 async function start(): Promise<void> {
   const app = await buildApp();
-
   const port = parseInt(process.env['PORT'] || '3000', 10);
   const host = process.env['HOST'] || '0.0.0.0';
-
-  // Initialize database (run migrations)
   try {
     initializeDatabase();
     app.log.info('Database initialized and migrations applied.');
@@ -112,20 +74,13 @@ async function start(): Promise<void> {
     app.log.error(error, 'Failed to initialize database.');
     process.exit(1);
   }
-
-  // Run seed (idempotent)
   try {
     await seed();
     app.log.info('Database seeding complete.');
   } catch (error) {
     app.log.error(error, 'Database seeding failed.');
-    // Non-fatal: continue even if seeding fails
   }
-
-  // Start scheduled jobs
   startScheduler();
-
-  // Graceful shutdown
   const shutdown = async (signal: string) => {
     app.log.info(`Received ${signal}. Shutting down gracefully...`);
     try {
@@ -139,11 +94,8 @@ async function start(): Promise<void> {
       process.exit(1);
     }
   };
-
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
-
-  // Start listening
   try {
     await app.listen({ port, host });
     app.log.info(`HomeLedger API running on http://${host}:${port}`);
