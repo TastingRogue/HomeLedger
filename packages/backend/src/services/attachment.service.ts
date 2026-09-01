@@ -1,11 +1,19 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { getDb } from '../db/connection.js';
+import { getDb, getSqlite } from '../db/connection.js';
 import { attachments } from '../db/schema.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
-const UPLOAD_DIR = path.resolve(process.cwd(), 'data', 'attachments');
+// Store attachments under DATA_DIR so they live on the same persistent volume as
+// the database. In Docker DATA_DIR is /data (mounted volume); locally it falls
+// back to ./data. Previously this used process.cwd()/data, which in the
+// container resolved to /app/data — outside the volume — so files were lost on
+// every rebuild while the DB records (in DATA_DIR) survived.
+const DATA_DIR = process.env['DATA_DIR']
+  ? path.resolve(process.env['DATA_DIR'])
+  : path.resolve(process.cwd(), 'data');
+const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
 
 // Ensure upload directory exists (lazy, no crash if it fails at import time)
 try {
@@ -116,6 +124,19 @@ export class AttachmentService {
     const filePath = this.getFilePath(record);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+    }
+
+    // Explicitly remove any receipt analysis tied to this attachment. The FK has
+    // ON DELETE CASCADE, but receipt_analyses/receipt_items are created via raw
+    // SQL and may not exist yet; guard by table existence and do it explicitly.
+    const sqlite = getSqlite();
+    const tableExists = (name: string): boolean =>
+      !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+    if (tableExists('receipt_analyses')) {
+      if (tableExists('receipt_items')) {
+        sqlite.prepare('DELETE FROM receipt_items WHERE analysis_id IN (SELECT id FROM receipt_analyses WHERE attachment_id = ?)').run(id);
+      }
+      sqlite.prepare('DELETE FROM receipt_analyses WHERE attachment_id = ?').run(id);
     }
 
     db.delete(attachments).where(eq(attachments.id, id)).run();

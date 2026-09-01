@@ -1,1 +1,0 @@
-import{a as s,b as e}from"../chunks/BsbooDs4.js";import{f as i,r as m}from"../chunks/3RHX6JqA.js";import{s as p}from"../chunks/beOYajmz.js";var n=e('<div class="auth-layout svelte-b7w73z"><!></div>');function f(a,r){var o=n(),t=i(o);p(t,()=>r.children),m(o),s(a,o)}export{f as component};

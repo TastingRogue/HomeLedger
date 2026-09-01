@@ -156,9 +156,12 @@ Override these in production.
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
-| `DATA_DIR` | Directory for the SQLite database | `/data` |
-| `DATA_DIR` | Directory for SQLite database | `./data` |
-| `PORT` | Server port | `3000` |
+| `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |
+
+> :floppy_disk: **Data persistence.** Everything under `DATA_DIR` — the database
+> and receipt/invoice attachments — lives on the `homeledger-data` volume, so it
+> survives `docker compose up --build --force-recreate` and container rebuilds.
+> Deleting the volume (`docker compose down -v`) is what wipes your data.
 
 ## Project Structure
 

@@ -1,0 +1,1 @@
+import{a as c,e as n,f as u,g as o}from"./Da8MWB9F.js";function e(){return c("/accounts")}function r(t){return c(`/accounts/${t}`)}function i(t){return u("/accounts",t)}function f(t,a){return n(`/accounts/${t}`,a)}function p(t){return o(`/accounts/${t}/deactivate`)}export{i as c,p as d,r as g,e as l,f as u};

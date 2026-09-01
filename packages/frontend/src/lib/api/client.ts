@@ -232,3 +232,61 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
 export async function apiDelete<T>(path: string): Promise<T> {
   return apiRequest<T>(path, { method: 'DELETE' });
 }
+
+// ============================
+// Binary / Multipart Helpers
+// ============================
+
+/**
+ * Authenticated fetch that returns a Blob (for previews/downloads).
+ * Refreshes the token once on 401 and throws ApiError on failure so callers
+ * can surface errors instead of failing silently.
+ */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const doFetch = (token: string | null): Promise<Response> =>
+    fetch(`${API_BASE}${path}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+  let response = await doFetch(getAccessToken());
+  if (response.status === 401) {
+    const newToken = await tryRefreshToken();
+    if (!newToken) {
+      clearTokens();
+      redirectToLogin();
+      throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+    }
+    response = await doFetch(newToken);
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new ApiError(response.status, body.error?.code ?? 'DOWNLOAD_ERROR', body.error?.message ?? `Error ${response.status}`);
+  }
+  return response.blob();
+}
+
+/**
+ * Authenticated multipart upload (FormData). Do NOT set Content-Type; the
+ * browser sets the multipart boundary. Refreshes the token once on 401.
+ */
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const doFetch = (token: string | null): Promise<Response> =>
+    fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+  let response = await doFetch(getAccessToken());
+  if (response.status === 401) {
+    const newToken = await tryRefreshToken();
+    if (!newToken) {
+      clearTokens();
+      redirectToLogin();
+      throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+    }
+    response = await doFetch(newToken);
+  }
+  return handleResponse<T>(response);
+}

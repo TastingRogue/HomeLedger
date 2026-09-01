@@ -4,6 +4,30 @@ import { AttachmentService } from '../../services/attachment.service.js';
 import * as fs from 'fs';
 
 /**
+ * Verifies the file content (magic bytes) matches the declared MIME type, so a
+ * client cannot upload arbitrary content disguised as an allowed image/PDF.
+ */
+function contentMatchesMime(buffer: Buffer, mime: string): boolean {
+  const startsWith = (bytes: number[], offset = 0): boolean =>
+    bytes.every((b, i) => buffer[offset + i] === b);
+  switch (mime) {
+    case 'image/jpeg':
+      return startsWith([0xff, 0xd8, 0xff]);
+    case 'image/png':
+      return startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case 'image/gif':
+      return startsWith([0x47, 0x49, 0x46, 0x38]); // "GIF8"
+    case 'application/pdf':
+      return startsWith([0x25, 0x50, 0x44, 0x46, 0x2d]); // "%PDF-"
+    case 'image/webp':
+      // "RIFF"...."WEBP"
+      return startsWith([0x52, 0x49, 0x46, 0x46]) && startsWith([0x57, 0x45, 0x42, 0x50], 8);
+    default:
+      return false;
+  }
+}
+
+/**
  * Routes for file attachments (receipts, invoices).
  * Prefix: /api/v1/attachments
  */
@@ -34,6 +58,12 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/gif'];
     if (!allowedMimes.includes(data.mimetype)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_TYPE', message: 'Solo se permiten imágenes (JPG, PNG, WEBP, GIF) y PDFs' } });
+    }
+
+    // Defense in depth: verify the actual bytes match the declared type so a
+    // client cannot smuggle arbitrary content under an allowed MIME type.
+    if (!contentMatchesMime(buffer, data.mimetype)) {
+      return reply.status(400).send({ success: false, error: { code: 'CONTENT_MISMATCH', message: 'El contenido del archivo no coincide con su tipo declarado' } });
     }
 
     // Parse optional link fields from multipart
@@ -68,9 +98,10 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
 
   /**
    * GET /api/v1/attachments/:id/download
-   * Download the attachment file.
+   * Serve the attachment file. Use `?inline=1` to display it in the browser
+   * (preview); otherwise it is sent as a download.
    */
-  app.get('/:id/download', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  app.get('/:id/download', async (request: FastifyRequest<{ Params: { id: string }; Querystring: { inline?: string } }>, reply: FastifyReply) => {
     const user = request.user!;
     const id = parseInt(request.params.id, 10);
 
@@ -82,10 +113,18 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     const filePath = AttachmentService.getFilePath(attachment);
     if (!fs.existsSync(filePath)) return reply.status(404).send({ success: false, error: { code: 'FILE_MISSING', message: 'Archivo no encontrado en disco' } });
 
+    const disposition = request.query.inline === '1' ? 'inline' : 'attachment';
+    // Sanitize the filename before putting it in the header to avoid header
+    // injection (strip CR/LF and quotes/backslashes). Also provide an RFC 5987
+    // UTF-8 encoded name so non-ASCII names survive.
+    const safeName = (attachment.originalName ?? `attachment-${attachment.id}`).replace(/[\r\n"\\]/g, '_');
+    const encodedName = encodeURIComponent(attachment.originalName ?? `attachment-${attachment.id}`);
+
     const stream = fs.createReadStream(filePath);
     return reply
       .header('Content-Type', attachment.mimeType)
-      .header('Content-Disposition', `attachment; filename="${attachment.originalName}"`)
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('Content-Disposition', `${disposition}; filename="${safeName}"; filename*=UTF-8''${encodedName}`)
       .send(stream);
   });
 

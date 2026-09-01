@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiGet, apiPost, apiPut, apiDelete } from '$lib/api/client';
+  import { uploadAttachment, downloadAttachment as apiDownloadAttachment } from '$lib/api/attachments';
   import { formatCurrency, formatDateShort, formatDaysRemaining } from '$lib/utils/format';
   import BarChart from '$lib/components/BarChart.svelte';
   import DoughnutChart from '$lib/components/DoughnutChart.svelte';
@@ -537,17 +538,10 @@
     if (!attachTxId && !attachTfId) { attachError = $t('dashboard.select_tx_or_tf'); return; }
     attachSubmitting = true; attachError = null;
     try {
-      const formData = new FormData();
-      formData.append('file', attachFile);
-      if (attachTxId) formData.append('transactionId', String(attachTxId));
-      if (attachTfId) formData.append('transferId', String(attachTfId));
-
-      const res = await fetch('/api/v1/attachments/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('sf_access_token')}` },
-        body: formData,
+      await uploadAttachment(attachFile, {
+        transactionId: attachTxId ?? undefined,
+        transferId: attachTfId ?? undefined,
       });
-      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.error?.message ?? `Error ${res.status}`); }
       attachSuccess = true;
       setTimeout(() => closeAttachModal(), 1500);
     } catch (e: unknown) { attachError = e instanceof Error ? e.message : 'Error al subir'; }
@@ -556,20 +550,10 @@
 
   async function downloadAttachment(id: number, filename: string) {
     try {
-      const res = await fetch(`/api/v1/attachments/${id}/download`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('sf_access_token')}` },
-      });
-      if (!res.ok) throw new Error('Error al descargar');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch { /* silently fail */ }
+      await apiDownloadAttachment(id, filename);
+    } catch (e: unknown) {
+      attachError = e instanceof Error ? e.message : 'Error al descargar';
+    }
   }
 
   // ─── Subscription Edit Popup ───
