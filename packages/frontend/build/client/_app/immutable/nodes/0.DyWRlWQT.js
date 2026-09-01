@@ -1,1 +1,0 @@
-import{c as s,a,b as p}from"../chunks/pBoUOFxT.js";import{as as f}from"../chunks/Dtv2tq0X.js";import{s as i}from"../chunks/bAQBLtnY.js";import{h as c}from"../chunks/CaYyh7E2.js";var h=p('<meta name="theme-color" content="#191919"/>');function u(r,t){var o=s();c("12qhfyh",e=>{var n=h();a(e,n)});var m=f(o);i(m,()=>t.children),a(r,o)}export{u as component};

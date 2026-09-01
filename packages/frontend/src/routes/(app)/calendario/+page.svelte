@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { apiGet } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
+  import { t } from '$lib/i18n';
+  import { preferences } from '$lib/stores/preferences';
 
   interface CalendarPayment {
     id: number;
@@ -15,12 +17,20 @@
   }
 
   let loading = $state(true);
+  let error = $state('');
   let payments: CalendarPayment[] = $state([]);
   let currentMonth = $state(new Date().getMonth());
   let currentYear = $state(new Date().getFullYear());
 
-  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const localeTag = $derived($preferences.locale === 'en' ? 'en-US' : 'es-MX');
+  const months = $derived(Array.from({ length: 12 }, (_, m) => {
+    const n = new Intl.DateTimeFormat(localeTag, { month: 'long' }).format(new Date(2000, m, 1));
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }));
+  const weekdays = $derived(Array.from({ length: 7 }, (_, i) => {
+    const n = new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(new Date(2024, 0, 7 + i));
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }));
 
   let calendarDays = $derived.by(() => {
     const firstDay = new Date(currentYear, currentMonth, 1).getDay();
@@ -68,21 +78,25 @@
     try {
       const res = await apiGet<CalendarPayment[]>('/subscriptions/calendar');
       payments = Array.isArray(res) ? res : (res as any).items ?? [];
-    } catch {} finally { loading = false; }
+    } catch { error = $t('calendar.error_loading'); } finally { loading = false; }
   }
 
   onMount(loadData);
 </script>
 
-<svelte:head><title>Calendario de Pagos - HomeLedger</title></svelte:head>
+<svelte:head><title>{$t('calendar.title')}</title></svelte:head>
 
 <div class="page">
   <header class="page-header">
     <div>
-      <h1>Calendario de Pagos</h1>
-      <p class="page-subtitle">Consulta tus próximos pagos y organiza tu flujo de efectivo.</p>
+      <h1>{$t('calendar.title')}</h1>
+      <p class="page-subtitle">{$t('calendar.subtitle')}</p>
     </div>
   </header>
+
+  {#if error}
+    <div class="error">{error}</div>
+  {/if}
 
   {#if loading}
     <div class="loading"><div class="spinner"></div></div>
@@ -93,7 +107,7 @@
         <div class="cal-header">
           <button class="cal-nav" onclick={prevMonth}>←</button>
           <span class="cal-month">{months[currentMonth]} {currentYear}</span>
-          <button class="cal-nav" onclick={goToday}>Hoy</button>
+          <button class="cal-nav" onclick={goToday}>{$t('common.today')}</button>
           <button class="cal-nav" onclick={nextMonth}>→</button>
         </div>
 
@@ -123,7 +137,7 @@
 
       <!-- Upcoming Payments -->
       <div class="upcoming-card">
-        <h3 class="card-title">📅 Próximos pagos</h3>
+        <h3 class="card-title">{$t('calendar.upcoming_title')}</h3>
         <div class="upcoming-list">
           {#each upcomingPayments as p (p.id)}
             <div class="upcoming-item">
@@ -133,11 +147,11 @@
               </div>
               <div class="ui-right">
                 <span class="ui-amount">{formatCurrency(p.amount)}</span>
-                <span class="ui-days" class:urgent={p.daysRemaining <= 3}>{p.daysRemaining} días</span>
+                <span class="ui-days" class:urgent={p.daysRemaining <= 3}>{$t('calendar.days_short', { n: p.daysRemaining })}</span>
               </div>
             </div>
           {:else}
-            <p class="empty">No hay pagos programados</p>
+            <p class="empty">{$t('calendar.no_payments')}</p>
           {/each}
         </div>
       </div>
@@ -150,6 +164,8 @@
   .page-header { margin-bottom: 1.25rem; }
   .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
   .page-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+  .error { background: var(--tag-red-bg); color: var(--accent-red); padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); font-size: 0.8rem; margin-bottom: 1rem; }
 
   .loading { text-align: center; padding: 3rem; }
   .spinner { width: 20px; height: 20px; border: 2px solid var(--border-default); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto; }

@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { authApi, ApiError } from '$lib/api';
   import { authStore } from '$lib/stores';
+  import { t } from '$lib/i18n';
 
   let name = $state('');
   let email = $state('');
@@ -26,10 +27,10 @@
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { emailError = 'Ingresa un correo electrónico válido'; valid = false; }
 
     if (!password) { passwordError = 'La contraseña es obligatoria'; valid = false; }
-    else if (password.length < 8) { passwordError = 'La contraseña debe tener al menos 8 caracteres'; valid = false; }
+    else if (password.length < 8) { passwordError = $t('auth.password_min'); valid = false; }
 
     if (!confirmPassword) { confirmPasswordError = 'Confirma tu contraseña'; valid = false; }
-    else if (password !== confirmPassword) { confirmPasswordError = 'Las contraseñas no coinciden'; valid = false; }
+    else if (password !== confirmPassword) { confirmPasswordError = $t('auth.passwords_mismatch'); valid = false; }
 
     return valid;
   }
@@ -48,9 +49,9 @@
       await goto('/dashboard');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        if (err.code === 'EMAIL_EXISTS') error = 'El correo electrónico ya está registrado';
+        if (err.code === 'EMAIL_EXISTS') error = $t('auth.email_taken');
         else error = err.message;
-      } else { error = 'Error de conexión. Intenta de nuevo.'; }
+      } else { error = $t('auth.connection_error'); }
     } finally { loading = false; }
   }
 </script>
@@ -63,7 +64,7 @@
   <div class="register-card">
     <div class="brand-mark">HL</div>
     <h1 class="register-title">HomeLedger</h1>
-    <p class="register-subtitle">Crear Cuenta</p>
+    <p class="register-subtitle">{$t('auth.register_title')}</p>
 
     {#if error}
       <div class="error-message" role="alert">{error}</div>
@@ -71,25 +72,25 @@
 
     <form onsubmit={handleRegister} novalidate>
       <div class="form-group">
-        <label for="name">Nombre</label>
-        <input id="name" type="text" bind:value={name} placeholder="Tu nombre completo" autocomplete="name" disabled={loading} class:input-error={nameError} aria-describedby={nameError ? 'name-error' : undefined} aria-invalid={nameError ? 'true' : undefined} />
+        <label for="name">{$t('auth.name_label')}</label>
+        <input id="name" type="text" bind:value={name} placeholder={$t('auth.name_placeholder')} autocomplete="name" disabled={loading} class:input-error={nameError} aria-describedby={nameError ? 'name-error' : undefined} aria-invalid={nameError ? 'true' : undefined} />
         {#if nameError}<span id="name-error" class="field-error" role="alert">{nameError}</span>{/if}
       </div>
 
       <div class="form-group">
-        <label for="email">Correo electrónico</label>
-        <input id="email" type="email" bind:value={email} placeholder="tu@correo.com" autocomplete="email" disabled={loading} class:input-error={emailError} aria-describedby={emailError ? 'email-error' : undefined} aria-invalid={emailError ? 'true' : undefined} />
+        <label for="email">{$t('auth.email_label')}</label>
+        <input id="email" type="email" bind:value={email} placeholder={$t('auth.email_placeholder')} autocomplete="email" disabled={loading} class:input-error={emailError} aria-describedby={emailError ? 'email-error' : undefined} aria-invalid={emailError ? 'true' : undefined} />
         {#if emailError}<span id="email-error" class="field-error" role="alert">{emailError}</span>{/if}
       </div>
 
       <div class="form-group">
-        <label for="password">Contraseña</label>
-        <input id="password" type="password" bind:value={password} placeholder="Mínimo 8 caracteres" autocomplete="new-password" disabled={loading} class:input-error={passwordError} aria-describedby={passwordError ? 'password-error' : undefined} aria-invalid={passwordError ? 'true' : undefined} />
+        <label for="password">{$t('auth.password_label')}</label>
+        <input id="password" type="password" bind:value={password} placeholder={$t('auth.password_placeholder')} autocomplete="new-password" disabled={loading} class:input-error={passwordError} aria-describedby={passwordError ? 'password-error' : undefined} aria-invalid={passwordError ? 'true' : undefined} />
         {#if passwordError}<span id="password-error" class="field-error" role="alert">{passwordError}</span>{/if}
       </div>
 
       <div class="form-group">
-        <label for="confirmPassword">Confirmar contraseña</label>
+        <label for="confirmPassword">{$t('auth.confirm_password_label')}</label>
         <input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Repite tu contraseña" autocomplete="new-password" disabled={loading} class:input-error={confirmPasswordError} aria-describedby={confirmPasswordError ? 'confirm-error' : undefined} aria-invalid={confirmPasswordError ? 'true' : undefined} />
         {#if confirmPasswordError}<span id="confirm-error" class="field-error" role="alert">{confirmPasswordError}</span>{/if}
       </div>
@@ -97,16 +98,16 @@
       <button type="submit" class="submit-btn" disabled={loading}>
         {#if loading}
           <span class="spinner" aria-hidden="true"></span>
-          Creando cuenta...
+          {$t('auth.creating_account')}
         {:else}
-          Registrarse
+          {$t('auth.register_btn')}
         {/if}
       </button>
     </form>
 
     <p class="login-link">
-      ¿Ya tienes cuenta?
-      <a href="/login">Iniciar Sesión</a>
+      {$t('auth.have_account')}
+      <a href="/login">{$t('auth.go_login')}</a>
     </p>
   </div>
 </div>

@@ -28,6 +28,7 @@ export async function alertRoutes(app: FastifyInstance) {
 
   // PATCH /:id/read - Mark a single alert as read
   app.patch('/:id/read', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
     const id = parseInt(request.params.id, 10);
 
     if (isNaN(id)) {
@@ -37,7 +38,10 @@ export async function alertRoutes(app: FastifyInstance) {
       });
     }
 
-    AlertService.markAsRead(id);
+    const ok = AlertService.markAsRead(id, user.userId);
+    if (!ok) {
+      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Alerta no encontrada' } });
+    }
 
     return reply.send({
       success: true,
@@ -57,36 +61,22 @@ export async function alertRoutes(app: FastifyInstance) {
     });
   });
 
-  // GET /settings - Get alert configuration settings
-  app.get('/settings', async (_request: FastifyRequest, reply: FastifyReply) => {
-    // Default settings - all alert types enabled
-    // In a more complete implementation, these would be persisted per user
-    return reply.send({
-      success: true,
-      data: {
-        balanceLow: true,
-        creditHigh: true,
-        paymentDue: true,
-        paymentOverdue: true,
-        goalCompleted: true,
-      },
-    });
+  // GET /settings - Get alert configuration settings (persisted per user)
+  app.get('/settings', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    return reply.send({ success: true, data: AlertService.getSettings(user.userId) });
   });
 
-  // PUT /settings - Update alert configuration settings
+  // PUT /settings - Update alert configuration settings (persisted per user)
   app.put('/settings', async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = request.body as Record<string, boolean>;
-
-    return reply.send({
-      success: true,
-      data: {
-        balanceLow: body.balanceLow ?? true,
-        creditHigh: body.creditHigh ?? true,
-        paymentDue: body.paymentDue ?? true,
-        paymentOverdue: body.paymentOverdue ?? true,
-        goalCompleted: body.goalCompleted ?? true,
-      },
-    });
+    const user = request.user as TokenPayload;
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const patch: Record<string, boolean> = {};
+    for (const key of ['balanceLow', 'creditHigh', 'paymentDue', 'paymentOverdue', 'goalCompleted'] as const) {
+      if (typeof body[key] === 'boolean') patch[key] = body[key] as boolean;
+    }
+    const updated = AlertService.updateSettings(user.userId, patch);
+    return reply.send({ success: true, data: updated });
   });
 
   // POST /evaluate - Manually trigger alert evaluation
@@ -104,17 +94,16 @@ export async function alertRoutes(app: FastifyInstance) {
 
   // DELETE /:id - Delete an alert
   app.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
     const id = parseInt(request.params.id, 10);
     if (isNaN(id)) {
       return reply.status(400).send({ success: false, error: { code: 'INVALID_ID', message: 'ID inválido' } });
     }
 
-    const { getDb } = await import('../../db/connection.js');
-    const { alerts } = await import('../../db/schema.js');
-    const { eq } = await import('drizzle-orm');
-    const db = getDb();
-
-    db.delete(alerts).where(eq(alerts.id, id)).run();
+    const ok = AlertService.delete(id, user.userId);
+    if (!ok) {
+      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Alerta no encontrada' } });
+    }
     return reply.send({ success: true, data: { message: 'Alerta eliminada' } });
   });
 }

@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { authApi, ApiError } from '$lib/api';
   import { authStore } from '$lib/stores';
+  import { t } from '$lib/i18n';
 
   let email = $state('');
   let password = $state('');
@@ -55,12 +56,12 @@
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.code === 'INVALID_CREDENTIALS') {
-          error = 'Correo electrónico o contraseña incorrectos';
+          error = $t('auth.invalid_credentials');
         } else {
           error = err.message;
         }
       } else {
-        error = 'Error de conexión. Intenta de nuevo.';
+        error = $t('auth.connection_error');
       }
     } finally {
       loading = false;
@@ -76,7 +77,7 @@
   <div class="login-card">
     <div class="brand-mark">HL</div>
     <h1 class="login-title">HomeLedger</h1>
-    <p class="login-subtitle">Iniciar Sesión</p>
+    <p class="login-subtitle">{$t('auth.login_title')}</p>
 
     {#if error}
       <div class="error-message" role="alert">{error}</div>
@@ -84,12 +85,12 @@
 
     <form onsubmit={handleLogin} novalidate>
       <div class="form-group">
-        <label for="email">Correo electrónico</label>
+        <label for="email">{$t('auth.email_label')}</label>
         <input
           id="email"
           type="email"
           bind:value={email}
-          placeholder="tu@correo.com"
+          placeholder={$t('auth.email_placeholder')}
           autocomplete="email"
           disabled={loading}
           class:input-error={emailError}
@@ -102,12 +103,12 @@
       </div>
 
       <div class="form-group">
-        <label for="password">Contraseña</label>
+        <label for="password">{$t('auth.password_label')}</label>
         <input
           id="password"
           type="password"
           bind:value={password}
-          placeholder="••••••••"
+          placeholder={$t('auth.password_placeholder')}
           autocomplete="current-password"
           disabled={loading}
           class:input-error={passwordError}
@@ -122,16 +123,16 @@
       <button type="submit" class="submit-btn" disabled={loading}>
         {#if loading}
           <span class="spinner" aria-hidden="true"></span>
-          Iniciando sesión...
+          {$t('auth.logging_in')}
         {:else}
-          Iniciar Sesión
+          {$t('auth.login_btn')}
         {/if}
       </button>
     </form>
 
     <p class="register-link">
-      ¿Primera vez aquí?
-      <a href="/register">Crear cuenta</a>
+      {$t('auth.no_account')}
+      <a href="/register">{$t('auth.go_register')}</a>
     </p>
   </div>
 </div>

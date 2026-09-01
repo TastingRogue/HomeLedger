@@ -8,6 +8,7 @@
     type BackupHistoryEntry,
   } from '$lib/api/backup';
   import { ApiError } from '$lib/api/client';
+  import { t } from '$lib/i18n';
 
   // ─── State ───
   let history: BackupHistoryEntry[] = $state([]);
@@ -33,7 +34,7 @@
     try {
       history = await getBackupHistory();
     } catch (e: unknown) {
-      error = e instanceof ApiError ? e.message : 'Error al cargar historial';
+      error = e instanceof ApiError ? e.message : $t('backup.error_loading');
     } finally {
       loading = false;
     }
@@ -59,10 +60,10 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      exportSuccess = 'Respaldo exportado exitosamente.';
+      exportSuccess = $t('backup.export_success');
       setTimeout(() => (exportSuccess = null), 4000);
     } catch (e: unknown) {
-      error = e instanceof ApiError ? e.message : 'Error al exportar respaldo';
+      error = e instanceof ApiError ? e.message : $t('backup.error_exporting');
     } finally {
       exporting = false;
     }
@@ -85,7 +86,7 @@
         parsedBackup = JSON.parse(content);
         showConfirmDialog = true;
       } catch {
-        importError = 'El archivo seleccionado no es un JSON válido.';
+        importError = $t('backup.invalid_json');
         selectedFile = null;
         parsedBackup = null;
       }
@@ -107,7 +108,7 @@
     importError = null;
     try {
       const result = await importBackup(parsedBackup, true);
-      importSuccess = result.message || 'Datos importados exitosamente.';
+      importSuccess = result.message || $t('backup.import_success');
       showConfirmDialog = false;
       selectedFile = null;
       parsedBackup = null;
@@ -116,7 +117,7 @@
       if (e instanceof ApiError) {
         importError = e.message;
       } else {
-        importError = 'Error al importar respaldo';
+        importError = $t('backup.error_importing');
       }
     } finally {
       importing = false;
@@ -134,7 +135,7 @@
 
 <div class="page">
   <header class="page-header">
-    <h1>Respaldo y Restauración</h1>
+    <h1>{$t('backup.title')}</h1>
   </header>
 
   {#if error}
@@ -154,14 +155,14 @@
   <div class="actions-row">
     <button class="action-btn export-btn" onclick={handleExport} disabled={exporting}>
       <span class="action-icon">↓</span>
-      <span class="action-text">{exporting ? 'Exportando...' : 'Exportar Respaldo'}</span>
-      <span class="action-desc">Descargar JSON completo</span>
+      <span class="action-text">{exporting ? $t('backup.exporting') : $t('backup.export_btn')}</span>
+      <span class="action-desc">{$t('backup.export_desc')}</span>
     </button>
 
     <label class="action-btn import-btn" for="file-input">
       <span class="action-icon">↑</span>
-      <span class="action-text">Importar Respaldo</span>
-      <span class="action-desc">Restaurar desde archivo JSON</span>
+      <span class="action-text">{$t('backup.import_btn')}</span>
+      <span class="action-desc">{$t('backup.import_desc')}</span>
     </label>
     <input type="file" id="file-input" accept=".json,application/json" onchange={handleFileSelect} class="file-input" />
   </div>
@@ -178,17 +179,17 @@
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
         <header class="modal-header">
-          <h2 id="confirm-title">Confirmar Importación</h2>
+          <h2 id="confirm-title">{$t('backup.confirm_title')}</h2>
           <button class="close-btn" onclick={cancelImport} aria-label="Cerrar">&times;</button>
         </header>
-        <p class="confirm-warning">¿Importar este respaldo? <strong>Todos tus datos actuales serán reemplazados.</strong></p>
+        <p class="confirm-warning">{$t('backup.confirm_warning')}</p>
         {#if selectedFile}
-          <p class="file-info">Archivo: {selectedFile.name}</p>
+          <p class="file-info">{$t('backup.file_label', { name: selectedFile.name })}</p>
         {/if}
         <div class="form-buttons">
-          <button class="btn btn-secondary" onclick={cancelImport} disabled={importing}>Cancelar</button>
+          <button class="btn btn-secondary" onclick={cancelImport} disabled={importing}>{$t('common.cancel')}</button>
           <button class="btn btn-danger" onclick={confirmImport} disabled={importing}>
-            {importing ? 'Importando...' : 'Confirmar'}
+            {importing ? $t('backup.confirming') : $t('common.confirm')}
           </button>
         </div>
       </div>
@@ -197,17 +198,17 @@
 
   <!-- History -->
   <section class="section">
-    <h2 class="section-title">HISTORIAL</h2>
+    <h2 class="section-title">{$t('backup.history_title')}</h2>
     {#if loading}
-      <p class="loading-msg">Cargando historial...</p>
+      <p class="loading-msg">{$t('backup.loading_history')}</p>
     {:else if history.length === 0}
-      <p class="empty-msg">No hay historial de respaldos.</p>
+      <p class="empty-msg">{$t('backup.no_history')}</p>
     {:else}
       <div class="history-list">
         {#each history as entry (entry.id)}
           <div class="history-row">
             <span class="history-type-tag" class:export={entry.type === 'export'} class:import={entry.type === 'import'}>
-              {entry.type === 'export' ? 'Exportación' : 'Importación'}
+              {entry.type === 'export' ? $t('backup.type_export') : $t('backup.type_import')}
             </span>
             <span class="history-date">{new Date(entry.createdAt).toLocaleString('es-MX')}</span>
           </div>
@@ -288,7 +289,6 @@
   .close-btn { background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; }
   .close-btn:hover { color: var(--text-primary); }
   .confirm-warning { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--spacing-sm); line-height: 1.4; }
-  .confirm-warning strong { color: var(--text-primary); }
   .file-info { font-size: 0.72rem; color: var(--text-muted); margin-bottom: var(--spacing-md); }
 
   /* Buttons */

@@ -195,10 +195,13 @@
   }
 
   async function handleDelete(alert: AlertData) {
+    error = null;
     try {
       await deleteAlert(alert.id);
       alerts = alerts.filter(a => a.id !== alert.id);
-    } catch {}
+    } catch (e: unknown) {
+      error = e instanceof ApiError ? e.message : $t('common.error_deleting');
+    }
   }
 
   let evaluating = $state(false);

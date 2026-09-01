@@ -257,7 +257,7 @@
   {#if loading}
     <div class="qr-loading">
       <span class="spinner"></span>
-      <span>Cargando...</span>
+      <span>{$t('common.loading')}</span>
     </div>
   {:else if hasNoAccounts}
     <section class="qr-no-accounts" aria-label={$t('transactions.no_accounts_title')}>
@@ -420,7 +420,7 @@
             id="qr-name"
             type="text"
             bind:value={transactionName}
-            placeholder="Ej: Uber, Netflix, Nómina..."
+            placeholder={$t('dashboard.expense_placeholder')}
             maxlength={100}
           />
           <span class="name-hint">Si lo dejas vacío, se usará el nombre de la categoría</span>

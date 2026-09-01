@@ -21,10 +21,19 @@ import { alertRoutes } from './routes/v1/alerts.routes.js';
 import { haRoutes } from './routes/v1/ha.routes.js';
 import { attachmentRoutes } from './routes/v1/attachments.routes.js';
 import { receiptRoutes } from './routes/v1/receipts.routes.js';
+import { networthRoutes } from './routes/v1/networth.routes.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: { level: process.env['LOG_LEVEL'] || 'info' } });
-  await app.register(cors, { origin: true, credentials: true });
+  // CORS: restrict to configured origins in production. Set CORS_ORIGIN to a
+  // comma-separated list of allowed origins (e.g. "https://app.example.com").
+  // When unset, reflect the request origin (convenient for local/self-hosted
+  // single-origin setups where the frontend is served from the same host).
+  const corsEnv = process.env['CORS_ORIGIN']?.trim();
+  const corsOrigin = corsEnv
+    ? corsEnv.split(',').map((o) => o.trim()).filter(Boolean)
+    : true;
+  await app.register(cors, { origin: corsOrigin, credentials: true });
   await registerRateLimitMiddleware(app);
   registerAuthMiddleware(app);
   registerErrorHandler(app);
@@ -46,6 +55,7 @@ export async function buildApp() {
   await app.register(haRoutes, { prefix: '/api/v1/ha' });
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
   await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
+  await app.register(networthRoutes, { prefix: '/api/v1/networth' });
 
   try {
     // SvelteKit (adapter-node) generates this file during the frontend build.

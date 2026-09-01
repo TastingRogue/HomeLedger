@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { eq, and } from 'drizzle-orm';
-import { getDb } from '../db/connection.js';
+import { getDb, getSqlite } from '../db/connection.js';
 import { alerts, accounts, subscriptions, goals } from '../db/schema.js';
 import { AccountService } from './account.service.js';
 import { SubscriptionService } from './subscription.service.js';
@@ -471,14 +471,16 @@ export class AlertService {
   }
 
   /**
-   * Marca una alerta como leída.
+   * Marca una alerta como leída. Scoped by userId so a user cannot modify
+   * another user's alerts. Returns true if a row was affected.
    */
-  static markAsRead(id: number) {
+  static markAsRead(id: number, userId: number): boolean {
     const db = getDb();
-    db.update(alerts)
+    const result = db.update(alerts)
       .set({ isRead: true })
-      .where(eq(alerts.id, id))
+      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)))
       .run();
+    return result.changes > 0;
   }
 
   /**
@@ -491,4 +493,91 @@ export class AlertService {
       .where(eq(alerts.userId, userId))
       .run();
   }
+
+  /**
+   * Deletes an alert scoped by userId. Returns true if a row was deleted.
+   */
+  static delete(id: number, userId: number): boolean {
+    const db = getDb();
+    const result = db.delete(alerts)
+      .where(and(eq(alerts.id, id), eq(alerts.userId, userId)))
+      .run();
+    return result.changes > 0;
+  }
+
+  // ── Alert settings (per-user toggles) ──
+
+  private static ensureSettingsTable(): void {
+    getSqlite().exec(`
+      CREATE TABLE IF NOT EXISTS alert_settings (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        balance_low INTEGER NOT NULL DEFAULT 1,
+        credit_high INTEGER NOT NULL DEFAULT 1,
+        payment_due INTEGER NOT NULL DEFAULT 1,
+        payment_overdue INTEGER NOT NULL DEFAULT 1,
+        goal_completed INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      );
+    `);
+  }
+
+  /**
+   * Returns the alert settings for a user, defaulting all types to enabled
+   * when the user has no saved settings yet.
+   */
+  static getSettings(userId: number): AlertSettings {
+    this.ensureSettingsTable();
+    const row = getSqlite()
+      .prepare('SELECT balance_low, credit_high, payment_due, payment_overdue, goal_completed FROM alert_settings WHERE user_id = ?')
+      .get(userId) as Record<string, number> | undefined;
+    if (!row) {
+      return { balanceLow: true, creditHigh: true, paymentDue: true, paymentOverdue: true, goalCompleted: true };
+    }
+    return {
+      balanceLow: !!row.balance_low,
+      creditHigh: !!row.credit_high,
+      paymentDue: !!row.payment_due,
+      paymentOverdue: !!row.payment_overdue,
+      goalCompleted: !!row.goal_completed,
+    };
+  }
+
+  /**
+   * Upserts the alert settings for a user. Missing fields keep their current
+   * (or default) value.
+   */
+  static updateSettings(userId: number, patch: Partial<AlertSettings>): AlertSettings {
+    this.ensureSettingsTable();
+    const current = this.getSettings(userId);
+    const next: AlertSettings = { ...current, ...patch };
+    getSqlite()
+      .prepare(`
+        INSERT INTO alert_settings (user_id, balance_low, credit_high, payment_due, payment_overdue, goal_completed, updated_at)
+        VALUES (@userId, @balanceLow, @creditHigh, @paymentDue, @paymentOverdue, @goalCompleted, @updatedAt)
+        ON CONFLICT(user_id) DO UPDATE SET
+          balance_low = @balanceLow, credit_high = @creditHigh, payment_due = @paymentDue,
+          payment_overdue = @paymentOverdue, goal_completed = @goalCompleted, updated_at = @updatedAt
+      `)
+      .run({
+        userId,
+        balanceLow: next.balanceLow ? 1 : 0,
+        creditHigh: next.creditHigh ? 1 : 0,
+        paymentDue: next.paymentDue ? 1 : 0,
+        paymentOverdue: next.paymentOverdue ? 1 : 0,
+        goalCompleted: next.goalCompleted ? 1 : 0,
+        updatedAt: new Date().toISOString(),
+      });
+    return next;
+  }
+}
+
+/**
+ * Per-user alert type toggles.
+ */
+export interface AlertSettings {
+  balanceLow: boolean;
+  creditHigh: boolean;
+  paymentDue: boolean;
+  paymentOverdue: boolean;
+  goalCompleted: boolean;
 }

@@ -173,12 +173,49 @@ export class BackupService {
         .all(),
     };
 
+    BackupService.recordHistory(userId, 'export');
+
     return {
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       userId,
       data,
     };
+  }
+
+  /**
+   * Ensures the backup history table exists (created outside Drizzle migrations).
+   */
+  private static ensureHistoryTable(): void {
+    getSqlite().exec(`
+      CREATE TABLE IF NOT EXISTS backup_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `);
+    getSqlite().exec('CREATE INDEX IF NOT EXISTS backup_history_user_id_idx ON backup_history(user_id)');
+  }
+
+  /**
+   * Records a backup export/import event for the user's history.
+   */
+  static recordHistory(userId: number, type: 'export' | 'import'): void {
+    this.ensureHistoryTable();
+    getSqlite()
+      .prepare('INSERT INTO backup_history (user_id, type, created_at) VALUES (?, ?, ?)')
+      .run(userId, type, new Date().toISOString());
+  }
+
+  /**
+   * Returns the backup export/import history for a user, newest first.
+   */
+  static getHistory(userId: number): { id: number; type: string; createdAt: string }[] {
+    this.ensureHistoryTable();
+    return getSqlite()
+      .prepare('SELECT id, type, created_at as createdAt FROM backup_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 100')
+      .all(userId) as { id: number; type: string; createdAt: string }[];
   }
 
   /**
@@ -479,6 +516,8 @@ export class BackupService {
         }
       }
     })();
+
+    BackupService.recordHistory(userId, 'import');
   }
 
   /**

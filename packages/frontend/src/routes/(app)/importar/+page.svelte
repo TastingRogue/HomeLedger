@@ -1,45 +1,7 @@
 <script lang="ts">
-  import { apiPost } from '$lib/api/client';
+  import { apiPost, apiUpload } from '$lib/api/client';
   import { browser } from '$app/environment';
   import { t } from '$lib/i18n';
-
-  // Helper for authenticated fetch with token refresh
-  async function authFetch(url: string, options: RequestInit): Promise<Response> {
-    const token = localStorage.getItem('sf_access_token');
-    const headers = { ...options.headers as Record<string, string>, 'Authorization': `Bearer ${token}` };
-    let res = await fetch(url, { ...options, headers });
-    
-    if (res.status === 401) {
-      // Try refresh
-      const refreshToken = localStorage.getItem('sf_refresh_token');
-      if (refreshToken) {
-        const refreshRes = await fetch('/api/v1/auth/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
-        });
-        if (refreshRes.ok) {
-          const body = await refreshRes.json();
-          const newToken = body.data?.accessToken ?? body.accessToken;
-          if (newToken) {
-            localStorage.setItem('sf_access_token', newToken);
-            if (body.data?.refreshToken ?? body.refreshToken) {
-              localStorage.setItem('sf_refresh_token', body.data?.refreshToken ?? body.refreshToken);
-            }
-            headers['Authorization'] = `Bearer ${newToken}`;
-            res = await fetch(url, { ...options, headers });
-          }
-        }
-      }
-      if (res.status === 401) {
-        localStorage.removeItem('sf_access_token');
-        localStorage.removeItem('sf_refresh_token');
-        window.location.href = '/login';
-        throw new Error($t('import.session_expired'));
-      }
-    }
-    return res;
-  }
 
   let step = $state(1);
   let activeTab: 'import' | 'export' = $state('import');
@@ -70,7 +32,7 @@
     const validExtensions = ['.csv', '.xlsx', '.xls', '.ofx', '.qif', '.json'];
     const ext = '.' + f.name.split('.').pop()?.toLowerCase();
     if (!validExtensions.includes(ext)) {
-      importError = `Formato no soportado: ${ext}. Usa CSV, XLSX, OFX, QIF o JSON.`;
+      importError = $t('import.format_error', { ext });
       return;
     }
     file = f;
@@ -138,8 +100,8 @@
       ];
 
       const warnings: string[] = [];
-      if (!headers.some(h => /fecha|date/i.test(h))) warnings.push('No se detectó columna de fecha.');
-      if (!headers.some(h => /monto|amount|importe/i.test(h))) warnings.push('No se detectó columna de monto.');
+      if (!headers.some(h => /fecha|date/i.test(h))) warnings.push($t('import.no_date_col'));
+      if (!headers.some(h => /monto|amount|importe/i.test(h))) warnings.push($t('import.no_amount_col'));
 
       return { stats, columns: headers.slice(0, 5), sample, warnings };
     }
@@ -157,23 +119,13 @@
       if (file.name.endsWith('.json')) {
         const text = await file.text();
         const parsed = JSON.parse(text);
-        const res = await authFetch('/api/v1/backup/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ backup: parsed, confirmed: true }),
-        });
-        if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.error?.message ?? `Error ${res.status}`); }
+        await apiPost('/backup/import', { backup: parsed, confirmed: true });
         importResult = { imported: 1, skipped: 0, errors: 0 };
       } else {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await authFetch('/api/v1/imports/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.error?.message ?? `Error ${res.status}`); }
-        const body = await res.json();
-        importResult = body.data ?? { imported: body.imported ?? 0, skipped: body.skipped ?? 0, errors: body.errors ?? 0 };
+        const body = await apiUpload<{ imported?: number; skipped?: number; errors?: number }>('/imports/upload', formData);
+        importResult = { imported: body.imported ?? 0, skipped: body.skipped ?? 0, errors: body.errors ?? 0 };
       }
       step = 3;
     } catch (e: unknown) {
@@ -188,17 +140,7 @@
     exportError = null;
     exportSuccess = false;
     try {
-      const res = await authFetch('/api/v1/backup/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody?.error?.message ?? `Error ${res.status}`);
-      }
-      const body = await res.json();
-      const backup = body.data ?? body;
+      const backup = await apiPost<unknown>('/backup/export', {});
       const json = JSON.stringify(backup, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -241,7 +183,7 @@
       <div class="export-icon">💾</div>
       <h3>{$t('import.export_title')}</h3>
       <p class="export-desc">{$t('import.export_desc')}</p>
-      <button class="btn-export" onclick={handleExport} disabled={exporting} title="Genera un archivo JSON con toda tu información financiera">
+      <button class="btn-export" onclick={handleExport} disabled={exporting} title={$t('import.export_tooltip')}>
         {exporting ? $t('import.exporting') : $t('import.export_btn')}
       </button>
       {#if exportSuccess}

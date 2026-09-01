@@ -152,6 +152,7 @@ Override these in production.
 | Variable | Description | Default (Docker image) |
 |----------|-------------|------------------------|
 | `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | insecure demo value — **change in production** |
+| `CORS_ORIGIN` | Comma-separated allowed origins; unset reflects the request origin | unset (reflect origin) |
 | `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
 | `TZ` | Timezone | `America/Mexico_City` |

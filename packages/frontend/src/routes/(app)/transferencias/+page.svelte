@@ -28,7 +28,7 @@
   let isEditing = $derived(editingTransfer !== null);
 
   async function loadTransfers() { loading = true; error = ''; try { transfers = await listTransfers(); } catch (e) { error = e instanceof ApiError ? e.message : $t('transfers.error_loading'); } finally { loading = false; } }
-  async function loadAccounts() { try { accounts = await apiGet<AccountData[]>('/accounts'); } catch { } }
+  async function loadAccounts() { try { accounts = await apiGet<AccountData[]>('/accounts'); } catch { error = $t('common.error_loading_options'); } }
 
   function openCreateForm() { editingTransfer = null; formName = ''; formDate = nowDatetimeLocal(); formAmount = ''; formSourceAccountId = accounts.length > 0 ? String(accounts[0].id) : ''; formDestinationAccountId = accounts.length > 1 ? String(accounts[1].id) : ''; formErrors = {}; showFormModal = true; }
 

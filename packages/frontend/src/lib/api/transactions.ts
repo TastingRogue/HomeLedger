@@ -1,11 +1,14 @@
 import { apiGet, apiPost, apiPut, apiDelete } from './client';
 
+/** Transaction type as used by the backend and shared package. */
+export type TransactionType = 'Ingreso' | 'Gasto';
+
 export interface Transaction {
 	id: number;
 	name: string;
 	amount: number;
 	date: string;
-	type: 'income' | 'expense';
+	type: TransactionType;
 	categoryId: number;
 	categoryName?: string;
 	accountId: number;
@@ -19,34 +22,33 @@ export interface CreateTransactionInput {
 	name: string;
 	amount: number;
 	date: string;
-	type: 'income' | 'expense';
+	type: TransactionType;
 	categoryId: number;
 	accountId: number;
-	description?: string;
 }
 
 export interface QuickTransactionInput {
 	amount: number;
 	categoryId: number;
 	accountId: number;
-	type?: 'income' | 'expense';
+	type?: TransactionType;
 }
 
 export interface TransactionFilters {
 	accountId?: number;
 	categoryId?: number;
-	type?: 'income' | 'expense';
+	type?: TransactionType;
 	startDate?: string;
 	endDate?: string;
 	page?: number;
-	limit?: number;
+	pageSize?: number;
 }
 
 export interface PaginatedTransactions {
 	items: Transaction[];
 	total: number;
 	page: number;
-	limit: number;
+	pageSize: number;
 	totalPages: number;
 }
 

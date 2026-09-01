@@ -61,6 +61,7 @@
       items: [
         { href: '/categorias', label: $t('nav.categories'), icon: 'tag' },
         { href: '/reportes', label: $t('nav.reports'), icon: 'bar-chart' },
+        { href: '/patrimonio', label: $t('nav.networth'), icon: 'trending-up' },
         { href: '/recibos', label: $t('nav.receipts'), icon: 'receipt' },
         { href: '/alertas', label: $t('nav.alerts'), icon: 'bell' },
       ],

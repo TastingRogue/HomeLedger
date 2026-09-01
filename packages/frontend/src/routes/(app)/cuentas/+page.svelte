@@ -136,7 +136,7 @@
     if (!selectedAccount) return;
     accountTxLoading = true;
     try {
-      const result = await getTransactions({ accountId: selectedAccount.id, page: accountTxPage, limit: 15 });
+      const result = await getTransactions({ accountId: selectedAccount.id, page: accountTxPage, pageSize: 15 });
       accountTransactions = result.items;
       accountTxTotal = result.total;
       accountTxTotalPages = result.totalPages;
@@ -250,7 +250,9 @@
       await deactivateAccount(deactivateTarget.id);
       deactivateTarget = null;
       await loadAccounts();
-    } catch { } finally {
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : $t('common.error_deleting');
+    } finally {
       deactivating = false;
     }
   }
@@ -330,7 +332,7 @@
             </button>
             {#if expandedCreditId === account.id}
               {#if creditDetailLoading}
-                <p class="credit-loading">Cargando...</p>
+                <p class="credit-loading">{$t('common.loading')}</p>
               {:else if creditDetail}
                 {@const util = creditDetail.creditUtilization ?? 0}
                 {@const level = getUtilizationLevel(util)}
@@ -484,14 +486,14 @@
             {#each accountTransactions as tx (tx.id)}
               <div class="tx-row">
                 <div class="tx-left">
-                  <span class="tx-indicator" class:income={tx.type === 'income'} class:expense={tx.type === 'expense'}></span>
+                  <span class="tx-indicator" class:income={tx.type === 'Ingreso'} class:expense={tx.type === 'Gasto'}></span>
                   <div class="tx-info">
                     <span class="tx-name">{tx.name || tx.description || $t('accounts.no_name')}</span>
                     <span class="tx-meta">{tx.categoryName ?? $t('accounts.no_category')} · {formatDate(tx.date)}</span>
                   </div>
                 </div>
-                <span class="tx-amount" class:income={tx.type === 'income'} class:expense={tx.type === 'expense'}>
-                  {tx.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
+                <span class="tx-amount" class:income={tx.type === 'Ingreso'} class:expense={tx.type === 'Gasto'}>
+                  {tx.type === 'Ingreso' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
                 </span>
               </div>
             {/each}

@@ -178,8 +178,8 @@
     }
   }
 
-  async function loadAccounts() { try { accounts = await apiGet<Account[]>('/accounts'); } catch { } }
-  async function loadCategories() { try { categories = await apiGet<Category[]>('/categories'); } catch { } }
+  async function loadAccounts() { try { accounts = await apiGet<Account[]>('/accounts'); } catch { error = $t('common.error_loading_options'); } }
+  async function loadCategories() { try { categories = await apiGet<Category[]>('/categories'); } catch { error = $t('common.error_loading_options'); } }
 
   function goToPage(page: number) { if (page >= 1 && page <= totalPages) { currentPage = page; loadTransactions(); } }
   function applyFilters() { currentPage = 1; loadTransactions(); }

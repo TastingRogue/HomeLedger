@@ -13,6 +13,7 @@
   let profileLoading = $state(true);
   let profileSaving = $state(false);
   let profileMsg = $state('');
+  let profileMsgSuccess = $state(false);
 
   // Password change
   let showPasswordModal = $state(false);
@@ -47,17 +48,19 @@
       userName = data.name;
       userEmail = data.email;
       userRole = data.role;
-    } catch { }
+    } catch (e) {
+      profileMsg = e instanceof Error ? e.message : $t('common.error_loading_profile');
+    }
     finally { profileLoading = false; }
   }
 
   async function saveProfile() {
-    profileSaving = true; profileMsg = '';
+    profileSaving = true; profileMsg = ''; profileMsgSuccess = false;
     try {
       await apiPut('/auth/me', { name: userName.trim() });
-      profileMsg = $t('settings.profile_updated');
-      setTimeout(() => profileMsg = '', 3000);
-    } catch (e: unknown) { profileMsg = e instanceof Error ? e.message : 'Error'; }
+      profileMsg = $t('settings.profile_updated'); profileMsgSuccess = true;
+      setTimeout(() => { profileMsg = ''; profileMsgSuccess = false; }, 3000);
+    } catch (e: unknown) { profileMsg = e instanceof Error ? e.message : $t('common.error'); profileMsgSuccess = false; }
     finally { profileSaving = false; }
   }
 
@@ -171,7 +174,7 @@
               </div>
             </div>
             <div class="card-footer">
-              {#if profileMsg}<span class="msg" class:success={profileMsg === 'Perfil actualizado'}>{profileMsg}</span>{/if}
+              {#if profileMsg}<span class="msg" class:success={profileMsgSuccess}>{profileMsg}</span>{/if}
               <button class="btn-save" onclick={saveProfile} disabled={profileSaving}>
                 {profileSaving ? $t('common.saving') : $t('settings.save_changes')}
               </button>

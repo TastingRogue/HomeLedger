@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
+  import { preferences } from '$lib/stores/preferences';
+
   let { value = $bindable(), showTime = false }: { value: string; showTime?: boolean } = $props();
 
   let open = $state(false);
@@ -7,8 +10,22 @@
   let triggerEl: HTMLButtonElement;
   let dropdownStyle = $state('');
 
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const dayNames = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+  // Localized month and weekday names derived from the active locale, so the
+  // calendar follows the app language (es/en) without hardcoded arrays.
+  const localeTag = $derived($preferences.locale === 'en' ? 'en-US' : 'es-MX');
+  const monthNames = $derived(
+    Array.from({ length: 12 }, (_, m) => {
+      const name = new Intl.DateTimeFormat(localeTag, { month: 'long' }).format(new Date(2000, m, 1));
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    })
+  );
+  // Week starts on Monday (grid uses Mon..Sun). 2024-01-01 is a Monday.
+  const dayNames = $derived(
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(new Date(2024, 0, 1 + i));
+      return d.charAt(0).toUpperCase() + d.slice(1);
+    })
+  );
 
   let selectedDate = $derived.by(() => {
     if (!value) return null;
@@ -16,7 +33,7 @@
   });
 
   let displayText = $derived.by(() => {
-    if (!selectedDate) return 'Seleccionar fecha';
+    if (!selectedDate) return $t('datepicker.select_date');
     const d = selectedDate;
     const date = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
     if (showTime) {
@@ -166,7 +183,7 @@
       {/if}
 
       <div class="dp-footer">
-        <button type="button" class="dp-today-btn" onclick={setToday}>Hoy</button>
+        <button type="button" class="dp-today-btn" onclick={setToday}>{$t('datepicker.today')}</button>
       </div>
     </div>
   {/if}

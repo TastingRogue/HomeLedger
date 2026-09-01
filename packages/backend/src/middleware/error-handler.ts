@@ -30,6 +30,24 @@ function formatZodErrors(error: ZodError): Record<string, string> {
  */
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError | Error, _request: FastifyRequest, reply: FastifyReply) => {
+    // Handle rate-limit errors. @fastify/rate-limit surfaces here either as an
+    // error with statusCode 429/code FST_ERR_RATE_LIMIT, or as the object built
+    // by errorResponseBuilder ({ success:false, error:{ code:'RATE_LIMIT_EXCEEDED' }}).
+    const rlErr = error as unknown as { statusCode?: number; code?: string; error?: { code?: string; message?: string } };
+    const isRateLimit =
+      rlErr.statusCode === 429 ||
+      rlErr.code === 'FST_ERR_RATE_LIMIT' ||
+      rlErr.error?.code === 'RATE_LIMIT_EXCEEDED';
+    if (isRateLimit) {
+      return reply.status(429).send({
+        success: false,
+        error: {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: rlErr.error?.message || error.message || 'Demasiadas solicitudes. Intente de nuevo más tarde.',
+        },
+      });
+    }
+
     // Handle Zod validation errors
     if (error instanceof ZodError) {
       return reply.status(422).send({

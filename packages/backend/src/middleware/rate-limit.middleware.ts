@@ -4,7 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 /**
  * Rate limit configuration for the HomeLedger API.
  *
- * - Auth endpoints (/api/v1/auth/*): 100 requests per minute per IP
+ * - Auth endpoints (/api/v1/auth/*): 10 requests per minute per IP
  * - General API: 1000 requests per minute per IP
  */
 export async function registerRateLimitMiddleware(app: FastifyInstance): Promise<void> {
@@ -36,7 +36,7 @@ export async function registerRateLimitMiddleware(app: FastifyInstance): Promise
  */
 export async function authRateLimitPlugin(app: FastifyInstance): Promise<void> {
   await app.register(rateLimit, {
-    max: 100,
+    max: 10,
     timeWindow: '1 minute',
     keyGenerator: (request) => {
       return request.ip;

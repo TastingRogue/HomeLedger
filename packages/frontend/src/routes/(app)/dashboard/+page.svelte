@@ -10,7 +10,17 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { t } from '$lib/i18n';
+  import { preferences } from '$lib/stores/preferences';
   import { userProfile } from '$lib/stores/user';
+
+  // Localized short month names for chart labels/date ranges (follows app language).
+  const shortMonths = $derived(
+    Array.from({ length: 12 }, (_, m) => {
+      const tag = $preferences.locale === 'en' ? 'en-US' : 'es-MX';
+      const n = new Intl.DateTimeFormat(tag, { month: 'short' }).format(new Date(2000, m, 1)).replace('.', '');
+      return n.charAt(0).toUpperCase() + n.slice(1);
+    })
+  );
 
   // ─── Types ───
   interface AccountData {
@@ -257,7 +267,7 @@
     const now = new Date();
     const { start } = getPeriodRange(chartPeriod);
     const days: string[] = [];
-    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const months = shortMonths;
 
     if (chartPeriod === 'today') {
       // Show hours
@@ -394,7 +404,7 @@
 
   function getDateRange(): string {
     const now = new Date();
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const months = shortMonths;
     return `01 – ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
   }
 
@@ -605,9 +615,9 @@
 
   async function deleteSubFromDashboard() {
     if (!editSubId) return;
-    subDeleting = true;
+    subDeleting = true; editSubError = null;
     try { await apiDelete(`/subscriptions/${editSubId}`); closeSubEdit(); loadAll(); }
-    catch { }
+    catch (e: unknown) { editSubError = e instanceof Error ? e.message : $t('common.error_deleting'); }
     finally { subDeleting = false; }
   }
 
@@ -796,8 +806,8 @@
           </div>
           <ComboChart
             labels={chartLabels}
-            barDataset={{ label: 'Ingresos', data: chartIncomeData, backgroundColor: 'rgba(34, 197, 94, 0.7)' }}
-            lineDataset={{ label: 'Gastos', data: chartExpenseData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}
+            barDataset={{ label: $t('dashboard.income'), data: chartIncomeData, backgroundColor: 'rgba(34, 197, 94, 0.7)' }}
+            lineDataset={{ label: $t('dashboard.expenses'), data: chartExpenseData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}
             height={200}
           />
         </div>

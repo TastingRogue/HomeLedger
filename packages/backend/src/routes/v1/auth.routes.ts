@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService, AuthError } from '../../services/auth.service.js';
 import { registerSchema, loginSchema, refreshTokenSchema } from '../../validators/auth.schema.js';
+import { authRateLimitPlugin } from '../../middleware/rate-limit.middleware.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 
 /**
@@ -15,6 +16,10 @@ import type { TokenPayload } from '../../services/auth.service.js';
  *   GET  /api/v1/auth/me        - Get current user profile
  */
 export async function authRoutes(app: FastifyInstance): Promise<void> {
+  // Stricter, per-IP rate limiting for auth routes (brute-force protection).
+  // Encapsulated to this plugin scope, so it only affects /api/v1/auth/*.
+  await authRateLimitPlugin(app);
+
   /**
    * POST /api/v1/auth/register
    * Create a new user. First user becomes admin.
@@ -198,8 +203,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ success: false, error: { code: 'BAD_REQUEST', message: 'Se requieren contraseña actual y nueva' } });
     }
 
-    if (newPassword.length < 6) {
-      return reply.status(400).send({ success: false, error: { code: 'WEAK_PASSWORD', message: 'La nueva contraseña debe tener al menos 6 caracteres' } });
+    if (newPassword.length < 8) {
+      return reply.status(400).send({ success: false, error: { code: 'WEAK_PASSWORD', message: 'La nueva contraseña debe tener al menos 8 caracteres' } });
     }
 
     const { getDb } = await import('../../db/connection.js');

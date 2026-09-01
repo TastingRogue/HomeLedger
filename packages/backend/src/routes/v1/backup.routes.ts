@@ -94,12 +94,11 @@ export async function backupRoutes(app: FastifyInstance): Promise<void> {
    * Note: Full backup history tracking is not yet implemented.
    * Returns an empty array as a placeholder.
    */
-  app.get('/history', async (_request: FastifyRequest, reply: FastifyReply) => {
-    // Backup history tracking is not fully implemented yet.
-    // Return empty array as specified in the task context.
+  app.get('/history', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
     return reply.status(200).send({
       success: true,
-      data: [],
+      data: BackupService.getHistory(user.userId),
     });
   });
 }
