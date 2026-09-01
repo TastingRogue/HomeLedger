@@ -83,7 +83,9 @@ The first user registered automatically becomes admin. The database is created a
 
 **Option 1 — Prebuilt image from Docker Hub**
 
-A multi-arch image is published to Docker Hub on every push to `main`:
+A multi-arch image is published to Docker Hub on every push to `main`. The
+image is self-contained: a single process serves both the web app and the API
+on port 3000, so it runs with no extra command.
 
 ```bash
 docker pull irving1flores/homeledger:latest
@@ -97,7 +99,7 @@ docker run -d \
   --name homeledger \
   irving1flores/homeledger:latest
 
-# Available at http://localhost:3000
+# App + API available at http://localhost:3000
 ```
 
 **Option 2 — Build from source with Docker Compose**

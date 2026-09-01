@@ -1,6 +1,8 @@
 # =============================================================================
 # HomeLedger - Dockerfile
-# Development containers: backend API on 3000 + Svelte/Vite frontend on 5173
+# Self-contained image: a single process serves the SvelteKit frontend and the
+# Fastify API on port 3000. Run with `docker run -p 3000:3000 ...` (no command
+# needed). Docker Compose can still override the command for dev with HMR.
 # =============================================================================
 FROM node:22-alpine
 
@@ -29,15 +31,30 @@ COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
 COPY packages/frontend ./packages/frontend
 
-# Build shared once so the backend and frontend can resolve the workspace package.
-RUN npm run build -w packages/shared
+# Build every workspace so the image can run standalone:
+#  - shared: compiled types/utilities used by backend and frontend
+#  - frontend: SvelteKit (adapter-node) emits packages/frontend/build/handler.js
+#  - backend: tsc emits packages/backend/dist/server.js, which mounts the
+#    frontend handler when packages/frontend/build/handler.js is present.
+RUN npm run build -w packages/shared \
+  && npm run build -w packages/frontend \
+  && npm run build -w packages/backend
 
-ENV NODE_ENV=development
+# tsc only emits .js; copy the Drizzle migration files (.sql + meta/_journal.json)
+# next to the compiled connection.js so migrations run from dist at startup.
+RUN cp -r packages/backend/src/db/migrations packages/backend/dist/db/migrations
+
+ENV NODE_ENV=production
 ENV HOST=0.0.0.0
+ENV PORT=3000
 ENV DATA_DIR=/data
 
 RUN mkdir -p /data
 
-EXPOSE 3000 5173
+EXPOSE 3000
 
 ENTRYPOINT ["/sbin/tini", "--"]
+
+# Default command: start the API, which also serves the built frontend on the
+# same port. Compose overrides this for development (tsx watch / vite dev).
+CMD ["node", "packages/backend/dist/server.js"]

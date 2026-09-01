@@ -18,6 +18,12 @@ const PUBLIC_ROUTES: string[] = [
 function isPublicRoute(url: string): boolean {
   // Remove query string if present
   const path = url.split('?')[0] ?? url;
+  // Only API routes are guarded. Any non-API path (frontend pages and static
+  // assets served by SvelteKit) is public at the HTTP layer; the SvelteKit app
+  // handles its own client-side route protection.
+  if (!path.startsWith('/api/')) {
+    return true;
+  }
   return PUBLIC_ROUTES.some((route) => path === route);
 }
 

@@ -48,11 +48,18 @@ export async function buildApp() {
   await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
 
   try {
-    // SvelteKit generates this file during the frontend workspace build.
+    // SvelteKit (adapter-node) generates this file during the frontend build.
     // Keep the module specifier dynamic so backend TypeScript does not require the generated file to exist yet.
     const frontendHandlerModule = '../../../packages/frontend/build/handler.js';
     const { handler } = await import(frontendHandlerModule);
-    app.all('/*', async (request, reply) => {
+    // Delegate to SvelteKit only for requests the API routes did not match
+    // (frontend pages + static assets). API routes keep their own 404s under
+    // the /api prefix; everything else is rendered/served by SvelteKit.
+    app.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith('/api/')) {
+        reply.code(404).send({ error: 'Not Found' });
+        return;
+      }
       reply.hijack();
       handler(request.raw, reply.raw);
     });
