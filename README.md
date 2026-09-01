@@ -6,11 +6,80 @@
 
 > Self-hosted personal finance management. Track accounts, transactions, budgets, goals, and subscriptions — all from your own server.
 
-**[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Support the Project](#support-the-project)**
+**[Screenshots](#screenshots)** · **[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Support the Project](#support-the-project)**
 
 ---
 
 Self-hosted personal finance management web application. Designed as a modular, open-source product that works completely independently. Optionally integrates with Home Assistant as an addon and custom integration.
+
+## Screenshots
+
+> [!NOTE]
+> **All screenshots below use generated demo/test data** — no real financial
+> information is shown. You can reproduce the exact dataset by importing
+> [`homeledger-demo-backup.json`](homeledger-demo-backup.json) from
+> **Settings → Data & Backup → Import**, or regenerate it with
+> `node scripts/generate-demo-backup.mjs`.
+
+### Dashboard
+
+A complete financial overview: net worth, income vs. expenses, spending by
+category, account health, upcoming payments, goals and budgets at a glance.
+
+![HomeLedger dashboard populated with demo data](docs/screenshots/dashboard.png)
+
+### Transactions
+
+Income and expenses split into two columns and grouped by month, with a
+card grid view and quick filtering.
+
+![Transactions screen showing demo income and expense cards](docs/screenshots/transactions.png)
+
+### Budgets &amp; Goals
+
+Category budgets with allocation-vs-spent progress, and savings goals that turn
+objectives into visible progress (fund / withdraw / debt payoff).
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/budgets.png" alt="Monthly budget with per-category progress bars (demo data)" /></td>
+    <td width="50%"><img src="docs/screenshots/goals.png" alt="Savings goals with progress bars (demo data)" /></td>
+  </tr>
+</table>
+
+### Subscriptions &amp; Transfers
+
+Recurring payments with auto-charge and a calendar view, plus transfers between
+your own accounts that don't affect income or expenses.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/subscriptions.png" alt="Recurring subscriptions list (demo data)" /></td>
+    <td width="50%"><img src="docs/screenshots/transfers.png" alt="Account transfers list (demo data)" /></td>
+  </tr>
+</table>
+
+### Categories
+
+Fully editable categories (including system ones) with expense analysis and
+type classification (Expense / Income / Both).
+
+![Category expense analysis and category grid (demo data)](docs/screenshots/categories.png)
+
+### Receipts &amp; Data Management
+
+Upload receipts/invoices, analyze them (OCR) and link them to a transaction —
+plus full JSON backup import/export with preview and validation.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/receipts.png" alt="Receipt OCR analysis linked to a transaction (demo data)" /></td>
+    <td width="50%"><img src="docs/screenshots/import.png" alt="Backup import/export wizard" /></td>
+  </tr>
+</table>
+
+> Screenshots are stored in [`docs/screenshots/`](docs/screenshots/). Both light
+> and dark themes are supported — swap in either from the header toggle.
 
 ## Features
 
