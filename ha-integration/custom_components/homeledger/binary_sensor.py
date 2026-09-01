@@ -88,7 +88,7 @@ class HomeLedgerBinarySensor(
             "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
-            "sw_version": "1.0.0",
+            "sw_version": "0.1.0",
         }
 
     @property
