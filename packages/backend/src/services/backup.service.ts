@@ -269,6 +269,21 @@ export class BackupService {
       db.delete(liabilities).where(eq(liabilities.userId, userId)).run();
       db.delete(loans).where(eq(loans.userId, userId)).run();
       db.delete(networthSnapshots).where(eq(networthSnapshots.userId, userId)).run();
+      // Receipt analyses + items and attachments (created outside Drizzle via raw
+      // SQL in ReceiptService/AttachmentService). Delete before accounts/categories.
+      // Guarded by table existence so a fresh DB without these tables won't fail.
+      const tableExists = (name: string): boolean =>
+        !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+      if (tableExists('receipt_items')) {
+        sqlite.prepare('DELETE FROM receipt_items WHERE analysis_id IN (SELECT id FROM receipt_analyses WHERE user_id = ?)').run(userId);
+      }
+      if (tableExists('receipt_analyses')) {
+        sqlite.prepare('DELETE FROM receipt_analyses WHERE user_id = ?').run(userId);
+      }
+      if (tableExists('attachments')) {
+        sqlite.prepare('DELETE FROM attachments WHERE user_id = ?').run(userId);
+      }
+
       db.delete(accounts).where(eq(accounts.userId, userId)).run();
       db.delete(categories).where(eq(categories.userId, userId)).run();
 

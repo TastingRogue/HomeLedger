@@ -102,17 +102,34 @@ docker run -d \
 # App + API available at http://localhost:3000
 ```
 
-> **Zero-config quick start.** The image ships with built-in demo defaults, so
-> it also runs by just pressing **Run** in Docker Desktop (or `docker run -P`)
-> without setting any variables. It boots, creates an admin user and lets you
-> log in with:
->
-> - **Email:** `admin@homeledger.local`
-> - **Password:** `changeme123`
+### Run from Docker Desktop (no command line)
+
+The image ships with built-in demo defaults, so you don't need to set any
+environment variables — but you **must** map the port, otherwise the browser
+will show `ERR_CONNECTION_REFUSED`.
+
+1. Open the **Images** tab and click **Run** on `irving1flores/homeledger`.
+2. Expand **Optional settings**.
+3. Under **Ports**, set **Host port** to `3000` (the container listens on
+   `3000`). Without this step the container runs but is not reachable from your
+   browser.
+4. *(Optional)* Add a volume so your data survives restarts: **Host path** a
+   folder of your choice, **Container path** `/data`.
+5. Click **Run**, then open <http://localhost:3000>.
+
+Log in with the demo credentials:
+
+- **Email:** `admin@homeledger.local`
+- **Password:** `changeme123`
+
+> :information_source: `EXPOSE 3000` in the image only documents the port; it
+> does not publish it. Docker Desktop only maps it when you set a Host port
+> (step 3), which is equivalent to `-p 3000:3000` on the command line.
 >
 > :warning: **These defaults are insecure and public.** For any real
-> deployment, override `JWT_SECRET`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` with
-> the `-e` flags shown above.
+> deployment, override `JWT_SECRET`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` (in
+> Optional settings → Environment variables, or with the `-e` flags shown
+> above).
 
 **Option 2 — Build from source with Docker Compose**
 
@@ -192,6 +209,61 @@ npm run format            # Format with Prettier
 npm run db:generate -w packages/backend   # Generate migration
 npm run db:migrate -w packages/backend    # Apply migrations
 ```
+
+## Applying Code Changes (rebuild)
+
+> :warning: **The Docker images bake the source code at build time — they do
+> not mount your working copy.** After changing any backend or frontend code
+> you **must rebuild the image**, or the container keeps running the old code.
+> (Docker Compose only mounts `/data`, never the source.)
+
+After editing code, pick the workflow that matches how you run the app:
+
+**Running with Docker Compose (dev):**
+
+```bash
+# Rebuild images and recreate containers with the new code.
+# No need to stop or remove anything first: --force-recreate replaces the
+# running containers, and the `homeledger-data` volume (your DB) is preserved.
+docker compose up -d --build --force-recreate
+
+# Confirm both containers are healthy
+docker compose ps
+```
+
+**Running the standalone image:**
+
+```bash
+docker build -t homeledger:standalone .
+docker rm -f homeledger
+docker run -d --name homeledger -p 3000:3000 -v homeledger-data:/data homeledger:standalone
+```
+
+**Publishing to Docker Hub:** commit to `main` and push. The GitHub Actions
+workflow (`.github/workflows/docker-build.yml`) rebuilds and pushes the image
+automatically.
+
+### Verify before shipping
+
+Run these from the repo root and make sure they pass before rebuilding or committing:
+
+```bash
+npm run typecheck -w packages/backend    # tsc --noEmit
+npm run typecheck -w packages/frontend   # svelte-check (expect 0 errors, 0 warnings)
+npm run build                            # full build
+npm audit                                # expect 0 vulnerabilities
+```
+
+### Notes for specific changes
+
+- **Receipt analysis / OCR:** results are cached in the database. After changing
+  the parser, existing receipts keep their old values until you press
+  **Re-analyze** in the receipt popup (or restore a backup).
+- **New database tables created outside Drizzle** (raw SQL, like
+  `receipt_analyses`): remember to also clear them in
+  `BackupService.import()` so restoring a backup wipes them like the rest.
+- **New env vars:** add sensible defaults in the `Dockerfile` (for zero-config
+  run) and document them in the Environment Variables table above.
 
 ## API Endpoints
 

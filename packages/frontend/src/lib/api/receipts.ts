@@ -1,4 +1,14 @@
-import { apiGet, apiPost } from './client';
+import { apiGet, apiPost, apiPatch } from './client';
+
+export interface ReceiptEditableFields {
+	merchant?: string | null;
+	receiptDate?: string | null;
+	subtotal?: number | null;
+	tax?: number | null;
+	total?: number | null;
+	issuerRfc?: string | null;
+	uuid?: string | null;
+}
 
 export interface ReceiptItem {
 	id: number;
@@ -20,7 +30,7 @@ export interface ReceiptAnalysis {
 	total: number | null;
 	currency: string;
 	documentType: 'receipt' | 'invoice' | 'cfdi' | 'unknown';
-	sourceType: 'cfdi_xml' | 'ocr' | 'text' | 'unknown';
+	sourceType: 'cfdi_xml' | 'pdf_text' | 'ocr' | 'unknown';
 	status: 'pending' | 'processing' | 'completed' | 'failed';
 	confidence: number;
 	rawText: string | null;
@@ -37,20 +47,15 @@ export interface ReceiptAnalysis {
 	items: ReceiptItem[];
 }
 
-type ReceiptApiResponse = Omit<ReceiptAnalysis, 'sourceType' | 'rfc' | 'filename' | 'mimeType' | 'transactionName' | 'transactionAmount' | 'error'> & {
+type ReceiptApiResponse = Omit<ReceiptAnalysis, 'rfc'> & {
 	issuerRfc: string | null;
 };
 
 function normalizeReceipt(receipt: ReceiptApiResponse): ReceiptAnalysis {
+	const { issuerRfc, ...rest } = receipt;
 	return {
-		...receipt,
-		sourceType: receipt.documentType === 'cfdi' ? 'cfdi_xml' : 'text',
-		rfc: receipt.issuerRfc ?? null,
-		filename: null,
-		mimeType: '',
-		transactionName: null,
-		transactionAmount: null,
-		error: null
+		...rest,
+		rfc: issuerRfc ?? null
 	};
 }
 
@@ -66,5 +71,10 @@ export async function getReceipt(id: number): Promise<ReceiptAnalysis> {
 
 export async function analyzeAttachment(attachmentId: number): Promise<ReceiptAnalysis> {
 	const receipt = await apiPost<ReceiptApiResponse>(`/receipts/${attachmentId}/analyze`, {});
+	return normalizeReceipt(receipt);
+}
+
+export async function updateReceipt(id: number, fields: ReceiptEditableFields): Promise<ReceiptAnalysis> {
+	const receipt = await apiPatch<ReceiptApiResponse>(`/receipts/${id}`, fields);
 	return normalizeReceipt(receipt);
 }

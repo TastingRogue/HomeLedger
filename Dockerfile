@@ -8,8 +8,12 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Native dependencies required by better-sqlite3 and bcrypt.
-RUN apk add --no-cache python3 make g++ tini curl
+# Native dependencies:
+#  - python3/make/g++: build better-sqlite3 and bcrypt
+#  - tini: PID 1 init  |  curl: healthcheck
+#  - poppler-utils: provides `pdftotext` for extracting text from PDF invoices
+#    (image receipts use tesseract.js OCR, which is pure WASM and needs no system pkg)
+RUN apk add --no-cache python3 make g++ tini curl poppler-utils
 
 # Copy workspace manifests first for dependency caching.
 COPY package.json package-lock.json ./
