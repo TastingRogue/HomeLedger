@@ -12,6 +12,7 @@
   } from '$lib/api/goals';
   import { ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   // ─── State ───
@@ -343,7 +344,7 @@
 
         <div class="field">
           <label for="f-deadline">{$t('goals.form_deadline')} <span class="opt">{$t('goals.form_deadline_optional')}</span></label>
-          <input id="f-deadline" type="date" bind:value={formDeadline} />
+          <DatePicker bind:value={formDeadline} />
         </div>
 
         <div class="form-buttons">

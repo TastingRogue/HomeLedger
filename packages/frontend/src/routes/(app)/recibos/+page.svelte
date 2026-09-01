@@ -4,6 +4,7 @@
   import { analyzeAttachment, listReceipts, updateReceipt, type ReceiptAnalysis } from '$lib/api/receipts';
   import { listAttachments, uploadAttachment, previewAttachmentUrl, downloadAttachment as apiDownload, deleteAttachment, type Attachment } from '$lib/api/attachments';
   import { formatCurrency, formatDateShort, nowDatetimeLocal } from '$lib/utils/format';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   interface Account { id:number; name:string }
@@ -140,7 +141,7 @@
           <label>{$t('receipts.form_category')}
             <select bind:value={newTx.categoryId}>{#each categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}</select>
           </label>
-          <label class="full">{$t('receipts.form_date')}<input type="datetime-local" bind:value={newTx.date} /></label>
+          <label class="full">{$t('receipts.form_date')}<DatePicker bind:value={newTx.date} showTime={true} /></label>
         </div>
       {/if}
 
@@ -186,7 +187,7 @@
         {#if editing}
           <div class="edit-grid">
             <label>{$t('receipts.col_merchant')}<input type="text" bind:value={form.merchant} /></label>
-            <label>{$t('receipts.field_date')}<input type="date" bind:value={form.receiptDate} /></label>
+            <label>{$t('receipts.field_date')}<DatePicker bind:value={form.receiptDate} /></label>
             <label>{$t('receipts.field_subtotal')}<input type="number" step="0.01" bind:value={form.subtotal} /></label>
             <label>{$t('receipts.field_tax')}<input type="number" step="0.01" bind:value={form.tax} /></label>
             <label>{$t('receipts.field_total')}<input type="number" step="0.01" bind:value={form.total} /></label>

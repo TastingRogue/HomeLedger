@@ -14,6 +14,7 @@
   } from '$lib/api/budgets';
   import { apiGet, ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   // ─── Types ───
@@ -382,7 +383,7 @@
 
           <div class="field">
             <label for="f-start">{$t('budgets.form_start_date')} <span class="req">*</span></label>
-            <input id="f-start" type="date" bind:value={formStartDate} class:invalid={!!validationErrors.startDate} aria-invalid={!!validationErrors.startDate} />
+            <DatePicker bind:value={formStartDate} />
             {#if validationErrors.startDate}<span class="field-err">{validationErrors.startDate}</span>{/if}
           </div>
         </div>

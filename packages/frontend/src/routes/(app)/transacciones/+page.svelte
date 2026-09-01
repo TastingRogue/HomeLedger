@@ -5,6 +5,7 @@
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@smart-finance/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   // --- State ---
@@ -336,11 +337,11 @@
     </div>
     <div class="filter-item">
       <span class="filter-label">{$t('transactions.filter_from')}</span>
-      <input type="date" bind:value={filterStartDate} />
+      <DatePicker bind:value={filterStartDate} />
     </div>
     <div class="filter-item">
       <span class="filter-label">{$t('transactions.filter_to')}</span>
-      <input type="date" bind:value={filterEndDate} />
+      <DatePicker bind:value={filterEndDate} />
     </div>
     <button class="btn-filter" onclick={applyFilters}>{$t('common.filter')}</button>
     {#if filterAccountId || filterCategoryId || filterStartDate || filterEndDate}
@@ -623,7 +624,7 @@
         </div>
         <div class="field">
           <label for="fm-date">{$t('transactions.form_date')}</label>
-          <input id="fm-date" type="datetime-local" bind:value={formDate} class:invalid={!!formErrors.date} />
+          <DatePicker bind:value={formDate} showTime={true} />
         </div>
         <div class="form-buttons">
           <button type="button" class="btn-cancel" onclick={closeFormModal}>{$t('common.cancel')}</button>
@@ -679,8 +680,8 @@
   /* --- Filters --- */
   .filters-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
   .filter-item { display: flex; flex-direction: column; gap: 0.15rem; }
+  .filter-item :global(.datepicker) { width: 150px; }
   .filter-label { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .filters-bar input[type="date"] { padding: 0.25rem 0.45rem; font-size: 0.72rem; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
   .btn-filter { padding: 0.3rem 0.7rem; background: var(--accent-blue); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; cursor: pointer; align-self: flex-end; }
   .btn-filter:hover { opacity: 0.9; }
   .btn-clear { padding: 0.3rem 0.5rem; background: none; color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: var(--radius-sm); font-size: 0.72rem; cursor: pointer; align-self: flex-end; }

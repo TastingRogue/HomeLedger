@@ -5,6 +5,7 @@
   import type { Transfer } from '$lib/api/transfers';
   import type { AccountData } from '$lib/api/accounts';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   let transfers = $state<Transfer[]>([]);
@@ -130,7 +131,7 @@
       <form onsubmit={(e) => { e.preventDefault(); submitForm(); }}>
         {#if formErrors.general}<div class="form-alert">{formErrors.general}</div>{/if}
         <div class="field"><label for="tf-name">{$t('transfers.form_name')}</label><input id="tf-name" type="text" bind:value={formName} maxlength={100} class:invalid={!!formErrors.name} />{#if formErrors.name}<span class="field-err">{formErrors.name}</span>{/if}</div>
-        <div class="field"><label for="tf-date">{$t('transfers.form_date')}</label><input id="tf-date" type="datetime-local" bind:value={formDate} class:invalid={!!formErrors.date} /></div>
+        <div class="field"><label for="tf-date">{$t('transfers.form_date')}</label><DatePicker bind:value={formDate} showTime={true} />{#if formErrors.date}<span class="field-err">{formErrors.date}</span>{/if}</div>
         <div class="field"><label for="tf-amount">{$t('transfers.form_amount')}</label><input id="tf-amount" type="number" step="0.01" bind:value={formAmount} class:invalid={!!formErrors.amount} />{#if formErrors.amount}<span class="field-err">{formErrors.amount}</span>{/if}</div>
         <div class="field-row">
           <div class="field"><label for="tf-src">{$t('transfers.form_source')}</label><select id="tf-src" bind:value={formSourceAccountId} class:invalid={!!formErrors.sourceAccountId}><option value="">—</option>{#each accounts as a}<option value={String(a.id)}>{a.name}</option>{/each}</select></div>

@@ -11,6 +11,7 @@
   } from '$lib/api/categories';
   import { ApiError } from '$lib/api/client';
   import { formatCurrency, formatPercentage } from '$lib/utils/format';
+  import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
 
   // ─── State ───
@@ -228,9 +229,9 @@
       <div class="section-header">
         <h2 class="section-title">{$t('categories.expense_analysis')}</h2>
         <div class="date-filters">
-          <input type="date" id="filter-start" bind:value={startDate} />
+          <DatePicker bind:value={startDate} />
           <span class="filter-sep">–</span>
-          <input type="date" id="filter-end" bind:value={endDate} />
+          <DatePicker bind:value={endDate} />
           <button class="btn btn-secondary btn-sm" onclick={applyFilter}>{$t('common.filter')}</button>
         </div>
       </div>
@@ -402,7 +403,7 @@
   .date-filters {
     display: flex; gap: 0.4rem; align-items: center; font-size: 0.72rem;
   }
-  .date-filters input[type='date'] { max-width: 130px; font-size: 0.7rem; }
+  .date-filters :global(.datepicker) { width: 140px; }
   .filter-sep { color: var(--text-muted); }
 
   /* Analysis */
@@ -456,7 +457,6 @@
 
   @media (max-width: 600px) {
     .date-filters { flex-direction: column; align-items: stretch; }
-    .date-filters input[type='date'] { max-width: 100%; }
     .analysis-row { flex-wrap: wrap; }
   }
 

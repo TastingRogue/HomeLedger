@@ -1252,7 +1252,7 @@
         </div>
         <div class="form-field">
           <label for="esub-date">{$t('dashboard.charge_date')}</label>
-          <input id="esub-date" type="date" bind:value={editSubDate} required />
+          <DatePicker bind:value={editSubDate} />
         </div>
         <div class="form-field">
           <label for="esub-category">{$t('common.category')}</label>
