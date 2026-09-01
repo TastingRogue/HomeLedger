@@ -136,9 +136,11 @@ export interface RequestOptions {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, skipAuth = false } = options;
 
-  const headers: Record<string, string> = skipAuth
-    ? {}
-    : (() => { const token = getAccessToken(); return token ? { Authorization: `Bearer ${token}` } : {}; })();
+  const headers: Record<string, string> = {};
+  if (!skipAuth) {
+    const token = getAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
 
   // Only add Content-Type if there's a body
   if (body !== undefined) {

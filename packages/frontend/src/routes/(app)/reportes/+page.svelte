@@ -16,8 +16,8 @@
   interface TrendEntry { month: string; income: number; expenses: number; net: number; }
 
   let loading = $state(true);
-  let dashboard: DashboardData | null = $state(null);
-  let trends: TrendEntry[] = $state([]);
+  let dashboard = $state<DashboardData | null>(null);
+  let trends = $state<TrendEntry[]>([]);
 
   const catColors = ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 

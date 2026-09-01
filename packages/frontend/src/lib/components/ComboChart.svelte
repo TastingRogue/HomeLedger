@@ -79,11 +79,13 @@
         },
         scales: {
           x: {
-            grid: { color: 'rgba(30,42,58,0.4)', drawBorder: false },
+            border: { display: false },
+            grid: { color: 'rgba(30,42,58,0.4)' },
             ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0 },
           },
           y: {
-            grid: { color: 'rgba(30,42,58,0.4)', drawBorder: false },
+            border: { display: false },
+            grid: { color: 'rgba(30,42,58,0.4)' },
             ticks: { color: '#64748b', font: { size: 10 } },
             beginAtZero: true,
           },

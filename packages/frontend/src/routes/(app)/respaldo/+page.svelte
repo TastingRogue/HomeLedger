@@ -174,6 +174,7 @@
   {#if showConfirmDialog}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="overlay" onkeydown={(e) => e.key === 'Escape' && cancelImport()} tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
         <header class="modal-header">

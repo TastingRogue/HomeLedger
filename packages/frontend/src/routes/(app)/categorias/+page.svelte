@@ -285,8 +285,9 @@
 
 <!-- ═══════════ CREATE CATEGORY MODAL ═══════════ -->
 {#if showCreateModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeCreateModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Nueva Categoría">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Nueva Categoría" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.new_title')}</h3>
         <button class="modal-close" onclick={closeCreateModal} aria-label="Cerrar">&times;</button>
@@ -301,6 +302,7 @@
         <form class="modal-form" onsubmit={(e) => { e.preventDefault(); handleCreate(); }}>
           <div class="form-field">
             <label for="create-name">{$t('categories.form_name')}</label>
+            <!-- svelte-ignore a11y_autofocus -->
             <input id="create-name" type="text" placeholder={$t('categories.form_name_placeholder')} bind:value={newCategoryName} maxlength={50} required autofocus />
           </div>
 
@@ -331,8 +333,9 @@
 
 <!-- ═══════════ EDIT CATEGORY MODAL ═══════════ -->
 {#if showEditModal && editCat}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeEditModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Editar Categoría">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Editar Categoría" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.edit_title')}</h3>
         <button class="modal-close" onclick={closeEditModal} aria-label="Cerrar">&times;</button>
@@ -341,6 +344,7 @@
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); handleEdit(); }}>
         <div class="form-field">
           <label for="edit-name">{$t('categories.form_name')}</label>
+          <!-- svelte-ignore a11y_autofocus -->
           <input id="edit-name" type="text" bind:value={editName} maxlength={50} required autofocus />
         </div>
 
@@ -387,9 +391,6 @@
   }
   .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
   .page-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
-
-  /* Create form inline - removed, using modal now */
-  .field-error { font-size: 0.7rem; color: var(--accent-red); width: 100%; }
 
   /* Section */
   .section { margin-bottom: 1.5rem; }
@@ -469,7 +470,6 @@
   .form-field { display: flex; flex-direction: column; gap: 0.2rem; }
   .form-field label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
   .modal-error { font-size: 0.72rem; color: var(--accent-red); background: var(--tag-red-bg); padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); margin: 0; }
-  .modal-hint { font-size: 0.68rem; color: var(--text-muted); background: var(--bg-elevated); padding: 0.4rem 0.5rem; border-radius: var(--radius-sm); margin: 0; }
   .modal-success { padding: 1.5rem; text-align: center; color: var(--accent-green); font-weight: 500; font-size: 0.85rem; }
   .success-icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
   .modal-actions { display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.25rem; }

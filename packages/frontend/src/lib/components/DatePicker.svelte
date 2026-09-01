@@ -159,8 +159,9 @@
 
       {#if showTime}
         <div class="dp-time">
-          <label>Hora</label>
+          <label>Hora
           <input type="time" value={timeValue} onchange={handleTimeChange} />
+          </label>
         </div>
       {/if}
 

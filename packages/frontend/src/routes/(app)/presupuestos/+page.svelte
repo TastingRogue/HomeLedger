@@ -390,6 +390,7 @@
         <!-- Category Allocations -->
         <div class="allocations-section">
           <div class="alloc-header">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label>{$t('budgets.form_allocations')} <span class="req">*</span></label>
             <button type="button" class="btn btn-sm btn-secondary" onclick={addAllocation}>{$t('budgets.add_allocation')}</button>
           </div>
@@ -566,7 +567,7 @@
   .field label { display: block; margin-bottom: 0.2rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
   .req { color: var(--accent-red); }
   .field input, .field select { width: 100%; }
-  .field input.invalid, .field select.invalid { border-color: var(--accent-red); }
+  .field input.invalid { border-color: var(--accent-red); }
   .field-err { display: block; margin-top: 0.15rem; font-size: 0.7rem; color: var(--accent-red); }
 
   /* Allocations */

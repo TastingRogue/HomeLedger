@@ -28,8 +28,9 @@ Self-hosted personal finance management web application. Designed as a modular, 
 - **Backup**: Full JSON export/import with preview and validation
 - **Attachments**: Upload receipts/invoices (images, PDFs) and link to transactions/transfers
 - **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
+- **Receipts**: Analyze uploaded receipts/attachments to extract transaction details
 - **Multi-currency**: MXN, USD, EUR, COP, ARS, CLP, PEN, BRL — switchable from settings
-- **Lenguage**: Spanish + English with full interface translation
+- **Language**: Spanish + English with full interface translation
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
 - **Home Assistant**: Addon + Custom Integration with sensors and services
 - **API REST**: All endpoints under `/api/v1` with JWT + API key auth
@@ -52,7 +53,7 @@ Self-hosted personal finance management web application. Designed as a modular, 
 
 ## Requirements
 
-- Node.js >= 20
+- Node.js >= 20 (Docker images are built on Node 22)
 - npm >= 9
 
 ## Quick Start
@@ -61,8 +62,8 @@ Self-hosted personal finance management web application. Designed as a modular, 
 
 ```bash
 # Clone the repository
-git clone https://github.com/smart-finance/smart-finance.git
-cd smart-finance
+git clone https://github.com/TastingRogue/HomeLedger.git
+cd HomeLedger
 
 # Install dependencies
 npm install
@@ -72,25 +73,44 @@ cp .env.example .env
 # Edit .env with your values (JWT_SECRET required, min 32 chars)
 
 # Start in development mode
-npm run dev:backend   # API on http://localhost:3000
-npm run dev -w packages/frontend  # Frontend on http://localhost:5173
+npm run dev:backend    # API on http://localhost:3000
+npm run dev:frontend   # Frontend on http://localhost:5173
 ```
 
 The first user registered automatically becomes admin. The database is created automatically on first run.
 
 ### Docker (recommended for production)
 
+**Option 1 — Prebuilt image from Docker Hub**
+
+A multi-arch image is published to Docker Hub on every push to `main`:
+
+```bash
+docker pull irving1flores/homeledger:latest
+
+docker run -d \
+  -p 3000:3000 \
+  -v homeledger-data:/data \
+  -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
+  -e ADMIN_EMAIL="admin@homeledger.local" \
+  -e ADMIN_PASSWORD="your-strong-password" \
+  --name homeledger \
+  irving1flores/homeledger:latest
+
+# Available at http://localhost:3000
+```
+
+**Option 2 — Build from source with Docker Compose**
+
 ```bash
 # Clone and configure
-git clone https://github.com/smart-finance/smart-finance.git
-cd smart-finance
+git clone https://github.com/TastingRogue/HomeLedger.git
+cd HomeLedger
 cp .env.example .env
 # Edit .env with secure values
 
-# Start with Docker Compose
+# Start with Docker Compose (backend on 3000, frontend on 5173)
 docker compose up -d
-
-# Available at http://localhost:3000
 ```
 
 ## Environment Variables
@@ -107,7 +127,7 @@ docker compose up -d
 ## Project Structure
 
 ```
-smart-finance/
+homeledger/
 ├── packages/
 │   ├── backend/          # Fastify API server
 │   │   ├── src/
@@ -143,9 +163,11 @@ smart-finance/
 ```bash
 # From monorepo root
 npm run dev:backend       # Backend with hot-reload (tsx watch)
-npm run dev -w packages/frontend  # Frontend with Vite HMR
-npm run build -w packages/frontend  # Production build
+npm run dev:frontend      # Frontend with Vite HMR
+npm run build             # Build shared + backend + frontend
 npm run test              # Run all tests (vitest)
+npm run lint              # Lint all packages
+npm run format            # Format with Prettier
 
 # Database
 npm run db:generate -w packages/backend   # Generate migration
@@ -169,6 +191,7 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 | `/alerts` | list, mark read, mark all read, evaluate, delete, settings |
 | `/reports` | dashboard, cashflow, trends, categories, budget-vs-actual |
 | `/attachments` | upload, list, download, link, delete |
+| `/receipts` | list, get, analyze attachment |
 | `/imports` | upload, preview, confirm |
 | `/backup` | export, import |
 | `/ha` | status, webhook, sensors |

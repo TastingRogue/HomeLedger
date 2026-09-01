@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@smart-finance/shared';
@@ -41,6 +42,7 @@
 
   // Form modal
   let showFormModal = $state(false);
+  let showNoAccountsModal = $state(false);
   let showDeleteModal = $state(false);
   let editingTransaction = $state<Transaction | null>(null);
   let deletingTransaction = $state<Transaction | null>(null);
@@ -201,6 +203,10 @@
 
   // --- Form ---
   function openCreateForm() {
+    if (accounts.length === 0) {
+      showNoAccountsModal = true;
+      return;
+    }
     editingTransaction = null;
     formName = ''; formAccountId = accounts.length > 0 ? String(accounts[0].id) : '';
     formCategoryId = categories.length > 0 ? String(categories[0].id) : '';
@@ -216,6 +222,8 @@
   }
 
   function closeFormModal() { showFormModal = false; editingTransaction = null; formErrors = {}; }
+  function closeNoAccountsModal() { showNoAccountsModal = false; }
+  function goToCreateAccount() { showNoAccountsModal = false; goto('/cuentas'); }
 
   function validateForm(): boolean {
     const errors: Record<string, string> = {};
@@ -501,7 +509,10 @@
 
 <!-- Detail Popup Modal -->
 {#if selectedTransaction}
-  <div class="overlay" role="dialog" aria-modal="true" onclick={closePanel}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closePanel} tabindex="-1">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{selectedTransaction.name}</h2>
@@ -538,9 +549,39 @@
   </div>
 {/if}
 
+<!-- No Accounts Modal -->
+{#if showNoAccountsModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closeNoAccountsModal} tabindex="-1">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+      <header class="modal-header">
+        <h2>{$t('transactions.no_accounts_title')}</h2>
+        <button class="close-btn" onclick={closeNoAccountsModal}>×</button>
+      </header>
+      <div class="no-accounts-body">
+        <p class="no-accounts-msg">{$t('transactions.no_accounts_message')}</p>
+        <p class="no-accounts-examples-label">{$t('transactions.no_accounts_examples_label')}</p>
+        <ul class="no-accounts-examples">
+          <li>{$t('transactions.no_accounts_example_cash')}</li>
+          <li>{$t('transactions.no_accounts_example_debit')}</li>
+          <li>{$t('transactions.no_accounts_example_credit')}</li>
+        </ul>
+      </div>
+      <div class="form-buttons">
+        <button type="button" class="btn-cancel" onclick={closeNoAccountsModal}>{$t('common.cancel')}</button>
+        <button type="button" class="btn-submit" onclick={goToCreateAccount}>{$t('transactions.no_accounts_cta')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- Form Modal -->
 {#if showFormModal}
   <div class="overlay" role="dialog" aria-modal="true">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{isEditing ? $t('transactions.edit_transaction') : $t('transactions.new_transaction')}</h2>
@@ -598,6 +639,8 @@
 <!-- Delete Modal -->
 {#if showDeleteModal && deletingTransaction}
   <div class="overlay" role="dialog" aria-modal="true">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('transactions.delete_title')}</h2>
@@ -613,6 +656,13 @@
 {/if}
 
 <style>
+  /* --- No Accounts Modal --- */
+  .no-accounts-body { padding: 0.25rem 0 0.75rem; }
+  .no-accounts-msg { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 0.75rem; }
+  .no-accounts-examples-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.35rem; }
+  .no-accounts-examples { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+  .no-accounts-examples li { font-size: 0.8rem; color: var(--text-primary); padding: 0.4rem 0.6rem; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+
   /* --- Layout --- */
   .page { width: 100%; margin: 0; }
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; }

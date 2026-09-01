@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
+  import { t } from '$lib/i18n';
   import type { Account, Category } from '@smart-finance/shared';
 
   // --- Constants ---
@@ -43,6 +44,9 @@
   let selectedCategoryName = $derived(categories.find(c => c.id === selectedCategoryId)?.name ?? '');
   let parsedAmount = $derived(parseFloat(amount) || 0);
   let isAmountValid = $derived(parsedAmount > 0 && parsedAmount <= 999999999.99);
+  let hasNoAccounts = $derived(!loading && accounts.length === 0);
+
+  function goToCreateAccount() { goto('/cuentas'); }
 
   // --- Helper Functions ---
   function getRecentIds(key: string): number[] {
@@ -255,6 +259,21 @@
       <span class="spinner"></span>
       <span>Cargando...</span>
     </div>
+  {:else if hasNoAccounts}
+    <section class="qr-no-accounts" aria-label={$t('transactions.no_accounts_title')}>
+      <div class="no-accounts-icon">🏦</div>
+      <h2>{$t('transactions.no_accounts_title')}</h2>
+      <p class="no-accounts-msg">{$t('transactions.no_accounts_message')}</p>
+      <p class="no-accounts-examples-label">{$t('transactions.no_accounts_examples_label')}</p>
+      <ul class="no-accounts-examples">
+        <li>{$t('transactions.no_accounts_example_cash')}</li>
+        <li>{$t('transactions.no_accounts_example_debit')}</li>
+        <li>{$t('transactions.no_accounts_example_credit')}</li>
+      </ul>
+      <button class="btn-create-account" onclick={goToCreateAccount} type="button">
+        {$t('transactions.no_accounts_cta')}
+      </button>
+    </section>
   {:else}
     {#if errors.general}
       <div class="alert-error" role="alert">
@@ -327,6 +346,7 @@
         </div>
 
         <div class="selector-section">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
           <label class="selector-label">CUENTA *</label>
           {#if errors.account}<span class="field-error">{errors.account}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label="Seleccionar cuenta">
@@ -348,6 +368,7 @@
         </div>
 
         <div class="selector-section">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
           <label class="selector-label">CATEGORÍA *</label>
           {#if errors.category}<span class="field-error">{errors.category}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label="Seleccionar categoría">
@@ -454,6 +475,17 @@
   .spinner { width: 1rem; height: 1rem; border: 2px solid var(--border-default); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* No Accounts */
+  .qr-no-accounts { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1.5rem 0.5rem; }
+  .no-accounts-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .qr-no-accounts h2 { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.5rem; }
+  .qr-no-accounts .no-accounts-msg { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin: 0 0 1rem; max-width: 320px; }
+  .qr-no-accounts .no-accounts-examples-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 0.4rem; align-self: flex-start; }
+  .qr-no-accounts .no-accounts-examples { list-style: none; padding: 0; margin: 0 0 1.25rem; width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
+  .qr-no-accounts .no-accounts-examples li { font-size: 0.8rem; color: var(--text-primary); padding: 0.5rem 0.7rem; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-sm); text-align: left; }
+  .btn-create-account { width: 100%; min-height: 48px; border: none; border-radius: var(--radius-md); background: var(--accent-blue); color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+  .btn-create-account:hover { background: var(--color-primary-hover); }
+
   /* Alert */
   .alert-error {
     display: flex; align-items: center; justify-content: space-between;
@@ -550,22 +582,11 @@
   .type-btn-step1.active.ingreso { border-color: var(--accent-green); background: var(--tag-green-bg); color: var(--accent-green); }
   .type-btn-step1:hover:not(.active) { border-color: var(--text-muted); }
 
-  /* Type Toggle (Step 3 - kept for compat) */
-  .type-toggle { display: flex; gap: 0.4rem; margin-bottom: var(--spacing-md); }
-
   /* Name field */
   .name-field { margin-bottom: var(--spacing-md); }
   .name-field label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem; }
   .name-field input { width: 100%; min-height: 44px; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
   .name-hint { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
-  .type-btn {
-    flex: 1; min-height: 44px; border: 2px solid var(--border-default); border-radius: var(--radius-md);
-    background: var(--bg-surface); font-size: 0.9rem; font-weight: 600;
-    color: var(--text-muted); cursor: pointer; transition: all 0.15s;
-  }
-  .type-btn.active.gasto { border-color: var(--accent-red); background: var(--tag-red-bg); color: var(--accent-red); }
-  .type-btn.active.ingreso { border-color: var(--accent-green); background: var(--tag-green-bg); color: var(--accent-green); }
-  .type-btn:hover:not(.active) { border-color: var(--accent-blue); }
 
   /* Field Error */
   .field-error { display: block; font-size: 0.7rem; color: var(--accent-red); margin-top: 0.15rem; text-align: center; }

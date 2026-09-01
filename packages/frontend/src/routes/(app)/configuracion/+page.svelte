@@ -158,16 +158,16 @@
             <h3 class="card-title">{$t('settings.personal_info')}</h3>
             <div class="form-grid">
               <div class="form-field">
-                <label>{$t('settings.name_label')}</label>
-                <input type="text" bind:value={userName} placeholder={$t('settings.name_placeholder')} />
+                <label for="cfg-name">{$t('settings.name_label')}</label>
+                <input id="cfg-name" type="text" bind:value={userName} placeholder={$t('settings.name_placeholder')} />
               </div>
               <div class="form-field">
-                <label>{$t('settings.email_label')}</label>
-                <input type="email" value={userEmail} disabled title={$t('settings.email_tooltip')} />
+                <label for="cfg-email">{$t('settings.email_label')}</label>
+                <input id="cfg-email" type="email" value={userEmail} disabled title={$t('settings.email_tooltip')} />
               </div>
               <div class="form-field">
-                <label>{$t('settings.role_label')}</label>
-                <input type="text" value={userRole === 'admin' ? $t('settings.role_admin') : $t('settings.role_user')} disabled />
+                <label for="cfg-role">{$t('settings.role_label')}</label>
+                <input id="cfg-role" type="text" value={userRole === 'admin' ? $t('settings.role_admin') : $t('settings.role_user')} disabled />
               </div>
             </div>
             <div class="card-footer">
@@ -284,8 +284,9 @@
 
 <!-- Password Change Modal -->
 {#if showPasswordModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={() => showPasswordModal = false} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('settings.change_password')}</h3>
         <button class="modal-close" onclick={() => showPasswordModal = false}>&times;</button>
@@ -295,16 +296,16 @@
       {:else}
         <form class="modal-form" onsubmit={(e) => { e.preventDefault(); changePassword(); }}>
           <div class="form-field">
-            <label>{$t('settings.current_password')}</label>
-            <input type="password" bind:value={currentPassword} required />
+            <label for="cfg-current-pw">{$t('settings.current_password')}</label>
+            <input id="cfg-current-pw" type="password" bind:value={currentPassword} required />
           </div>
           <div class="form-field">
-            <label>{$t('settings.new_password')}</label>
-            <input type="password" bind:value={newPassword} required minlength={6} />
+            <label for="cfg-new-pw">{$t('settings.new_password')}</label>
+            <input id="cfg-new-pw" type="password" bind:value={newPassword} required minlength={6} />
           </div>
           <div class="form-field">
-            <label>{$t('settings.confirm_password')}</label>
-            <input type="password" bind:value={confirmPassword} required />
+            <label for="cfg-confirm-pw">{$t('settings.confirm_password')}</label>
+            <input id="cfg-confirm-pw" type="password" bind:value={confirmPassword} required />
           </div>
           {#if passwordError}<p class="modal-error">{passwordError}</p>{/if}
           <div class="modal-actions">
@@ -358,8 +359,6 @@
   .pref-label { font-size: 0.82rem; font-weight: 500; color: var(--text-primary); }
   .pref-desc { font-size: 0.68rem; color: var(--text-muted); }
   .pref-value { font-size: 0.78rem; color: var(--text-secondary); }
-  .pref-select { padding: 0.35rem 0.5rem; font-size: 0.78rem; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); min-width: 180px; }
-  .pref-select option { background: var(--bg-card); color: var(--text-primary); }
 
   .btn-action-sm { padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 500; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; text-decoration: none; }
   .btn-action-sm:hover { background: var(--bg-hover); color: var(--text-primary); }

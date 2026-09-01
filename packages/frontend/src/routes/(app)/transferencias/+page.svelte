@@ -123,6 +123,8 @@
 <!-- Form Modal -->
 {#if showFormModal}
   <div class="overlay"  role="dialog" aria-modal="true">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header"><h2>{isEditing ? $t('transfers.edit_title') : $t('transfers.new_title')}</h2><button class="close-btn" onclick={closeFormModal}>×</button></header>
       <form onsubmit={(e) => { e.preventDefault(); submitForm(); }}>
@@ -143,6 +145,8 @@
 <!-- Delete Modal -->
 {#if showDeleteModal && deletingTransfer}
   <div class="overlay"  role="dialog" aria-modal="true">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header"><h2>{$t('transfers.delete_title')}</h2><button class="close-btn" onclick={closeDeleteModal}>×</button></header>
       <p class="confirm-text">{$t('transfers.delete_confirm', { name: deletingTransfer.name })}</p>

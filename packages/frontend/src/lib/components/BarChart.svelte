@@ -4,7 +4,7 @@
 
   let { labels, datasets, height = 200 }: {
     labels: string[];
-    datasets: { label: string; data: number[]; backgroundColor: string; borderRadius?: number }[];
+    datasets: { label: string; data: number[]; backgroundColor: string | string[]; borderRadius?: number }[];
     height?: number;
   } = $props();
 

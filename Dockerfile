@@ -15,7 +15,13 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 
-RUN npm ci
+# Regenerate dependencies from scratch inside the Alpine/musl container.
+# A lockfile generated on another OS (e.g. Windows) omits the platform-specific
+# optional native binaries this image needs (@rollup/rollup-linux-x64-musl,
+# @esbuild/linux-x64, better-sqlite3). Removing the lockfile forces npm to
+# re-resolve and install the correct musl binaries for this platform.
+# See https://github.com/npm/cli/issues/4828
+RUN rm -f package-lock.json && npm install --no-audit --no-fund
 
 # Copy the source code used by both Docker Compose services.
 COPY package.json package-lock.json tsconfig.base.json ./

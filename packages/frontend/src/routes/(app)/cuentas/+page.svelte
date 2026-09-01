@@ -306,6 +306,8 @@
     <div class="accounts-grid" role="list">
       {#each accounts as account (account.id)}
         {@const health = getHealthStatus(account)}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
         <article class="account-card" role="listitem" style="border-left-color: {getTypeBorderColor(account.type)}" onclick={() => openAccountDetail(account)}>
           <div class="card-top">
             <span class="card-name">{account.name}</span>
@@ -346,6 +348,8 @@
             {/if}
           {/if}
 
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="card-actions" onclick={(e) => e.stopPropagation()}>
             <button class="btn-action" onclick={() => openEditForm(account)} title={$t('accounts.edit_tooltip')}>{$t('common.edit')}</button>
             <button class="btn-action danger" onclick={() => confirmDeactivate(account)} title={$t('accounts.deactivate_tooltip')}>{$t('common.deactivate')}</button>
@@ -358,7 +362,9 @@
 
 <!-- Create / Edit Modal -->
 {#if showForm}
-  <div class="overlay" role="dialog" aria-modal="true"  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{editingAccount ? $t('accounts.edit_title') : $t('accounts.new_title')}</h2>
@@ -410,7 +416,9 @@
 
 <!-- Deactivate Confirmation -->
 {#if deactivateTarget}
-  <div class="overlay" role="dialog" aria-modal="true"  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('accounts.deactivate_title')}</h2>
@@ -429,7 +437,10 @@
 
 <!-- Account Detail Modal -->
 {#if selectedAccount}
-  <div class="overlay" role="dialog" aria-modal="true" onclick={closeAccountDetail} onkeydown={(e) => { if (e.key === 'Escape') closeAccountDetail(); }}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closeAccountDetail} onkeydown={(e) => { if (e.key === 'Escape') closeAccountDetail(); }} tabindex="-1">
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <div class="detail-header-info">

@@ -8,6 +8,10 @@
     "packages/frontend",
     "packages/shared"
   ],
+  "overrides": {
+    "cookie": "^0.7.0",
+    "esbuild": "^0.25.0"
+  },
   "scripts": {
     "dev:backend": "npm run dev -w packages/backend",
     "dev:frontend": "npm run dev -w packages/frontend",

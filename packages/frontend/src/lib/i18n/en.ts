@@ -188,6 +188,13 @@ export const en: Record<string, string> = {
   'transactions.prev_page': '‹ Previous',
   'transactions.next_page': 'Next ›',
   'transactions.must_be_positive': 'Must be > 0',
+  'transactions.no_accounts_title': 'Set up an account first',
+  'transactions.no_accounts_message': 'To record an expense or income you need at least one account. Create one to get started.',
+  'transactions.no_accounts_examples_label': 'For example:',
+  'transactions.no_accounts_example_cash': 'Cash (money in your wallet)',
+  'transactions.no_accounts_example_debit': 'Debit (bank account)',
+  'transactions.no_accounts_example_credit': 'Credit (credit card)',
+  'transactions.no_accounts_cta': 'Create an account',
 
   // Transfers
   'transfers.title': 'Transfers',

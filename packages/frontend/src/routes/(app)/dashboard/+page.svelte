@@ -435,8 +435,8 @@
     editTxName = tx.name;
     editTxAmount = String(tx.amount);
     editTxDate = tx.date.slice(0, 16);
-    editTxAccountId = tx.accountId;
-    editTxCategoryId = tx.categoryId;
+    editTxAccountId = tx.accountId ?? null;
+    editTxCategoryId = tx.categoryId ?? null;
     editTxType = (tx.type as 'Gasto' | 'Ingreso');
     editTxError = null;
     editTxAttachments = [];
@@ -898,6 +898,8 @@
           </div>
           <div class="tx-list">
             {#each transactions.slice(0, 4) as tx (tx.id)}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div class="tx-item clickable" onclick={() => openEditTx(tx)} title={$t('dashboard.click_edit')}>
                 <div class="tx-left">
                   <span class="tx-name">{tx.name}</span>
@@ -984,6 +986,8 @@
             {#each transfers.slice(0, 4) as tr (tr.id)}
               {@const fromAcc = accounts.find(a => a.id === tr.sourceAccountId)}
               {@const toAcc = accounts.find(a => a.id === tr.destinationAccountId)}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div class="tf-item clickable" onclick={() => openEditTf(tr)} title={$t('dashboard.click_edit')}>
                 <div class="tf-left">
                   <span class="tf-name">{tr.name}</span>
@@ -1008,8 +1012,9 @@
 
 <!-- QUICK TRANSACTION MODAL -->
 {#if showQuickModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeQuickModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{quickType === 'Gasto' ? $t('dashboard.quick_add_expense') : $t('dashboard.quick_add_income')}</h3>
         <button class="modal-close" onclick={closeQuickModal}>&times;</button>
@@ -1019,20 +1024,21 @@
       {:else}
         <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitQuickTransaction(); }}>
           <div class="form-field">
-            <label>{quickType === 'Gasto' ? $t('dashboard.description') : $t('dashboard.source')}</label>
-            <input type="text" placeholder={quickType === 'Gasto' ? $t('dashboard.expense_placeholder') : $t('dashboard.income_placeholder')} bind:value={quickName} required autofocus />
+            <label for="qk-name">{quickType === 'Gasto' ? $t('dashboard.description') : $t('dashboard.source')}</label>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input id="qk-name" type="text" placeholder={quickType === 'Gasto' ? $t('dashboard.expense_placeholder') : $t('dashboard.income_placeholder')} bind:value={quickName} required autofocus />
           </div>
           <div class="form-field">
-            <label>{$t('common.amount')}</label>
-            <input type="number" step="0.01" min="0.01" placeholder="0.00" bind:value={quickAmount} required />
+            <label for="qk-amount">{$t('common.amount')}</label>
+            <input id="qk-amount" type="number" step="0.01" min="0.01" placeholder="0.00" bind:value={quickAmount} required />
           </div>
           <div class="form-field">
-            <label>{$t('common.account')}</label>
-            <select bind:value={quickAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            <label for="qk-account">{$t('common.account')}</label>
+            <select id="qk-account" bind:value={quickAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
           </div>
           <div class="form-field">
-            <label>{$t('common.category')}</label>
-            <select bind:value={quickCategoryId}>{#each filteredCategories as c}<option value={c.id}>{c.name}</option>{/each}</select>
+            <label for="qk-category">{$t('common.category')}</label>
+            <select id="qk-category" bind:value={quickCategoryId}>{#each filteredCategories as c}<option value={c.id}>{c.name}</option>{/each}</select>
           </div>
           {#if quickError}<p class="modal-error">{quickError}</p>{/if}
           <div class="modal-actions">
@@ -1049,45 +1055,48 @@
 
 <!-- EDIT TRANSACTION MODAL -->
 {#if showEditTxModal && editTx}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeEditTxModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transaction')}</h3>
         <button class="modal-close" onclick={closeEditTxModal}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitEditTx(); }}>
         <div class="form-field">
-          <label>{$t('common.name')}</label>
-          <input type="text" bind:value={editTxName} required />
+          <label for="etx-name">{$t('common.name')}</label>
+          <input id="etx-name" type="text" bind:value={editTxName} required />
         </div>
         <div class="form-field">
-          <label>{$t('common.amount')}</label>
-          <input type="number" step="0.01" min="0.01" bind:value={editTxAmount} required />
+          <label for="etx-amount">{$t('common.amount')}</label>
+          <input id="etx-amount" type="number" step="0.01" min="0.01" bind:value={editTxAmount} required />
         </div>
         <div class="form-row">
           <div class="form-field">
-            <label>{$t('common.type')}</label>
-            <select bind:value={editTxType}>
+            <label for="etx-type">{$t('common.type')}</label>
+            <select id="etx-type" bind:value={editTxType}>
               <option value="Gasto">Gasto</option>
               <option value="Ingreso">Ingreso</option>
             </select>
           </div>
           <div class="form-field">
-            <label>{$t('common.account')}</label>
-            <select bind:value={editTxAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            <label for="etx-account">{$t('common.account')}</label>
+            <select id="etx-account" bind:value={editTxAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
           </div>
         </div>
         <div class="form-field">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
           <label>{$t('common.date')}</label>
           <DatePicker bind:value={editTxDate} showTime={true} />
         </div>
         <div class="form-field">
-          <label>{$t('common.category')}</label>
-          <select bind:value={editTxCategoryId}>{#each categories as c}<option value={c.id}>{c.name}</option>{/each}</select>
+          <label for="etx-category">{$t('common.category')}</label>
+          <select id="etx-category" bind:value={editTxCategoryId}>{#each categories as c}<option value={c.id}>{c.name}</option>{/each}</select>
         </div>
         {#if editTxError}<p class="modal-error">{editTxError}</p>{/if}
         {#if editTxAttachments.length > 0}
           <div class="attachments-section">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label>{$t('dashboard.attached_receipts')}</label>
             {#each editTxAttachments as att (att.id)}
               <div class="attachment-row">
@@ -1113,38 +1122,41 @@
 
 <!-- EDIT TRANSFER MODAL -->
 {#if showEditTfModal && editTf}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeEditTfModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transfer')}</h3>
         <button class="modal-close" onclick={closeEditTfModal}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitEditTf(); }}>
         <div class="form-field">
-          <label>{$t('common.name')}</label>
-          <input type="text" bind:value={editTfName} required />
+          <label for="etf-name">{$t('common.name')}</label>
+          <input id="etf-name" type="text" bind:value={editTfName} required />
         </div>
         <div class="form-field">
-          <label>{$t('common.amount')}</label>
-          <input type="number" step="0.01" min="0.01" bind:value={editTfAmount} required />
+          <label for="etf-amount">{$t('common.amount')}</label>
+          <input id="etf-amount" type="number" step="0.01" min="0.01" bind:value={editTfAmount} required />
         </div>
         <div class="form-field">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
           <label>{$t('common.date')}</label>
           <DatePicker bind:value={editTfDate} showTime={true} />
         </div>
         <div class="form-row">
           <div class="form-field">
-            <label>{$t('dashboard.source_account')}</label>
-            <select bind:value={editTfSourceId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            <label for="etf-source">{$t('dashboard.source_account')}</label>
+            <select id="etf-source" bind:value={editTfSourceId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
           </div>
           <div class="form-field">
-            <label>{$t('dashboard.dest_account')}</label>
-            <select bind:value={editTfDestId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            <label for="etf-dest">{$t('dashboard.dest_account')}</label>
+            <select id="etf-dest" bind:value={editTfDestId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
           </div>
         </div>
         {#if editTfError}<p class="modal-error">{editTfError}</p>{/if}
         {#if editTfAttachments.length > 0}
           <div class="attachments-section">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label>{$t('dashboard.attached_receipts')}</label>
             {#each editTfAttachments as att (att.id)}
               <div class="attachment-row">
@@ -1170,8 +1182,9 @@
 
 <!-- ATTACH RECEIPT MODAL -->
 {#if showAttachModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeAttachModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.attach_title')}</h3>
         <button class="modal-close" onclick={closeAttachModal}>&times;</button>
@@ -1181,20 +1194,20 @@
       {:else}
         <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitAttachment(); }}>
           <div class="form-field">
-            <label>{$t('dashboard.file_label')}</label>
-            <input type="file" accept="image/*,.pdf" onchange={handleAttachFile} />
+            <label for="attach-file">{$t('dashboard.file_label')}</label>
+            <input id="attach-file" type="file" accept="image/*,.pdf" onchange={handleAttachFile} />
             {#if attachFile}<span class="attach-filename">{attachFile.name} ({(attachFile.size / 1024).toFixed(0)} KB)</span>{/if}
           </div>
           <div class="form-field">
-            <label>{$t('dashboard.attach_to_tx')}</label>
-            <select bind:value={attachTxId}>
+            <label for="attach-tx">{$t('dashboard.attach_to_tx')}</label>
+            <select id="attach-tx" bind:value={attachTxId}>
               <option value={null}>{$t('dashboard.none_option')}</option>
               {#each transactions as tx}<option value={tx.id}>{tx.name} ({tx.type === 'Gasto' ? '-' : '+'}{formatCurrency(tx.amount)})</option>{/each}
             </select>
           </div>
           <div class="form-field">
-            <label>{$t('dashboard.attach_to_tf')}</label>
-            <select bind:value={attachTfId}>
+            <label for="attach-tf">{$t('dashboard.attach_to_tf')}</label>
+            <select id="attach-tf" bind:value={attachTfId}>
               <option value={null}>— Ninguna —</option>
               {#each transfers as tf}<option value={tf.id}>{tf.name} ({formatCurrency(tf.amount)})</option>{/each}
             </select>
@@ -1214,41 +1227,42 @@
 
 <!-- SUBSCRIPTION EDIT POPUP -->
 {#if showSubEdit}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeSubEdit} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_subscription')}</h3>
         <button class="modal-close" onclick={closeSubEdit}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitSubEdit(); }}>
         <div class="form-field">
-          <label>{$t('common.name')}</label>
-          <input type="text" bind:value={editSubName} required />
+          <label for="esub-name">{$t('common.name')}</label>
+          <input id="esub-name" type="text" bind:value={editSubName} required />
         </div>
         <div class="form-field">
-          <label>{$t('common.amount')}</label>
-          <input type="number" step="0.01" min="0.01" bind:value={editSubAmount} required />
+          <label for="esub-amount">{$t('common.amount')}</label>
+          <input id="esub-amount" type="number" step="0.01" min="0.01" bind:value={editSubAmount} required />
         </div>
         <div class="form-row">
           <div class="form-field">
-            <label>{$t('subscriptions.cycle')}</label>
-            <select bind:value={editSubCycle}>
+            <label for="esub-cycle">{$t('subscriptions.cycle')}</label>
+            <select id="esub-cycle" bind:value={editSubCycle}>
               <option value="Mensual">Mensual</option>
               <option value="Semanal">Semanal</option>
             </select>
           </div>
           <div class="form-field">
-            <label>{$t('common.account')}</label>
-            <select bind:value={editSubAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            <label for="esub-account">{$t('common.account')}</label>
+            <select id="esub-account" bind:value={editSubAccountId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
           </div>
         </div>
         <div class="form-field">
-          <label>{$t('dashboard.charge_date')}</label>
-          <input type="date" bind:value={editSubDate} required />
+          <label for="esub-date">{$t('dashboard.charge_date')}</label>
+          <input id="esub-date" type="date" bind:value={editSubDate} required />
         </div>
         <div class="form-field">
-          <label>{$t('common.category')}</label>
-          <select bind:value={editSubCategoryId}>{#each categories as c}<option value={c.id}>{c.name}</option>{/each}</select>
+          <label for="esub-category">{$t('common.category')}</label>
+          <select id="esub-category" bind:value={editSubCategoryId}>{#each categories as c}<option value={c.id}>{c.name}</option>{/each}</select>
         </div>
         <div class="form-field">
           <label class="toggle-label">
@@ -1301,8 +1315,6 @@
   .sc-icon.teal { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
   .sc-icon.green { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
   .sc-icon.red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-  .sc-icon.yellow { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-  .sc-icon.purple { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
   .sc-value { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
   .sc-value.sc-green { color: var(--accent-green); }
   .sc-value.sc-red { color: var(--accent-red); }

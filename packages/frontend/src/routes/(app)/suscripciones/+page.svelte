@@ -296,6 +296,7 @@
   </div>
 
   <!-- View Tabs -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
   <nav class="view-tabs" role="tablist" aria-label="Vistas de suscripciones">
     <button
       class="tab-btn"
@@ -409,7 +410,9 @@
           <h3 class="upcoming-title">{$t('subscriptions.upcoming_payments')}</h3>
           <div class="upcoming-list">
             {#each calendar.slice(0, 8) as entry (entry.id)}
-              <div class="upcoming-item" onclick={() => openEditForm(subscriptionsList.find(s => s.id === entry.id) ?? null)}>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="upcoming-item" onclick={() => { const sub = subscriptionsList.find(s => s.id === entry.id); if (sub) openEditForm(sub); }}>
                 <div class="up-left">
                   <span class="up-name">{entry.name}</span>
                   <span class="up-meta">{getCategoryName(entry.categoryId)} · {entry.cycle}</span>
@@ -551,7 +554,6 @@
   .page-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
 
   .info-banner { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.6rem 0.85rem; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; }
-  .info-banner strong { color: var(--text-primary); }
   .info-icon { color: var(--accent-blue); font-size: 0.9rem; flex-shrink: 0; margin-top: 0.05rem; }
 
   /* Tabs */
@@ -608,8 +610,6 @@
   .cal-days { display: flex; align-items: baseline; gap: 2px; min-width: 36px; }
   .days-num { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
   .days-unit { font-size: 0.65rem; color: var(--text-muted); }
-  .cal-days.overdue .days-num { color: var(--accent-red); }
-  .cal-days.urgent .days-num { color: var(--accent-orange); }
 
   .cal-info { flex: 1; min-width: 0; }
   .cal-name { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
