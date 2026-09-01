@@ -1,4 +1,4 @@
-"""Config flow for Smart Finance integration."""
+"""Config flow for HomeLedger integration."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_API_URL, default=DEFAULT_API_URL): str,
         vol.Required(CONF_API_KEY): str,
-        vol.Optional(CONF_NAME, default="Smart Finance"): str,
+        vol.Optional(CONF_NAME, default="HomeLedger"): str,
     }
 )
 
@@ -38,8 +38,8 @@ async def validate_connection(api_url: str, api_key: str) -> dict[str, Any]:
             return await response.json()
 
 
-class SmartFinanceConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Smart Finance."""
+class HomeLedgerConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for HomeLedger."""
 
     VERSION = 1
 
@@ -65,7 +65,7 @@ class SmartFinanceConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
             else:
                 return self.async_create_entry(
-                    title=user_input.get(CONF_NAME, "Smart Finance"),
+                    title=user_input.get(CONF_NAME, "HomeLedger"),
                     data=user_input,
                 )
 

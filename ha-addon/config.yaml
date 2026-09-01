@@ -1,11 +1,11 @@
-# Smart Finance - Home Assistant Add-on Configuration
+# HomeLedger - Home Assistant Add-on Configuration
 # https://developers.home-assistant.io/docs/add-ons/configuration
 
-name: Smart Finance
+name: HomeLedger
 description: "Gestión de finanzas personales auto-hospedada. Controla cuentas, transacciones, presupuestos, suscripciones y metas de ahorro desde Home Assistant."
 version: "0.1.0"
-slug: smart_finance
-url: "https://github.com/smart-finance/smart-finance"
+slug: homeledger
+url: "https://github.com/TastingRogue/HomeLedger"
 
 # Architectures supported
 arch:
@@ -17,19 +17,19 @@ arch:
 ports:
   3000/tcp: 3000
 ports_description:
-  3000/tcp: "Interfaz web de Smart Finance"
+  3000/tcp: "Interfaz web de HomeLedger"
 
 # Ingress support (embedded in HA UI)
 ingress: true
 ingress_port: 3000
 panel_icon: "mdi:finance"
-panel_title: "Smart Finance"
+panel_title: "HomeLedger"
 
 # Options (user-configurable in HA UI)
 options:
   TZ: "America/Mexico_City"
   JWT_SECRET: ""
-  ADMIN_EMAIL: "admin@smartfinance.local"
+  ADMIN_EMAIL: "admin@homeledger.local"
   ADMIN_PASSWORD: ""
 
 # Schema validation for options

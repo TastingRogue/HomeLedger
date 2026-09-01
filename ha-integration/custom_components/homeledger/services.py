@@ -1,4 +1,4 @@
-"""Services for the Smart Finance integration."""
+"""Services for the HomeLedger integration."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .const import (
     SERVICE_CREATE_TRANSACTION,
     SERVICE_REFRESH_DATA,
 )
-from .coordinator import SmartFinanceCoordinator
+from .coordinator import HomeLedgerCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,9 +38,9 @@ SERVICE_CREATE_QUICK_EXPENSE_SCHEMA = vol.Schema(
 
 
 async def async_register_services(
-    hass: HomeAssistant, coordinator: SmartFinanceCoordinator
+    hass: HomeAssistant, coordinator: HomeLedgerCoordinator
 ) -> None:
-    """Register Smart Finance services."""
+    """Register HomeLedger services."""
 
     async def handle_create_transaction(call: ServiceCall) -> None:
         """Handle the create_transaction service call."""
@@ -92,7 +92,7 @@ async def async_register_services(
 
     async def handle_refresh_data(call: ServiceCall) -> None:
         """Handle the refresh_data service call."""
-        _LOGGER.debug("Refreshing Smart Finance data")
+        _LOGGER.debug("Refreshing HomeLedger data")
         await coordinator.async_request_refresh()
 
     # Register services

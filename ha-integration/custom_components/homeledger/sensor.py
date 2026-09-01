@@ -1,4 +1,4 @@
-"""Sensor platform for Smart Finance."""
+"""Sensor platform for HomeLedger."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import SmartFinanceCoordinator
+from .coordinator import HomeLedgerCoordinator
 
 SENSOR_DESCRIPTIONS = [
     {
@@ -80,40 +80,40 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Smart Finance sensors from a config entry."""
-    coordinator: SmartFinanceCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up HomeLedger sensors from a config entry."""
+    coordinator: HomeLedgerCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities: list[SmartFinanceSensor] = []
+    entities: list[HomeLedgerSensor] = []
 
     # Add static sensors
     for description in SENSOR_DESCRIPTIONS:
-        entities.append(SmartFinanceSensor(coordinator, entry, description))
+        entities.append(HomeLedgerSensor(coordinator, entry, description))
 
     # Add dynamic account balance sensors
     if coordinator.data and "accounts" in coordinator.data:
         for account in coordinator.data["accounts"]:
             entities.append(
-                SmartFinanceAccountSensor(coordinator, entry, account)
+                HomeLedgerAccountSensor(coordinator, entry, account)
             )
 
     # Add dynamic category expense sensors
     if coordinator.data and "top_categories" in coordinator.data:
         for category in coordinator.data["top_categories"]:
             entities.append(
-                SmartFinanceCategorySensor(coordinator, entry, category)
+                HomeLedgerCategorySensor(coordinator, entry, category)
             )
 
     async_add_entities(entities)
 
 
-class SmartFinanceSensor(CoordinatorEntity[SmartFinanceCoordinator], SensorEntity):
-    """Representation of a Smart Finance sensor."""
+class HomeLedgerSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
+    """Representation of a HomeLedger sensor."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: SmartFinanceCoordinator,
+        coordinator: HomeLedgerCoordinator,
         entry: ConfigEntry,
         description: dict,
     ) -> None:
@@ -128,7 +128,7 @@ class SmartFinanceSensor(CoordinatorEntity[SmartFinanceCoordinator], SensorEntit
         self._attr_native_unit_of_measurement = description["unit"]
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": "Smart Finance",
+            "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
             "sw_version": "1.0.0",
@@ -142,7 +142,7 @@ class SmartFinanceSensor(CoordinatorEntity[SmartFinanceCoordinator], SensorEntit
         return self.coordinator.data.get(self._key)
 
 
-class SmartFinanceAccountSensor(CoordinatorEntity[SmartFinanceCoordinator], SensorEntity):
+class HomeLedgerAccountSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
     """Sensor for individual account balances."""
 
     _attr_has_entity_name = True
@@ -152,7 +152,7 @@ class SmartFinanceAccountSensor(CoordinatorEntity[SmartFinanceCoordinator], Sens
 
     def __init__(
         self,
-        coordinator: SmartFinanceCoordinator,
+        coordinator: HomeLedgerCoordinator,
         entry: ConfigEntry,
         account: dict,
     ) -> None:
@@ -164,7 +164,7 @@ class SmartFinanceAccountSensor(CoordinatorEntity[SmartFinanceCoordinator], Sens
         self._attr_icon = "mdi:bank"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": "Smart Finance",
+            "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
             "sw_version": "1.0.0",
@@ -181,7 +181,7 @@ class SmartFinanceAccountSensor(CoordinatorEntity[SmartFinanceCoordinator], Sens
         return None
 
 
-class SmartFinanceCategorySensor(CoordinatorEntity[SmartFinanceCoordinator], SensorEntity):
+class HomeLedgerCategorySensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
     """Sensor for category expenses."""
 
     _attr_has_entity_name = True
@@ -191,7 +191,7 @@ class SmartFinanceCategorySensor(CoordinatorEntity[SmartFinanceCoordinator], Sen
 
     def __init__(
         self,
-        coordinator: SmartFinanceCoordinator,
+        coordinator: HomeLedgerCoordinator,
         entry: ConfigEntry,
         category: dict,
     ) -> None:
@@ -203,7 +203,7 @@ class SmartFinanceCategorySensor(CoordinatorEntity[SmartFinanceCoordinator], Sen
         self._attr_icon = "mdi:tag"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": "Smart Finance",
+            "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
             "sw_version": "1.0.0",

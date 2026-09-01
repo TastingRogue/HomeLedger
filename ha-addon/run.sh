@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smart Finance - Home Assistant Add-on Startup Script
+# HomeLedger - Home Assistant Add-on Startup Script
 # Reads configuration from HA options and launches the Node.js app
 
 set -e
@@ -7,14 +7,14 @@ set -e
 # HA Add-on options are stored in /data/options.json
 CONFIG_PATH="/data/options.json"
 
-echo "=== Smart Finance Add-on ==="
-echo "Iniciando Smart Finance para Home Assistant..."
+echo "=== HomeLedger Add-on ==="
+echo "Iniciando HomeLedger para Home Assistant..."
 
 # Read configuration from HA options
 if [ -f "$CONFIG_PATH" ]; then
   export TZ=$(jq -r '.TZ // "America/Mexico_City"' "$CONFIG_PATH")
   export JWT_SECRET=$(jq -r '.JWT_SECRET // ""' "$CONFIG_PATH")
-  export ADMIN_EMAIL=$(jq -r '.ADMIN_EMAIL // "admin@smartfinance.local"' "$CONFIG_PATH")
+  export ADMIN_EMAIL=$(jq -r '.ADMIN_EMAIL // "admin@homeledger.local"' "$CONFIG_PATH")
   export ADMIN_PASSWORD=$(jq -r '.ADMIN_PASSWORD // ""' "$CONFIG_PATH")
   echo "Configuración cargada desde opciones de HA"
 else
@@ -47,5 +47,5 @@ echo "Puerto: $PORT"
 echo "Directorio de datos: $DATA_DIR"
 
 # Start the Node.js application
-echo "Iniciando servidor Smart Finance..."
+echo "Iniciando servidor HomeLedger..."
 exec node /app/packages/backend/dist/server.js

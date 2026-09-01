@@ -2,27 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "title": "Conectar a Smart Finance",
-        "description": "Ingresa la URL y API key de tu instancia de Smart Finance",
+        "title": "Conectar a HomeLedger",
+        "description": "Ingresa la URL y API key de tu instancia de HomeLedger",
         "data": {
           "api_url": "URL del API",
           "api_key": "API Key",
           "name": "Nombre de la integración"
         },
         "data_description": {
-          "api_url": "URL base de tu instancia de Smart Finance (ej: http://192.168.1.100:3000)",
-          "api_key": "API key generada en Smart Finance > Configuración > API Keys",
+          "api_url": "URL base de tu instancia de HomeLedger (ej: http://192.168.1.100:3000)",
+          "api_key": "API key generada en HomeLedger > Configuración > API Keys",
           "name": "Nombre para identificar esta instancia en Home Assistant"
         }
       }
     },
     "error": {
-      "cannot_connect": "No se pudo conectar al servidor de Smart Finance",
+      "cannot_connect": "No se pudo conectar al servidor de HomeLedger",
       "invalid_auth": "API key inválida o sin permisos",
       "unknown": "Error inesperado"
     },
     "abort": {
-      "already_configured": "Esta instancia de Smart Finance ya está configurada"
+      "already_configured": "Esta instancia de HomeLedger ya está configurada"
     }
   },
   "entity": {
@@ -67,7 +67,7 @@
   "services": {
     "create_transaction": {
       "name": "Crear Transacción",
-      "description": "Crea una nueva transacción en Smart Finance",
+      "description": "Crea una nueva transacción en HomeLedger",
       "fields": {
         "name": {
           "name": "Nombre",
@@ -111,7 +111,7 @@
     },
     "refresh_data": {
       "name": "Actualizar Datos",
-      "description": "Fuerza una actualización de los datos desde Smart Finance"
+      "description": "Fuerza una actualización de los datos desde HomeLedger"
     }
   }
 }

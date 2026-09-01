@@ -1,7 +1,7 @@
-"""Constants for the Smart Finance integration."""
+"""Constants for the HomeLedger integration."""
 
-DOMAIN = "smart_finance"
-MANUFACTURER = "Smart Finance"
+DOMAIN = "homeledger"
+MANUFACTURER = "HomeLedger"
 
 # Configuration
 CONF_API_URL = "api_url"

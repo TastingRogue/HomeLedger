@@ -399,11 +399,6 @@ or both:
   HomeLedger instance and exposes your finances as HA **sensors, binary
   sensors and services** for dashboards and automations.
 
-> [!NOTE]
-> The add-on and integration currently register under the legacy name/domain
-> **`smart_finance`** (panel title "Smart Finance"). Functionality is
-> unaffected; only the display name differs from "HomeLedger".
-
 ### Option A — Add-on (run the app inside Home Assistant)
 
 Requires Home Assistant OS or Supervised (the Supervisor must be available).
@@ -416,7 +411,7 @@ Requires Home Assistant OS or Supervised (the Supervisor must be available).
      https://github.com/TastingRogue/HomeLedger
      ```
    - Click **Add**, then close the dialog.
-2. **Install** — find **Smart Finance** in the store and click **Install** (the
+2. **Install** — find **HomeLedger** in the store and click **Install** (the
    image is multi-arch: `amd64`, `aarch64`, `armv7`).
 3. **Configure** — open the add-on's **Configuration** tab and set at least:
 
@@ -424,7 +419,7 @@ Requires Home Assistant OS or Supervised (the Supervisor must be available).
    |--------|----------|-------|
    | `JWT_SECRET` | **Yes** | Min 32 chars; use a strong random value |
    | `ADMIN_PASSWORD` | **Yes** | Password for the initial admin user |
-   | `ADMIN_EMAIL` | No | Defaults to `admin@smartfinance.local` |
+   | `ADMIN_EMAIL` | No | Defaults to `admin@homeledger.local` |
    | `TZ` | No | Defaults to `America/Mexico_City` |
 
 4. **Start** — go to the **Info** tab and click **Start**. Enable **Show in
@@ -448,10 +443,10 @@ locally every 5 minutes (no cloud).
    - In HACS, open the **⋮** menu → **Custom repositories**.
    - Repository: `https://github.com/TastingRogue/HomeLedger`
    - Category: **Integration** → **Add**.
-2. **Install** the *Smart Finance* integration from HACS, then **restart Home
+2. **Install** the *HomeLedger* integration from HACS, then **restart Home
    Assistant**.
 3. **Add the integration** — go to **Settings → Devices & Services → Add
-   Integration**, search for **Smart Finance**, and fill in:
+   Integration**, search for **HomeLedger**, and fill in:
    - **API URL** — e.g. `http://<HA_IP>:3000` (add-on) or your instance URL.
    - **API key** — the key generated in HomeLedger.
    - **Name** *(optional)* — a friendly label.
@@ -470,9 +465,9 @@ locally every 5 minutes (no cloud).
 
 | Service | Purpose |
 |---------|---------|
-| `smart_finance.create_transaction` | Create an income/expense (name, amount, type, account_id, category_id) |
-| `smart_finance.create_quick_expense` | Quick expense (amount, account_id, category_id) |
-| `smart_finance.refresh_data` | Force a data refresh |
+| `homeledger.create_transaction` | Create an income/expense (name, amount, type, account_id, category_id) |
+| `homeledger.create_quick_expense` | Quick expense (amount, account_id, category_id) |
+| `homeledger.refresh_data` | Force a data refresh |
 
 Example: notify when a subscription payment is due soon, or when credit
 utilization is high, using the binary sensors as automation triggers.

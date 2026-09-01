@@ -1,8 +1,8 @@
-# Smart Finance - Add-on para Home Assistant
+# HomeLedger - Add-on para Home Assistant
 
 ## Descripción
 
-Smart Finance es una aplicación de gestión de finanzas personales auto-hospedada que se integra con Home Assistant como add-on. Permite controlar cuentas bancarias, transacciones, presupuestos, suscripciones y metas de ahorro directamente desde tu instancia de HA.
+HomeLedger es una aplicación de gestión de finanzas personales auto-hospedada que se integra con Home Assistant como add-on. Permite controlar cuentas bancarias, transacciones, presupuestos, suscripciones y metas de ahorro directamente desde tu instancia de HA.
 
 ## Instalación
 
@@ -17,11 +17,11 @@ Smart Finance es una aplicación de gestión de finanzas personales auto-hospeda
    - Ve a **Configuración → Add-ons → Tienda de Add-ons**
    - Haz clic en el menú (⋮) en la esquina superior derecha
    - Selecciona **Repositorios**
-   - Agrega la URL del repositorio: `https://github.com/smart-finance/ha-addon`
+   - Agrega la URL del repositorio: `https://github.com/TastingRogue/HomeLedger`
    - Haz clic en **Agregar**
 
 2. **Instalar el add-on:**
-   - Busca "Smart Finance" en la tienda de add-ons
+   - Busca "HomeLedger" en la tienda de add-ons
    - Haz clic en **Instalar**
    - Espera a que se complete la descarga
 
@@ -41,7 +41,7 @@ Smart Finance es una aplicación de gestión de finanzas personales auto-hospeda
 |--------|-------------|-----------|-------------------|
 | `TZ` | Zona horaria | No | `America/Mexico_City` |
 | `JWT_SECRET` | Clave secreta para tokens JWT (mínimo 32 caracteres) | **Sí** | — |
-| `ADMIN_EMAIL` | Correo del usuario administrador | No | `admin@smartfinance.local` |
+| `ADMIN_EMAIL` | Correo del usuario administrador | No | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Contraseña del administrador | **Sí** | — |
 
 ### Ejemplo de configuración
@@ -49,7 +49,7 @@ Smart Finance es una aplicación de gestión de finanzas personales auto-hospeda
 ```yaml
 TZ: "America/Mexico_City"
 JWT_SECRET: "tu-clave-secreta-muy-segura-de-al-menos-32-caracteres"
-ADMIN_EMAIL: "admin@smartfinance.local"
+ADMIN_EMAIL: "admin@homeledger.local"
 ADMIN_PASSWORD: "una-contraseña-segura"
 ```
 
@@ -57,20 +57,20 @@ ADMIN_PASSWORD: "una-contraseña-segura"
 
 ### Acceso a la interfaz
 
-Una vez iniciado el add-on, puedes acceder a Smart Finance de dos formas:
+Una vez iniciado el add-on, puedes acceder a HomeLedger de dos formas:
 
-1. **Desde la barra lateral de HA:** Si activaste "Mostrar en la barra lateral", haz clic en el ícono de Smart Finance
+1. **Desde la barra lateral de HA:** Si activaste "Mostrar en la barra lateral", haz clic en el ícono de HomeLedger
 2. **Vía puerto directo:** Abre `http://TU_IP_HA:3000` en tu navegador
 
 ### Primer inicio de sesión
 
-1. Abre la interfaz de Smart Finance
+1. Abre la interfaz de HomeLedger
 2. Inicia sesión con el correo y contraseña configurados en las opciones del add-on
 3. Comienza a agregar tus cuentas y transacciones
 
 ## Persistencia de datos
 
-Los datos de Smart Finance se almacenan en `/data` dentro del contenedor, que está mapeado al almacenamiento persistente de Home Assistant. Esto significa que:
+Los datos de HomeLedger se almacenan en `/data` dentro del contenedor, que está mapeado al almacenamiento persistente de Home Assistant. Esto significa que:
 
 - Los datos sobreviven reinicios del add-on
 - Los datos se incluyen en los respaldos de Home Assistant
@@ -78,7 +78,7 @@ Los datos de Smart Finance se almacenan en `/data` dentro del contenedor, que es
 
 ## Integración con Home Assistant
 
-Para obtener sensores financieros en HA (balance de cuentas, gastos mensuales, alertas, etc.), instala también la **integración personalizada Smart Finance** disponible vía HACS. La integración se comunica con el add-on vía API REST interna.
+Para obtener sensores financieros en HA (balance de cuentas, gastos mensuales, alertas, etc.), instala también la **integración personalizada HomeLedger** disponible vía HACS. La integración se comunica con el add-on vía API REST interna.
 
 ## Solución de problemas
 

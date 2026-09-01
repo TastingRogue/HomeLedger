@@ -1,4 +1,4 @@
-"""Smart Finance integration for Home Assistant."""
+"""HomeLedger integration for Home Assistant."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
-from .coordinator import SmartFinanceCoordinator
+from .coordinator import HomeLedgerCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Smart Finance from a config entry."""
-    coordinator = SmartFinanceCoordinator(hass, entry)
+    """Set up HomeLedger from a config entry."""
+    coordinator = HomeLedgerCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
@@ -42,8 +42,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_setup_services(hass: HomeAssistant, coordinator: SmartFinanceCoordinator) -> None:
-    """Set up Smart Finance services."""
+async def async_setup_services(hass: HomeAssistant, coordinator: HomeLedgerCoordinator) -> None:
+    """Set up HomeLedger services."""
     from .services import async_register_services
 
     await async_register_services(hass, coordinator)

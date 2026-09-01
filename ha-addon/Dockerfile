@@ -1,12 +1,12 @@
-# Smart Finance - Home Assistant Add-on Dockerfile
-# Extends the main Smart Finance image for HA Supervisor compatibility
+# HomeLedger - Home Assistant Add-on Dockerfile
+# Extends the main HomeLedger image for HA Supervisor compatibility
 
-ARG BUILD_FROM=ghcr.io/smart-finance/smart-finance:latest
+ARG BUILD_FROM=docker.io/irving1flores/homeledger:latest
 FROM ${BUILD_FROM}
 
 # Add labels for HA Add-on
 LABEL \
-  io.hass.name="Smart Finance" \
+  io.hass.name="HomeLedger" \
   io.hass.description="Gestión de finanzas personales auto-hospedada" \
   io.hass.version="0.1.0" \
   io.hass.type="addon" \

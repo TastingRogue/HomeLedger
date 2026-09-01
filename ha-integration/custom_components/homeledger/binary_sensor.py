@@ -1,4 +1,4 @@
-"""Binary sensor platform for Smart Finance."""
+"""Binary sensor platform for HomeLedger."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import SmartFinanceCoordinator
+from .coordinator import HomeLedgerCoordinator
 
 BINARY_SENSOR_DESCRIPTIONS = [
     {
@@ -51,27 +51,27 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Smart Finance binary sensors from a config entry."""
-    coordinator: SmartFinanceCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up HomeLedger binary sensors from a config entry."""
+    coordinator: HomeLedgerCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [
-        SmartFinanceBinarySensor(coordinator, entry, description)
+        HomeLedgerBinarySensor(coordinator, entry, description)
         for description in BINARY_SENSOR_DESCRIPTIONS
     ]
 
     async_add_entities(entities)
 
 
-class SmartFinanceBinarySensor(
-    CoordinatorEntity[SmartFinanceCoordinator], BinarySensorEntity
+class HomeLedgerBinarySensor(
+    CoordinatorEntity[HomeLedgerCoordinator], BinarySensorEntity
 ):
-    """Representation of a Smart Finance binary sensor."""
+    """Representation of a HomeLedger binary sensor."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: SmartFinanceCoordinator,
+        coordinator: HomeLedgerCoordinator,
         entry: ConfigEntry,
         description: dict,
     ) -> None:
@@ -85,7 +85,7 @@ class SmartFinanceBinarySensor(
         self._attr_device_class = description["device_class"]
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": "Smart Finance",
+            "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
             "sw_version": "1.0.0",

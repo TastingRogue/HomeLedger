@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for Smart Finance."""
+"""DataUpdateCoordinator for HomeLedger."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from .const import CONF_API_KEY, CONF_API_URL, DEFAULT_SCAN_INTERVAL, DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 
-class SmartFinanceCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Coordinator to fetch data from Smart Finance API."""
+class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Coordinator to fetch data from HomeLedger API."""
 
     config_entry: ConfigEntry
 
@@ -35,7 +35,7 @@ class SmartFinanceCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from Smart Finance API."""
+        """Fetch data from HomeLedger API."""
         try:
             async with aiohttp.ClientSession() as session:
                 headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -65,7 +65,7 @@ class SmartFinanceCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         account_id: int,
         category_id: int,
     ) -> dict[str, Any]:
-        """Create a transaction via the Smart Finance API."""
+        """Create a transaction via the HomeLedger API."""
         async with aiohttp.ClientSession() as session:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
@@ -97,7 +97,7 @@ class SmartFinanceCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         account_id: int,
         category_id: int,
     ) -> dict[str, Any]:
-        """Create a quick expense via the Smart Finance API."""
+        """Create a quick expense via the HomeLedger API."""
         async with aiohttp.ClientSession() as session:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
