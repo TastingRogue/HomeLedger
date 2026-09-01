@@ -94,6 +94,38 @@
   --color-primary-dark: var(--color-primary-hover);
 }
 
+/* ═══════════════════════════════════════════
+   LIGHT THEME
+   Overrides only the surface/text/border/shadow tokens; the accent hues stay
+   the same so charts and status colors remain consistent across themes.
+   Activated by setTheme('light') which sets data-theme="light" on <html>.
+   ═══════════════════════════════════════════ */
+:root[data-theme='light'] {
+  /* ─── Backgrounds ─── */
+  --bg-deep: #f1f4f9;
+  --bg-default: #f7f9fc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f2f5fa;
+  --bg-hover: #e9eef5;
+  --bg-card: #ffffff;
+
+  /* ─── Text ─── */
+  --text-primary: #0f1a2a;
+  --text-secondary: #475569;
+  --text-muted: #7688a0;
+  --text-link: #2563eb;
+
+  /* ─── Borders ─── */
+  --border-default: #dbe3ee;
+  --border-subtle: #e8edf4;
+
+  /* ─── Shadows (softer on light) ─── */
+  --shadow-sm: 0 1px 3px rgba(15, 26, 42, 0.08);
+  --shadow-md: 0 4px 12px rgba(15, 26, 42, 0.10);
+  --shadow-lg: 0 8px 24px rgba(15, 26, 42, 0.12);
+  --shadow-card: 0 2px 8px rgba(15, 26, 42, 0.06);
+}
+
 /* ─── Reset ─── */
 *,
 *::before,
@@ -106,6 +138,10 @@
 html {
   font-size: clamp(15px, 1.1vw, 20px);
   color-scheme: dark;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
 }
 
 @media (min-width: 1400px) {
@@ -209,17 +245,17 @@ button:disabled {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2a3a;
+  background: var(--border-default);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2d3f55;
+  background: var(--bg-hover);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e2a3a transparent;
+  scrollbar-color: var(--border-default) transparent;
 }
 
 /* ─── Selection ─── */

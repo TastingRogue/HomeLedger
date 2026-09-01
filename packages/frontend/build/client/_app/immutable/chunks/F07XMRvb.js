@@ -1,1 +1,0 @@
-import{w as n}from"./BVLcRTIc.js";const r=n(null);async function s(){try{const t=typeof window<"u"?localStorage.getItem("sf_access_token"):null;if(!t)return;const a=await fetch("/api/v1/auth/me",{headers:{Authorization:`Bearer ${t}`}});if(!a.ok)return;const o=await a.json(),e=o.data??o;r.set({id:e.id,name:e.name,email:e.email,role:e.role})}catch{}}export{s as l,r as u};

@@ -5,6 +5,7 @@
   import Dropdown from '$lib/components/Dropdown.svelte';
   import { get } from 'svelte/store';
   import { preferences, setLocale, setCurrency, currencyConfig, type SupportedCurrency, type SupportedLocale } from '$lib/stores/preferences';
+  import { theme, setTheme, type Theme } from '$lib/stores/theme';
   import { t } from '$lib/i18n';
 
   // User profile
@@ -37,12 +38,17 @@
   // clobber the saved locale/currency when the page mounts.
   let selectedCurrency = $state<SupportedCurrency>(get(preferences).currency);
   let selectedLocale = $state<SupportedLocale>(get(preferences).locale);
+  let selectedTheme = $state<Theme>(get(theme));
 
   const currencyOptions: { value: SupportedCurrency; label: string }[] = Object.entries(currencyConfig).map(([k, v]) => ({ value: k as SupportedCurrency, label: `${v.symbol} — ${v.name}` }));
   const localeOptions = [
     { value: 'es' as SupportedLocale, label: 'Español' },
     { value: 'en' as SupportedLocale, label: 'English (US)' },
   ];
+  const themeOptions = $derived([
+    { value: 'dark' as Theme, label: $t('settings.theme_dark') },
+    { value: 'light' as Theme, label: $t('settings.theme_light') },
+  ]);
 
   async function loadProfile() {
     profileLoading = true;
@@ -116,6 +122,10 @@
 
   $effect(() => {
     setLocale(selectedLocale);
+  });
+
+  $effect(() => {
+    setTheme(selectedTheme);
   });
 
   onMount(() => {
@@ -206,7 +216,7 @@
                 <span class="pref-label">{$t('settings.theme')}</span>
                 <span class="pref-desc">{$t('settings.theme_desc')}</span>
               </div>
-              <span class="pref-value">{$t('settings.theme_dark')}</span>
+              <Dropdown bind:value={selectedTheme} options={themeOptions} />
             </div>
           </div>
         {/if}

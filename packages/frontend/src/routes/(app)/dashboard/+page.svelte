@@ -11,6 +11,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { t } from '$lib/i18n';
   import { preferences } from '$lib/stores/preferences';
+  import { theme, setTheme } from '$lib/stores/theme';
   import { userProfile } from '$lib/stores/user';
 
   // Localized short month names for chart labels/date ranges (follows app language).
@@ -666,10 +667,23 @@
     </div>
     <div class="header-right">
       <span class="date-range">{getDateRange()}</span>
-      <button class="header-btn">⚙️ {$t('dashboard.customize')}</button>
-      <div class="theme-toggle">
-        <span class="theme-icon active">🌙</span>
-        <span class="theme-icon">☀️</span>
+      <div class="theme-toggle" role="group" aria-label={$t('settings.theme')}>
+        <button
+          type="button"
+          class="theme-icon"
+          class:active={$theme === 'dark'}
+          aria-pressed={$theme === 'dark'}
+          title={$t('settings.theme_dark')}
+          onclick={() => setTheme('dark')}
+        >🌙</button>
+        <button
+          type="button"
+          class="theme-icon"
+          class:active={$theme === 'light'}
+          aria-pressed={$theme === 'light'}
+          title={$t('settings.theme_light')}
+          onclick={() => setTheme('light')}
+        >☀️</button>
       </div>
     </div>
   </header>
@@ -1293,10 +1307,9 @@
   .greeting-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
   .header-right { display: flex; align-items: center; gap: 0.5rem; }
   .date-range { font-size: 0.72rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); }
-  .header-btn { font-size: 0.72rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.35rem 0.65rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); cursor: pointer; }
-  .header-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
   .theme-toggle { display: flex; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
-  .theme-icon { padding: 0.3rem 0.5rem; font-size: 0.8rem; cursor: pointer; opacity: 0.5; }
+  .theme-icon { padding: 0.3rem 0.5rem; font-size: 0.8rem; cursor: pointer; opacity: 0.5; background: none; border: none; line-height: 1; transition: opacity 0.15s, background 0.15s; }
+  .theme-icon:hover { opacity: 0.8; }
   .theme-icon.active { opacity: 1; background: var(--bg-hover); }
 
   /* SUMMARY CARDS */
