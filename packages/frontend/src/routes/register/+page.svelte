@@ -114,14 +114,16 @@
 
 <style>
   .register-container {
-    width: 100%; max-width: 360px; margin: 0 auto;
+    /* widened from 360px for a less cramped card */
+    width: 100%; max-width: 440px; margin: 0 auto;
     display: flex; align-items: center; justify-content: center;
     min-height: 100vh; min-height: 100dvh; padding: var(--spacing-md);
   }
 
   .register-card {
-    width: 100%; padding: 1.5rem; border-radius: var(--radius-lg);
+    width: 100%; padding: 2rem; border-radius: var(--radius-lg);
     background: var(--bg-surface); border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-lg);
   }
 
   .brand-mark {

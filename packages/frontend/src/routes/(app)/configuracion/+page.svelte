@@ -3,6 +3,7 @@
   import { apiGet, apiPut, apiPost } from '$lib/api/client';
   import Icon from '$lib/components/Icon.svelte';
   import Dropdown from '$lib/components/Dropdown.svelte';
+  import { get } from 'svelte/store';
   import { preferences, setLocale, setCurrency, currencyConfig, type SupportedCurrency, type SupportedLocale } from '$lib/stores/preferences';
   import { t } from '$lib/i18n';
 
@@ -31,9 +32,11 @@
   // Active tab
   let activeTab = $state('perfil');
 
-  // Preferences (reactive)
-  let selectedCurrency = $state<SupportedCurrency>('MXN');
-  let selectedLocale = $state<SupportedLocale>('es');
+  // Preferences (reactive). Initialize synchronously from the persisted store
+  // so the sync $effect below never fires with a stale default that would
+  // clobber the saved locale/currency when the page mounts.
+  let selectedCurrency = $state<SupportedCurrency>(get(preferences).currency);
+  let selectedLocale = $state<SupportedLocale>(get(preferences).locale);
 
   const currencyOptions: { value: SupportedCurrency; label: string }[] = Object.entries(currencyConfig).map(([k, v]) => ({ value: k as SupportedCurrency, label: `${v.symbol} — ${v.name}` }));
   const localeOptions = [
@@ -117,12 +120,6 @@
 
   onMount(() => {
     loadProfile();
-    // Load current preferences
-    const unsub = preferences.subscribe(p => {
-      selectedCurrency = p.currency;
-      selectedLocale = p.locale;
-    });
-    return unsub;
   });
 </script>
 

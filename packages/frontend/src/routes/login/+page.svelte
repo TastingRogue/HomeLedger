@@ -139,7 +139,8 @@
 
 <style>
   .login-container {
-    width: 100%; max-width: 360px; margin: 0 auto;
+    /* widened from 360px for a less cramped card */
+    width: 100%; max-width: 440px; margin: 0 auto;
     display: flex; align-items: center; justify-content: center;
     min-height: 100vh; min-height: 100dvh; padding: var(--spacing-md);
   }
