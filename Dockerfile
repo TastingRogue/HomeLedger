@@ -49,6 +49,14 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV DATA_DIR=/data
 
+# Default runtime config so the image runs out of the box (e.g. Docker Desktop
+# "Run" with no extra settings): it boots, creates an admin user and lets you
+# log in. These are INSECURE demo defaults — override them in production via
+# `-e JWT_SECRET=... -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=...`.
+ENV JWT_SECRET=insecure-dev-secret-change-me-min-32-characters-long
+ENV ADMIN_EMAIL=admin@homeledger.local
+ENV ADMIN_PASSWORD=changeme123
+
 RUN mkdir -p /data
 
 EXPOSE 3000

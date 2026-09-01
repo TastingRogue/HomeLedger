@@ -102,6 +102,18 @@ docker run -d \
 # App + API available at http://localhost:3000
 ```
 
+> **Zero-config quick start.** The image ships with built-in demo defaults, so
+> it also runs by just pressing **Run** in Docker Desktop (or `docker run -P`)
+> without setting any variables. It boots, creates an admin user and lets you
+> log in with:
+>
+> - **Email:** `admin@homeledger.local`
+> - **Password:** `changeme123`
+>
+> :warning: **These defaults are insecure and public.** For any real
+> deployment, override `JWT_SECRET`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` with
+> the `-e` flags shown above.
+
 **Option 2 — Build from source with Docker Compose**
 
 ```bash
@@ -117,12 +129,17 @@ docker compose up -d
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | — (required) |
-| `ADMIN_EMAIL` | Admin user email | `admin@smartfinance.local` |
-| `ADMIN_PASSWORD` | Admin password | — |
+The Docker image ships with insecure demo defaults so it runs out of the box.
+Override these in production.
+
+| Variable | Description | Default (Docker image) |
+|----------|-------------|------------------------|
+| `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | insecure demo value — **change in production** |
+| `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
+| `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
 | `TZ` | Timezone | `America/Mexico_City` |
+| `PORT` | Server port (app + API) | `3000` |
+| `DATA_DIR` | Directory for the SQLite database | `/data` |
 | `DATA_DIR` | Directory for SQLite database | `./data` |
 | `PORT` | Server port | `3000` |
 
