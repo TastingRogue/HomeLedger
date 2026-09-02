@@ -85,6 +85,28 @@ The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
 - [ ] Byte-level parity check between `es.ts` and `en.ts`
 - [ ] Fix stray hardcoded strings (e.g. `recibos/+page.svelte` `<title>`, `register/+page.svelte` password placeholder)
 
+### P1.4b — Standardize i18n so new languages are easy to add
+Adding a language today means editing several hardcoded spots. Refactor to a
+single **language registry** so a new language = one dictionary file + one
+registry entry, with type-safety and no hardcoded fallbacks.
+
+Current friction (all must be removed):
+- `SupportedLocale` is a hardcoded union `'es' | 'en'` in `packages/frontend/src/lib/stores/preferences.ts`
+- The dictionaries map `{ es, en }` is hardcoded in `packages/frontend/src/lib/i18n/index.ts`
+- Fallback is hardcoded to `es` in two places in `index.ts` (`?? dictionaries.es[key]`, `?? dictionaries.es`)
+- No enforced key parity between dictionaries (we've been counting keys manually)
+- Locale options hardcoded in the Settings dropdown; calendar/currency locale tags mapped ad-hoc
+
+Tasks:
+- [ ] Create a language registry (e.g. `i18n/languages.ts`) where each language declares `{ code, label, dictionary, dateLocale }`
+- [ ] Derive `SupportedLocale` from the registry keys (no hand-maintained union)
+- [ ] Build the `dictionaries` map and the Settings dropdown options from the registry (no hardcoded lists)
+- [ ] Make the base/reference dictionary (English) the single source of truth; type the other dictionaries so **missing keys are a compile error** (enforced parity)
+- [ ] Replace hardcoded `es` fallbacks with the configured default → English chain (ties into P1.5)
+- [ ] Derive the calendar/`Intl` locale tag from the registry instead of the ad-hoc `es === 'en' ? 'en-US' : 'es-MX'` logic in `DatePicker.svelte`
+- [ ] Document "how to add a language" in the README/CONTRIBUTING (one file + one registry line)
+- [ ] Verify: adding a throwaway 3rd language works end to end with only a dictionary + registry entry
+
 ### P1.6 — Better-defined, localized system categories
 Today `packages/backend/src/db/seed.ts` seeds a fixed set of **Spanish-only**,
 **global** (`userId: null`, `isSystem: true`) system categories from a legacy
