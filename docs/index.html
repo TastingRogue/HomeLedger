@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>HomeLedger — Self-Hosted Personal Finance Manager &amp; Expense Tracker</title>
+  <meta name="description" content="HomeLedger is a free, open-source, self-hosted personal finance manager and expense tracker. Track accounts, budgets, savings goals, subscriptions and net worth. Runs on Docker with a Home Assistant add-on." />
+  <meta name="keywords" content="self-hosted personal finance, expense tracker, budgeting app, money manager, open source finance, self-hosted budget, home assistant finance, docker finance app, mint alternative, ynab alternative, homelab" />
+  <meta name="author" content="TastingRogue" />
+  <link rel="canonical" href="https://tastingrogue.github.io/HomeLedger/" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#0f1720" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="HomeLedger" />
+  <meta property="og:title" content="HomeLedger — Self-Hosted Personal Finance Manager" />
+  <meta property="og:description" content="Free, open-source, self-hosted expense tracker and budgeting app. Accounts, budgets, goals, subscriptions and net worth. Docker + Home Assistant." />
+  <meta property="og:url" content="https://tastingrogue.github.io/HomeLedger/" />
+  <meta property="og:image" content="https://raw.githubusercontent.com/TastingRogue/HomeLedger/main/docs/screenshots/dashboard.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HomeLedger — Self-Hosted Personal Finance Manager" />
+  <meta name="twitter:description" content="Free, open-source, self-hosted expense tracker and budgeting app. Docker + Home Assistant." />
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/TastingRogue/HomeLedger/main/docs/screenshots/dashboard.png" />
+
+  <!-- Structured data: software application -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "HomeLedger",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Docker, Linux, Home Assistant",
+    "description": "Self-hosted personal finance manager and expense tracker with budgets, savings goals, subscriptions, net worth, a Home Assistant add-on and Docker deployment.",
+    "url": "https://github.com/TastingRogue/HomeLedger",
+    "license": "https://opensource.org/licenses/MIT",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0f1720; --surface: #131a24; --elevated: #1a2332;
+      --text: #f1f5f9; --muted: #94a3b8; --border: #1e2a3a;
+      --accent: #3b82f6; --accent2: #8b5cf6; --green: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.6;
+    }
+    a { color: #60a5fa; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
+    header { text-align: center; padding: 4rem 1.25rem 2.5rem; }
+    .logo {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      font-weight: 800; font-size: 1.4rem; color: #fff; margin-bottom: 1rem;
+    }
+    h1 { font-size: 2.4rem; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+    .tagline { font-size: 1.15rem; color: var(--muted); max-width: 640px; margin: 0 auto 1.75rem; }
+    .cta { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 0.7rem 1.3rem; border-radius: 10px;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--elevated); color: var(--text); border: 1px solid var(--border); }
+    section { padding: 2.5rem 0; border-top: 1px solid var(--border); }
+    h2 { font-size: 1.5rem; margin: 0 0 1.25rem; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.2rem;
+    }
+    .card h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+    figure { margin: 0 0 1.5rem; }
+    figure img {
+      width: 100%; border-radius: 12px; border: 1px solid var(--border); display: block;
+    }
+    figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; text-align: center; }
+    pre {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem; overflow-x: auto; font-size: 0.85rem;
+    }
+    code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    .note { color: var(--muted); font-size: 0.85rem; }
+    footer { text-align: center; padding: 2.5rem 1.25rem; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="logo">HL</div>
+      <h1>HomeLedger</h1>
+      <p class="tagline">
+        A free, open-source, <strong>self-hosted personal finance manager</strong> and
+        expense tracker. Own your financial data — track accounts, budgets, savings
+        goals, subscriptions and net worth on your own server.
+      </p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/TastingRogue/HomeLedger">View on GitHub</a>
+        <a class="btn btn-secondary" href="https://hub.docker.com/r/irving1flores/homeledger">Docker Hub</a>
+        <a class="btn btn-secondary" href="https://github.com/TastingRogue/HomeLedger#quick-start">Quick Start</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Own your finances</h2>
+      <p>
+        HomeLedger is a privacy-friendly, open-source alternative to cloud finance apps
+        like Mint, YNAB or Monarch. It runs anywhere Docker runs — a home server, VPS,
+        NAS, homelab or Raspberry Pi — and optionally plugs into
+        <strong>Home Assistant</strong> as an add-on and HACS integration so your money
+        data can power dashboards and automations. The interface is bilingual
+        (English / Spanish) with multi-currency support.
+      </p>
+    </section>
+
+    <section id="features">
+      <h2>Features</h2>
+      <div class="features">
+        <div class="card"><h3>Accounts</h3><p>Debit, credit, investment, cash and vouchers with dynamic balances and credit utilization.</p></div>
+        <div class="card"><h3>Transactions</h3><p>Income and expense tracking with month grouping, card and table views, and filtering.</p></div>
+        <div class="card"><h3>Budgets</h3><p>Category budgets with allocation-vs-spent progress and dashboard integration.</p></div>
+        <div class="card"><h3>Savings goals</h3><p>Wishlist and debt goals with fund / withdraw actions and progress tracking.</p></div>
+        <div class="card"><h3>Subscriptions</h3><p>Recurring payments with auto-charge and a calendar view.</p></div>
+        <div class="card"><h3>Net worth</h3><p>Manual assets and liabilities on top of account balances, with history.</p></div>
+        <div class="card"><h3>Receipts &amp; OCR</h3><p>Upload receipts/invoices, analyze them and link them to transactions.</p></div>
+        <div class="card"><h3>Bank import</h3><p>CSV / XLSX / OFX / QIF / JSON with parsers for BBVA, Santander and Nu.</p></div>
+        <div class="card"><h3>Home Assistant</h3><p>Add-on plus HACS integration exposing finance sensors and services.</p></div>
+      </div>
+    </section>
+
+    <section id="screenshots">
+      <h2>Screenshots</h2>
+      <p class="note">All screenshots use generated demo data — no real financial information is shown.</p>
+      <figure>
+        <img src="screenshots/dashboard.png" alt="HomeLedger self-hosted personal finance dashboard showing net worth, income vs expenses, accounts, budgets and goals" loading="lazy" />
+        <figcaption>Dashboard — a full overview of your finances</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/transactions.png" alt="HomeLedger expense tracker transactions view grouped by month" loading="lazy" />
+        <figcaption>Transactions — income and expenses grouped by month</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/budgets.png" alt="HomeLedger budgeting app with per-category budget progress bars" loading="lazy" />
+        <figcaption>Budgets — allocation vs. spent, per category</figcaption>
+      </figure>
+    </section>
+
+    <section id="quick-start">
+      <h2>Quick start with Docker</h2>
+      <pre><code>docker run -d \
+  -p 3000:3000 \
+  -v homeledger-data:/data \
+  -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
+  --name homeledger \
+  irving1flores/homeledger:latest</code></pre>
+      <p class="note">
+        App and API are served on port 3000. See the
+        <a href="https://github.com/TastingRogue/HomeLedger#docker-recommended-for-production">full Docker guide</a>
+        and the <a href="https://github.com/TastingRogue/HomeLedger#home-assistant">Home Assistant setup</a>.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      HomeLedger is open-source software released under the MIT license.
+      &nbsp;·&nbsp;
+      <a href="https://github.com/TastingRogue/HomeLedger">GitHub</a> ·
+      <a href="https://github.com/TastingRogue/HomeLedger/issues">Report an issue</a>
+    </p>
+  </footer>
+</body>
+</html>

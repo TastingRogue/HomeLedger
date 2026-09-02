@@ -2,7 +2,37 @@
   "name": "homeledger",
   "version": "0.1.0",
   "private": true,
-  "description": "HomeLedger - Self-hosted personal finance management application",
+  "description": "HomeLedger - self-hosted personal finance manager, expense tracker and budgeting app with a Home Assistant add-on. Runs on Docker.",
+  "homepage": "https://github.com/TastingRogue/HomeLedger#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TastingRogue/HomeLedger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TastingRogue/HomeLedger/issues"
+  },
+  "author": "TastingRogue",
+  "license": "MIT",
+  "keywords": [
+    "personal-finance",
+    "expense-tracker",
+    "budgeting",
+    "budget",
+    "money-manager",
+    "finance",
+    "self-hosted",
+    "selfhosted",
+    "homelab",
+    "home-assistant",
+    "hacs",
+    "docker",
+    "sveltekit",
+    "fastify",
+    "sqlite",
+    "typescript",
+    "mint-alternative",
+    "ynab-alternative"
+  ],
   "workspaces": [
     "packages/backend",
     "packages/frontend",

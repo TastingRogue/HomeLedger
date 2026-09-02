@@ -4,13 +4,15 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
 
-> Self-hosted personal finance management. Track accounts, transactions, budgets, goals, and subscriptions — all from your own server.
+> **HomeLedger** is a free, open-source, self-hosted personal finance manager — an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
 
 **[Screenshots](#screenshots)** · **[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Support the Project](#support-the-project)**
 
 ---
 
-Self-hosted personal finance management web application. Designed as a modular, open-source product that works completely independently. Optionally integrates with Home Assistant as an addon and custom integration.
+HomeLedger is a **self-hosted personal finance app** and **expense tracker** for people who want to own their financial data instead of trusting it to a cloud service. It's a privacy-friendly, open-source alternative to apps like Mint, YNAB or Monarch: track multiple bank accounts, log income and expenses, set category budgets, plan savings goals, manage recurring subscriptions and monitor your net worth — all from a single self-hosted web app.
+
+It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS custom integration, so your finances can drive dashboards and automations. Bilingual interface (English / Spanish) and multi-currency support are built in.
 
 ## Screenshots
 
