@@ -51,7 +51,7 @@ HACS integration.
   and services (`homeledger.create_transaction`, `homeledger.create_quick_expense`,
   `homeledger.refresh_data`) via local polling.
 - **Docker** — Self-contained image (app + API on port 3000) with zero-config
-  demo defaults; multi-arch (amd64 / arm64) images published to Docker Hub.
+  demo defaults; `linux/amd64` images published to Docker Hub. (arm64 planned.)
 
 ### Security
 

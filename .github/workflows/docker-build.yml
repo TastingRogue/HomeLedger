@@ -28,9 +28,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
@@ -63,7 +60,12 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          # amd64-only for now. arm64 (Raspberry Pi / Apple Silicon) via QEMU
+          # emulation is unreliable when compiling native modules (better-sqlite3)
+          # and can hang/crash the build. To add arm64 later, build it natively on
+          # GitHub arm64 runners (e.g. ubuntu-24.04-arm) with a per-arch matrix and
+          # merge into a multi-arch manifest, instead of QEMU.
+          platforms: linux/amd64
       
       - name: Docker Hub Description
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
