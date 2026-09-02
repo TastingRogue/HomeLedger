@@ -85,6 +85,43 @@ The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
 - [ ] Byte-level parity check between `es.ts` and `en.ts`
 - [ ] Fix stray hardcoded strings (e.g. `recibos/+page.svelte` `<title>`, `register/+page.svelte` password placeholder)
 
+### P1.6 — Better-defined, localized system categories
+Today `packages/backend/src/db/seed.ts` seeds a fixed set of **Spanish-only**,
+**global** (`userId: null`, `isSystem: true`) system categories from a legacy
+Notion export (`Comida`, `Compras`, `Corrección`, `Despensa`, `Dividendos`,
+`Educación`, `Entretenimiento`, `Gasolina`, `ISP`, `Limpieza`, `Luz`, `MX-5`,
+`Nómina`, `Préstamo`, `Renta`, `Salud`, `Telefonía`, `Transporte`, `Vales`).
+Problems: English users see Spanish names; the list contains personal/legacy
+junk (`MX-5`); and the rules engine depends on the magic name `Corrección` for
+uncategorized transactions.
+
+**Goal:** a clean, sensible default category set that appears in the user's
+language, chosen when the app/user is first set up, and English when nothing
+else applies.
+
+- [ ] Define a curated default category set (name + type Gasto/Ingreso/Ambos + suggested icon/color), with **English and Spanish** names; drop legacy junk like `MX-5`
+- [ ] Decide the mechanism (record the choice here):
+  - **Option A** — store a stable language-independent *key* per system category and translate the display name via `$t()` (works per-user, cleanest)
+  - **Option B** — on first setup / user registration, seed a **per-user** copy of the defaults in that user's chosen language
+- [ ] Replace the magic-string dependency on `Corrección` in the rules engine with a stable key/flag so it survives translation
+- [ ] Ensure the seed is idempotent and doesn't duplicate categories across languages
+- [ ] Migration/backfill plan for existing installs that already have the old Spanish global categories
+- [ ] i18n keys for all default category names (es/en parity)
+- [ ] Verify: first launch in English → English categories; in Spanish → Spanish; switching language behaves per the chosen option
+
+### P1.5 — Host-configurable default language
+Let the person deploying the app choose the default UI language; fall back to
+**English** when nothing is configured. Currently the fallback is hardcoded to
+Spanish in `packages/frontend/src/lib/stores/preferences.ts` (`loadFromStorage`
+returns `{ locale: 'es' }`), and there is no host-level setting.
+
+- [ ] Add a `DEFAULT_LOCALE` env var (backend), validated against `SupportedLocale`; default to `en` when unset/invalid
+- [ ] Expose the configured default to the frontend (e.g. small public endpoint or value injected at page load) so SSR and first paint use it
+- [ ] Change the preferences fallback chain to: **stored user choice → host `DEFAULT_LOCALE` → English (`en`)** (replace the hardcoded `'es'` default)
+- [ ] Do the same for the theme/pre-paint path so the login screen renders in the configured language before any user preference exists
+- [ ] Document `DEFAULT_LOCALE` in the README env table, `.env.example`, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
+- [ ] Verify: fresh install with no config → English; with `DEFAULT_LOCALE=es` → Spanish; a user's saved choice always wins
+
 ### P1.4 — Health & observability
 - [ ] Deepen `/api/v1/health` to include a DB connectivity check
 - [ ] Confirm consistent structured error responses across routes
