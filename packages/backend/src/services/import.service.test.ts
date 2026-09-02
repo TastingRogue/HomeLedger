@@ -123,7 +123,7 @@ describe('ImportService', () => {
     const account = db.insert(accounts).values({
       userId: testUserId,
       name: 'Santander',
-      type: 'D�bito',
+      type: 'Débito',
       initialBalance: 5000,
       currency: 'MXN',
       status: 'Activo',
@@ -135,7 +135,7 @@ describe('ImportService', () => {
     // Create test category (Correcci�n as default)
     const category = db.insert(categories).values({
       userId: testUserId,
-      name: 'Correcci�n',
+      name: 'Corrección',
       isSystem: true,
       createdAt: now,
     }).returning().get();

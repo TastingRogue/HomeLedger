@@ -1,7 +1,8 @@
 ﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { TransactionService, TransactionError } from './transaction.service.js';
+import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
-import { users, accounts, categories, transactions, transactionSplits } from '../db/schema.js';
+import { users, accounts, categories, transactions, transactionSplits, transfers } from '../db/schema.js';
 import { TransactionType } from '@smart-finance/shared';
 
 // Set test environment variables
@@ -79,6 +80,18 @@ describe('TransactionService', () => {
         amount REAL NOT NULL,
         note TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+        destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      );
     `);
   });
 
@@ -87,6 +100,7 @@ describe('TransactionService', () => {
     // Clean all tables before each test
     db.delete(transactionSplits).run();
     db.delete(transactions).run();
+    db.delete(transfers).run();
     db.delete(accounts).run();
     db.delete(categories).run();
     db.delete(users).run();
@@ -108,7 +122,7 @@ describe('TransactionService', () => {
     const account = db.insert(accounts).values({
       userId: testUserId,
       name: 'Santander',
-      type: 'D�bito',
+      type: 'Débito',
       initialBalance: 10000,
       status: 'Activo',
       currency: 'MXN',
@@ -154,9 +168,7 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('create()', () => {
-    it('debe crear una transacci�n de tipo Gasto y restar el monto del balance', () => {
-      const db = getDb();
-
+    it('debe crear una transacción de tipo Gasto y reflejarla en el balance calculado', async () => {
       const result = TransactionService.create(testUserId, {
         name: 'Almuerzo',
         accountId: testAccountId,
@@ -171,16 +183,14 @@ describe('TransactionService', () => {
       expect(result.amount).toBe(150.50);
       expect(result.type).toBe('Gasto');
 
-      // Verify balance was subtracted
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000 - 150.50, 2);
+      // Balances are computed dynamically; a Gasto reduces the computed balance.
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000 - 150.50, 2);
     });
 
-    it('debe crear una transacci�n de tipo Ingreso y sumar el monto al balance', () => {
-      const db = getDb();
-
+    it('debe crear una transacción de tipo Ingreso y reflejarla en el balance calculado', async () => {
       const result = TransactionService.create(testUserId, {
-        name: 'N�mina',
+        name: 'Nómina',
         accountId: testAccountId,
         categoryId: testCategoryId,
         amount: 25000.00,
@@ -191,9 +201,9 @@ describe('TransactionService', () => {
       expect(result).toBeDefined();
       expect(result.type).toBe('Ingreso');
 
-      // Verify balance was added
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000 + 25000, 2);
+      // Balances are computed dynamically; an Ingreso increases the computed balance.
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000 + 25000, 2);
     });
 
     it('debe lanzar error si la cuenta no existe', () => {
@@ -207,7 +217,7 @@ describe('TransactionService', () => {
       })).toThrow(TransactionError);
     });
 
-    it('debe lanzar error si la categor�a no existe', () => {
+    it('debe lanzar error si la categoría no existe', () => {
       expect(() => TransactionService.create(testUserId, {
         name: 'Test',
         accountId: testAccountId,
@@ -224,9 +234,7 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('update()', () => {
-    it('debe revertir el efecto anterior y aplicar el nuevo al cambiar monto', () => {
-      const db = getDb();
-
+    it('debe reflejar el nuevo monto en el balance calculado al actualizar', async () => {
       // Create initial transaction (Gasto 200)
       const tx = TransactionService.create(testUserId, {
         name: 'Uber',
@@ -236,7 +244,6 @@ describe('TransactionService', () => {
         type: TransactionType.Gasto,
         date: '2024-01-15T12:00:00',
       });
-      // Balance should be 10000 - 200 = 9800
 
       // Update amount to 300
       const updated = TransactionService.update(tx.id, testUserId, {
@@ -245,14 +252,12 @@ describe('TransactionService', () => {
 
       expect(updated!.amount).toBe(300.00);
 
-      // Balance should be: 9800 + 200 (revert) - 300 (new effect) = 9700
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000 - 300, 2);
+      // Computed balance reflects the new amount: 10000 - 300 = 9700
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000 - 300, 2);
     });
 
-    it('debe manejar cambio de tipo de Gasto a Ingreso', () => {
-      const db = getDb();
-
+    it('debe manejar cambio de tipo de Gasto a Ingreso', async () => {
       const tx = TransactionService.create(testUserId, {
         name: 'Reembolso',
         accountId: testAccountId,
@@ -261,19 +266,19 @@ describe('TransactionService', () => {
         type: TransactionType.Gasto,
         date: '2024-01-15T12:00:00',
       });
-      // Balance: 10000 - 500 = 9500
+      // As Gasto, computed balance would be 10000 - 500 = 9500
 
       // Change to Ingreso
       TransactionService.update(tx.id, testUserId, {
         type: TransactionType.Ingreso,
       });
 
-      // Balance: 9500 + 500 (revert Gasto) + 500 (apply Ingreso) = 10500
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000 + 500, 2);
+      // Now an Ingreso of 500: computed balance = 10000 + 500 = 10500
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000 + 500, 2);
     });
 
-    it('debe manejar cambio de cuenta asociada', () => {
+    it('debe manejar cambio de cuenta asociada', async () => {
       const db = getDb();
       const now = new Date().toISOString();
 
@@ -281,7 +286,7 @@ describe('TransactionService', () => {
       const account2 = db.insert(accounts).values({
         userId: testUserId,
         name: 'Nu',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 5000,
         status: 'Activo',
         currency: 'MXN',
@@ -298,23 +303,22 @@ describe('TransactionService', () => {
         type: TransactionType.Gasto,
         date: '2024-01-15T12:00:00',
       });
-      // Account 1 balance: 10000 - 300 = 9700
 
       // Move to second account
       TransactionService.update(tx.id, testUserId, {
         accountId: account2.id,
       });
 
-      // Account 1: 9700 + 300 (revert) = 10000
-      const acc1 = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(acc1!.initialBalance).toBeCloseTo(10000, 2);
+      // Account 1 no longer has the tx: computed balance back to 10000
+      const bal1 = await AccountService.calculateBalance(testAccountId);
+      expect(bal1).toBeCloseTo(10000, 2);
 
-      // Account 2: 5000 - 300 (apply Gasto to new) = 4700
-      const acc2 = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, account2.id)).get();
-      expect(acc2!.initialBalance).toBeCloseTo(4700, 2);
+      // Account 2 now carries the Gasto 300: 5000 - 300 = 4700
+      const bal2 = await AccountService.calculateBalance(account2.id);
+      expect(bal2).toBeCloseTo(4700, 2);
     });
 
-    it('debe lanzar error si la transacci�n no existe', () => {
+    it('debe lanzar error si la transacción no existe', () => {
       expect(() => TransactionService.update(99999, testUserId, {
         amount: 100.00,
       })).toThrow(TransactionError);
@@ -326,29 +330,25 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('delete()', () => {
-    it('debe revertir el efecto de un Gasto al eliminar', () => {
-      const db = getDb();
-
+    it('debe revertir el efecto de un Gasto al eliminar', async () => {
       const tx = TransactionService.create(testUserId, {
-        name: 'Caf�',
+        name: 'Café',
         accountId: testAccountId,
         categoryId: testCategoryId,
         amount: 85.00,
         type: TransactionType.Gasto,
         date: '2024-01-15T12:00:00',
       });
-      // Balance: 10000 - 85 = 9915
+      // With the Gasto, computed balance = 10000 - 85 = 9915
 
       TransactionService.delete(tx.id, testUserId);
 
-      // Balance should be restored: 9915 + 85 = 10000
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000, 2);
+      // After delete, the tx no longer counts: computed balance = 10000
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000, 2);
     });
 
-    it('debe revertir el efecto de un Ingreso al eliminar', () => {
-      const db = getDb();
-
+    it('debe revertir el efecto de un Ingreso al eliminar', async () => {
       const tx = TransactionService.create(testUserId, {
         name: 'Dividendo',
         accountId: testAccountId,
@@ -357,16 +357,16 @@ describe('TransactionService', () => {
         type: TransactionType.Ingreso,
         date: '2024-01-15T12:00:00',
       });
-      // Balance: 10000 + 1500 = 11500
+      // With the Ingreso, computed balance = 10000 + 1500 = 11500
 
       TransactionService.delete(tx.id, testUserId);
 
-      // Balance should be restored: 11500 - 1500 = 10000
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000, 2);
+      // After delete, the tx no longer counts: computed balance = 10000
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000, 2);
     });
 
-    it('debe lanzar error si la transacci�n no existe', () => {
+    it('debe lanzar error si la transacción no existe', () => {
       expect(() => TransactionService.delete(99999, testUserId)).toThrow(TransactionError);
     });
   });
@@ -413,7 +413,7 @@ describe('TransactionService', () => {
       expect(result.items[2]!.name).toBe('Tx1');
     });
 
-    it('debe filtrar por tipo de transacci�n', () => {
+    it('debe filtrar por tipo de transacción', () => {
       TransactionService.create(testUserId, {
         name: 'Gasto1',
         accountId: testAccountId,
@@ -466,7 +466,7 @@ describe('TransactionService', () => {
       expect(result.items[0]!.name).toBe('Febrero');
     });
 
-    it('debe respetar la paginaci�n', () => {
+    it('debe respetar la paginación', () => {
       for (let i = 1; i <= 5; i++) {
         TransactionService.create(testUserId, {
           name: `Tx${i}`,
@@ -496,7 +496,7 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('quickCreate()', () => {
-    it('debe usar el nombre de la categor�a como nombre de la transacci�n', () => {
+    it('debe usar el nombre de la categoría como nombre de la transacción', () => {
       const result = TransactionService.quickCreate(testUserId, {
         amount: 250.00,
         accountId: testAccountId,
@@ -531,9 +531,7 @@ describe('TransactionService', () => {
       expect(result.type).toBe('Gasto');
     });
 
-    it('debe actualizar el balance de la cuenta', () => {
-      const db = getDb();
-
+    it('debe reflejarse en el balance calculado de la cuenta', async () => {
       TransactionService.quickCreate(testUserId, {
         amount: 200.00,
         accountId: testAccountId,
@@ -541,8 +539,8 @@ describe('TransactionService', () => {
         type: TransactionType.Gasto,
       });
 
-      const account = db.select().from(accounts).where(require('drizzle-orm').eq(accounts.id, testAccountId)).get();
-      expect(account!.initialBalance).toBeCloseTo(10000 - 200, 2);
+      const balance = await AccountService.calculateBalance(testAccountId);
+      expect(balance).toBeCloseTo(10000 - 200, 2);
     });
   });
 
@@ -551,7 +549,7 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('split()', () => {
-    it('debe dividir una transacci�n en splits correctamente', () => {
+    it('debe dividir una transacción en splits correctamente', () => {
       const tx = TransactionService.create(testUserId, {
         name: 'Supermercado',
         accountId: testAccountId,
@@ -634,7 +632,7 @@ describe('TransactionService', () => {
   // =========================================
 
   describe('getById()', () => {
-    it('debe retornar la transacci�n con sus splits', () => {
+    it('debe retornar la transacción con sus splits', () => {
       const tx = TransactionService.create(testUserId, {
         name: 'Con Splits',
         accountId: testAccountId,
@@ -655,7 +653,7 @@ describe('TransactionService', () => {
       expect(result!.splits).toHaveLength(2);
     });
 
-    it('debe retornar null si la transacci�n no existe', () => {
+    it('debe retornar null si la transacción no existe', () => {
       const result = TransactionService.getById(99999, testUserId);
       expect(result).toBeNull();
     });

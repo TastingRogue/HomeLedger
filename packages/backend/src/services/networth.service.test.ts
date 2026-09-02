@@ -168,7 +168,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Santander',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -190,7 +190,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Inactiva',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 5000,
         status: 'Inactivo',
         currency: 'MXN',
@@ -239,7 +239,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Banco',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -468,7 +468,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Banco',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 25000,
         status: 'Activo',
         currency: 'MXN',

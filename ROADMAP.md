@@ -19,32 +19,49 @@ until it's verified (typecheck + build + test + Docker where relevant).
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **~31 failing** (balance-model assertions outdated) ⛔
+- Test suite: **410 passing, 0 failing** ✅ (P0.1 + P0.2 done on branch `p0-stability-blockers`)
 - Last audit: codebase-wide inventory completed (see phases below)
+- Next P0: P0.3 migrations/upgrade safety, P0.4 security hardening, P0.5 money floats
 
 ---
 
 ## Phase P0 — Blockers (must be done before 1.0.0)
 
-### P0.1 — Green test suite ⛔
-The tests must pass and reflect the real balance model (balances are computed
+### P0.1 — Green test suite ✅ (done)
+The tests now pass and reflect the real balance model (balances are computed
 dynamically in `AccountService.calculateBalance`; `TransactionService` never
-mutates `accounts.initialBalance`).
+mutates `accounts.initialBalance`). Went from 154 failing → **409 passing, 0 failing.**
 
-- [ ] Rewrite outdated assertions in `packages/backend/src/services/transaction.service.test.ts` (lines ~176, 196, 250, 273, 310, 314, 346, 366, 545) to assert the *computed* balance instead of stored `initialBalance`
-- [ ] Fix mojibake/encoding corruption in test files (`Débito`→`D�bito`, `Corrección`→`Correcci�n`)
-- [ ] `npm run test` → 0 failing
-- [ ] Confirm no other test file assumes the stored-balance model
+- [x] Rewrite `transaction.service.test.ts` balance assertions to use `AccountService.calculateBalance` (async) instead of stored `initialBalance`; add `transfers` table+import to its setup
+- [x] Fix `categories.type` schema drift in 7 service test setups (was ~123 failures)
+- [x] Bucket A: fix mojibake in `toThrow('...')` expected strings across backup/category/goal/loan/rules/subscription tests (shortened to ASCII substrings)
+- [x] Bucket B: subscription `create()` tests now expect "startDate = first charge date" (weekly asserts startDate; monthly uses a future startDate for determinism)
+- [x] Bucket C: subscription autocharge tests now assert computed balance via `AccountService.calculateBalance` (added `transfers` table + import)
+- [x] Bucket D: fixed mojibake in seeded account `type` (`'Débito'`/`'Crédito'`) and category (`'Corrección'`) across alert/rules/import/etc.; fixed alert "marcar como leída" test (was calling `markAsRead(id)` without the required `userId` — real signature change from the IDOR fix)
+- [x] **DECISION:** deleting a **system category** IS blocked — restored the `isSystem` guard in `CategoryService.delete()` (matches doc-comment + test)
+- [x] `npm run test` → 0 failing (409 passing)
+- [x] `npm run typecheck -w packages/backend` clean
+- [x] Clean up temp files (`.vitest.json`, `.vitest-*.log`)
+- [ ] (Optional, low priority) Cosmetic: remaining mojibake in `it(...)` titles/comments only — no functional impact, all data/assertion mojibake is fixed
+- [ ] (Follow-up) Add tests + lint to CI so regressions are caught (also tracked in P1.2)
 
-### P0.2 — Backup import is robust (no ID collisions) ⛔
-`BackupService.import()` preserves original primary keys and only deletes the
-current user's rows, so restoring collides with other users' `categories.id` /
-`accounts.id` (fails in multi-user installs).
+### P0.2 — Backup import is robust (no ID collisions) ✅ (done)
+`BackupService.import()` used to preserve original primary keys and only delete
+the current user's rows, so restoring collided with other users' `categories.id`
+/ `accounts.id` (broke multi-user installs). Now fixed via full FK remapping.
 
-- [ ] On import, strip original `id`s and remap all foreign-key references (categories, accounts, transactions, transfers, subscriptions, budgets+budgetCategories, goals, splits, loans+payments, assets, liabilities, creditSubscriptions)
-- [ ] Include **receipts** (`receipt_analyses` / `receipt_items`) in the backup export payload — they're deleted on import but never exported (data loss on restore)
-- [ ] Verify: export → wipe → import round-trip preserves all data with a 2nd user present in the DB
-- [ ] Add a backup round-trip integration test
+- [x] On import, strip original `id`s and remap all foreign-key references via old→new id maps (categories, subcategories, accounts, transactions, splits, transfers, subscriptions, creditSubscriptions, recurringTransactions, budgets+budgetCategories, goals, rules, alerts, assets, liabilities, loans+payments, networthSnapshots)
+- [x] Orphaned rows (whose required FK isn't in the backup) are skipped rather than inserted with a broken reference
+- [x] Add a backup round-trip integration test with a **2nd user whose ids collide** (500) — import no longer throws; FKs remapped; other user's rows untouched
+- [x] `npm run test` → 0 failing (410 passing); `typecheck` clean
+- [ ] Verify end-to-end in Docker (export → import with 2 users) — pending Docker run
+
+**Deferred to P2.6 (needs binary-file handling):** receipts (`receipt_analyses`
+/ `receipt_items`) and attachments are NOT in the backup export. Receipts
+reference attachments, which are binary files on disk not captured by the JSON
+backup. Exporting receipt metadata alone would leave dangling `attachment_id`
+references after restore — worse than the current honest behavior (import clears
+them). Proper fix = include attachment binaries (base64/zip) + receipts together.
 
 ### P0.3 — Safe upgrades & schema/migration integrity ⛔
 Fresh installs built only from Drizzle migrations must match `schema.ts`, and
@@ -246,6 +263,16 @@ These have backend support but no frontend UI, or are incomplete.
 ### P2.5 — HA webhook processing
 - [ ] `POST /api/v1/ha/webhook` is a stub (only logs) — implement automation trigger processing, or document as intentionally minimal
 - [ ] Make HA sensors currency-aware (currently hardcoded `MXN`) and fix hardcoded `sensor.smart_finance_*` entity ids → `homeledger`
+
+### P2.6 — Include receipts & attachments in backup (deferred from P0.2)
+Attachments (binary files on disk) and receipts (`receipt_analyses` /
+`receipt_items`, which reference attachments) are not captured by the JSON
+backup, so a restore clears them. Fix requires bundling binary attachment files.
+
+- [ ] Include attachment binaries in the backup (base64 inline, or a zip container alongside the JSON)
+- [ ] Export/import `receipt_analyses` + `receipt_items` with FK remapping (attachment_id, transaction_id) consistent with the P0.2 remap
+- [ ] Round-trip test covering an attachment + its receipt + linked transaction
+- [ ] Until done, document that restore does not preserve receipts/attachments
 
 ---
 

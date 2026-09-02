@@ -133,10 +133,10 @@ describe('RulesEngineService', () => {
       .get();
     categoryId = cat.id;
 
-    // Create default "Correcci�n" category
+    // Create default "Corrección" category
     const defaultCat = db
       .insert(categories)
-      .values({ name: 'Correcci�n', userId: null, isSystem: true, createdAt: now })
+      .values({ name: 'Corrección', userId: null, isSystem: true, createdAt: now })
       .returning()
       .get();
     defaultCategoryId = defaultCat.id;
@@ -147,7 +147,7 @@ describe('RulesEngineService', () => {
       .values({
         userId,
         name: 'Santander',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -503,7 +503,7 @@ describe('RulesEngineService', () => {
       const longPattern = 'a'.repeat(201);
       expect(() =>
         RulesEngineService.evaluateCondition(txn, { field: 'name', operator: 'regex', value: longPattern })
-      ).toThrow('excede el m�ximo');
+      ).toThrow('excede el');
     });
 
     it('account field: matches account name', () => {

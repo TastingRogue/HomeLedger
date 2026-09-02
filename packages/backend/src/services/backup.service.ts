@@ -324,196 +324,267 @@ export class BackupService {
       db.delete(accounts).where(eq(accounts.userId, userId)).run();
       db.delete(categories).where(eq(categories.userId, userId)).run();
 
-      // Insert imported data with the current user's ID
+      // Insert imported data. We do NOT preserve original primary keys, because
+      // ids are global (shared across users) and reusing them collides with
+      // rows owned by other users. Instead we insert with fresh autoincrement
+      // ids and remap every foreign-key reference via old->new id maps.
       const backupData = validatedBackup.data;
 
-      // Insert categories first (other entities depend on them)
-      if (backupData.categories && backupData.categories.length > 0) {
-        for (const cat of backupData.categories) {
-          const record = cat as Record<string, unknown>;
-          db.insert(categories).values({
-            ...(record as typeof categories.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Helpers to read a numeric id/foreign key from a raw backup record.
+      const oldId = (rec: Record<string, unknown>): number | null =>
+        typeof rec['id'] === 'number' ? (rec['id'] as number) : null;
+      const fk = (rec: Record<string, unknown>, key: string): number | null =>
+        typeof rec[key] === 'number' ? (rec[key] as number) : null;
+      const remap = (map: Map<number, number>, value: number | null | undefined): number | null =>
+        value == null ? null : (map.get(value) ?? null);
+
+      // old id -> new id maps for tables referenced by others
+      const catMap = new Map<number, number>();
+      const subcatMap = new Map<number, number>();
+      const acctMap = new Map<number, number>();
+      const txMap = new Map<number, number>();
+      const subMap = new Map<number, number>();
+      const budgetMap = new Map<number, number>();
+      const loanMap = new Map<number, number>();
+
+      // Categories (parents of many; drop original id)
+      for (const cat of backupData.categories ?? []) {
+        const rec = cat as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        const inserted = db.insert(categories).values({
+          ...(rest as typeof categories.$inferInsert),
+          userId,
+        }).returning({ id: categories.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) catMap.set(prev, inserted.id);
       }
 
-      // Insert subcategories
-      if (backupData.subcategories && backupData.subcategories.length > 0) {
-        for (const sub of backupData.subcategories) {
-          db.insert(subcategories).values(sub as typeof subcategories.$inferInsert).run();
-        }
+      // Subcategories (categoryId -> catMap)
+      for (const sub of backupData.subcategories ?? []) {
+        const rec = sub as Record<string, unknown>;
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newCategoryId == null) continue; // orphan; skip
+        const { id: _drop, categoryId: _c, ...rest } = rec;
+        const inserted = db.insert(subcategories).values({
+          ...(rest as Omit<typeof subcategories.$inferInsert, 'categoryId'>),
+          categoryId: newCategoryId,
+        }).returning({ id: subcategories.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) subcatMap.set(prev, inserted.id);
       }
 
-      // Insert accounts (transactions depend on them)
-      if (backupData.accounts && backupData.accounts.length > 0) {
-        for (const acc of backupData.accounts) {
-          const record = acc as Record<string, unknown>;
-          db.insert(accounts).values({
-            ...(record as typeof accounts.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Accounts (parents of transactions/transfers/subscriptions; drop id)
+      for (const acc of backupData.accounts ?? []) {
+        const rec = acc as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        const inserted = db.insert(accounts).values({
+          ...(rest as typeof accounts.$inferInsert),
+          userId,
+        }).returning({ id: accounts.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) acctMap.set(prev, inserted.id);
       }
 
-      // Insert transactions
-      if (backupData.transactions && backupData.transactions.length > 0) {
-        for (const tx of backupData.transactions) {
-          const record = tx as Record<string, unknown>;
-          db.insert(transactions).values({
-            ...(record as typeof transactions.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Transactions (accountId, categoryId, subcategoryId remapped)
+      for (const tx of backupData.transactions ?? []) {
+        const rec = tx as Record<string, unknown>;
+        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newAccountId == null || newCategoryId == null) continue; // required FKs
+        const newSubcategoryId = remap(subcatMap, fk(rec, 'subcategoryId'));
+        const { id: _drop, accountId: _a, categoryId: _c, subcategoryId: _s, ...rest } = rec;
+        const inserted = db.insert(transactions).values({
+          ...(rest as Omit<typeof transactions.$inferInsert, 'accountId' | 'categoryId' | 'subcategoryId'>),
+          userId,
+          accountId: newAccountId,
+          categoryId: newCategoryId,
+          subcategoryId: newSubcategoryId,
+        }).returning({ id: transactions.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) txMap.set(prev, inserted.id);
       }
 
-      // Insert transaction splits
-      if (backupData.transactionSplits && backupData.transactionSplits.length > 0) {
-        for (const split of backupData.transactionSplits) {
-          db.insert(transactionSplits).values(split as typeof transactionSplits.$inferInsert).run();
-        }
+      // Transaction splits (transactionId, categoryId remapped)
+      for (const split of backupData.transactionSplits ?? []) {
+        const rec = split as Record<string, unknown>;
+        const newTxId = remap(txMap, fk(rec, 'transactionId'));
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newTxId == null || newCategoryId == null) continue;
+        const { id: _drop, transactionId: _t, categoryId: _c, ...rest } = rec;
+        db.insert(transactionSplits).values({
+          ...(rest as Omit<typeof transactionSplits.$inferInsert, 'transactionId' | 'categoryId'>),
+          transactionId: newTxId,
+          categoryId: newCategoryId,
+        }).run();
       }
 
-      // Insert transfers
-      if (backupData.transfers && backupData.transfers.length > 0) {
-        for (const transfer of backupData.transfers) {
-          const record = transfer as Record<string, unknown>;
-          db.insert(transfers).values({
-            ...(record as typeof transfers.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Transfers (source/destination account ids remapped)
+      for (const transfer of backupData.transfers ?? []) {
+        const rec = transfer as Record<string, unknown>;
+        const newSource = remap(acctMap, fk(rec, 'sourceAccountId'));
+        const newDest = remap(acctMap, fk(rec, 'destinationAccountId'));
+        if (newSource == null || newDest == null) continue;
+        const { id: _drop, sourceAccountId: _s, destinationAccountId: _d, ...rest } = rec;
+        db.insert(transfers).values({
+          ...(rest as Omit<typeof transfers.$inferInsert, 'sourceAccountId' | 'destinationAccountId'>),
+          userId,
+          sourceAccountId: newSource,
+          destinationAccountId: newDest,
+        }).run();
       }
 
-      // Insert subscriptions
-      if (backupData.subscriptions && backupData.subscriptions.length > 0) {
-        for (const sub of backupData.subscriptions) {
-          const record = sub as Record<string, unknown>;
-          db.insert(subscriptions).values({
-            ...(record as typeof subscriptions.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Subscriptions (accountId, categoryId remapped)
+      for (const sub of backupData.subscriptions ?? []) {
+        const rec = sub as Record<string, unknown>;
+        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newAccountId == null || newCategoryId == null) continue;
+        const { id: _drop, accountId: _a, categoryId: _c, ...rest } = rec;
+        const inserted = db.insert(subscriptions).values({
+          ...(rest as Omit<typeof subscriptions.$inferInsert, 'accountId' | 'categoryId'>),
+          userId,
+          accountId: newAccountId,
+          categoryId: newCategoryId,
+        }).returning({ id: subscriptions.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) subMap.set(prev, inserted.id);
       }
 
-      // Insert recurring transactions
-      if (backupData.recurringTransactions && backupData.recurringTransactions.length > 0) {
-        for (const rec of backupData.recurringTransactions) {
-          const record = rec as Record<string, unknown>;
-          db.insert(recurringTransactions).values({
-            ...(record as typeof recurringTransactions.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Recurring transactions (accountId, categoryId remapped)
+      for (const rec2 of backupData.recurringTransactions ?? []) {
+        const rec = rec2 as Record<string, unknown>;
+        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newAccountId == null || newCategoryId == null) continue;
+        const { id: _drop, accountId: _a, categoryId: _c, ...rest } = rec;
+        db.insert(recurringTransactions).values({
+          ...(rest as Omit<typeof recurringTransactions.$inferInsert, 'accountId' | 'categoryId'>),
+          userId,
+          accountId: newAccountId,
+          categoryId: newCategoryId,
+        }).run();
       }
 
-      // Insert goals
-      if (backupData.goals && backupData.goals.length > 0) {
-        for (const goal of backupData.goals) {
-          const record = goal as Record<string, unknown>;
-          db.insert(goals).values({
-            ...(record as typeof goals.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Goals (no cross-FK; drop id)
+      for (const goal of backupData.goals ?? []) {
+        const rec = goal as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(goals).values({
+          ...(rest as typeof goals.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert budgets
-      if (backupData.budgets && backupData.budgets.length > 0) {
-        for (const budget of backupData.budgets) {
-          const record = budget as Record<string, unknown>;
-          db.insert(budgets).values({
-            ...(record as typeof budgets.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Budgets (drop id, map for budgetCategories)
+      for (const budget of backupData.budgets ?? []) {
+        const rec = budget as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        const inserted = db.insert(budgets).values({
+          ...(rest as typeof budgets.$inferInsert),
+          userId,
+        }).returning({ id: budgets.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) budgetMap.set(prev, inserted.id);
       }
 
-      // Insert budget categories
-      if (backupData.budgetCategories && backupData.budgetCategories.length > 0) {
-        for (const bc of backupData.budgetCategories) {
-          db.insert(budgetCategories).values(bc as typeof budgetCategories.$inferInsert).run();
-        }
+      // Budget categories (budgetId, categoryId remapped)
+      for (const bc of backupData.budgetCategories ?? []) {
+        const rec = bc as Record<string, unknown>;
+        const newBudgetId = remap(budgetMap, fk(rec, 'budgetId'));
+        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        if (newBudgetId == null || newCategoryId == null) continue;
+        const { id: _drop, budgetId: _b, categoryId: _c, ...rest } = rec;
+        db.insert(budgetCategories).values({
+          ...(rest as Omit<typeof budgetCategories.$inferInsert, 'budgetId' | 'categoryId'>),
+          budgetId: newBudgetId,
+          categoryId: newCategoryId,
+        }).run();
       }
 
-      // Insert rules
-      if (backupData.rules && backupData.rules.length > 0) {
-        for (const rule of backupData.rules) {
-          const record = rule as Record<string, unknown>;
-          db.insert(rules).values({
-            ...(record as typeof rules.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Rules (no cross-FK; drop id)
+      for (const rule of backupData.rules ?? []) {
+        const rec = rule as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(rules).values({
+          ...(rest as typeof rules.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert alerts
-      if (backupData.alerts && backupData.alerts.length > 0) {
-        for (const alert of backupData.alerts) {
-          const record = alert as Record<string, unknown>;
-          db.insert(alerts).values({
-            ...(record as typeof alerts.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Alerts (no cross-FK; drop id)
+      for (const alert of backupData.alerts ?? []) {
+        const rec = alert as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(alerts).values({
+          ...(rest as typeof alerts.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert assets
-      if (backupData.assets && backupData.assets.length > 0) {
-        for (const asset of backupData.assets) {
-          const record = asset as Record<string, unknown>;
-          db.insert(assets).values({
-            ...(record as typeof assets.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Assets (no cross-FK; drop id)
+      for (const asset of backupData.assets ?? []) {
+        const rec = asset as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(assets).values({
+          ...(rest as typeof assets.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert liabilities
-      if (backupData.liabilities && backupData.liabilities.length > 0) {
-        for (const liability of backupData.liabilities) {
-          const record = liability as Record<string, unknown>;
-          db.insert(liabilities).values({
-            ...(record as typeof liabilities.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Liabilities (no cross-FK; drop id)
+      for (const liability of backupData.liabilities ?? []) {
+        const rec = liability as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(liabilities).values({
+          ...(rest as typeof liabilities.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert loans
-      if (backupData.loans && backupData.loans.length > 0) {
-        for (const loan of backupData.loans) {
-          const record = loan as Record<string, unknown>;
-          db.insert(loans).values({
-            ...(record as typeof loans.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Loans (drop id, map for loanPayments)
+      for (const loan of backupData.loans ?? []) {
+        const rec = loan as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        const inserted = db.insert(loans).values({
+          ...(rest as typeof loans.$inferInsert),
+          userId,
+        }).returning({ id: loans.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) loanMap.set(prev, inserted.id);
       }
 
-      // Insert loan payments
-      if (backupData.loanPayments && backupData.loanPayments.length > 0) {
-        for (const payment of backupData.loanPayments) {
-          db.insert(loanPayments).values(payment as typeof loanPayments.$inferInsert).run();
-        }
+      // Loan payments (loanId remapped)
+      for (const payment of backupData.loanPayments ?? []) {
+        const rec = payment as Record<string, unknown>;
+        const newLoanId = remap(loanMap, fk(rec, 'loanId'));
+        if (newLoanId == null) continue;
+        const { id: _drop, loanId: _l, ...rest } = rec;
+        db.insert(loanPayments).values({
+          ...(rest as Omit<typeof loanPayments.$inferInsert, 'loanId'>),
+          loanId: newLoanId,
+        }).run();
       }
 
-      // Insert networth snapshots
-      if (backupData.networthSnapshots && backupData.networthSnapshots.length > 0) {
-        for (const snapshot of backupData.networthSnapshots) {
-          const record = snapshot as Record<string, unknown>;
-          db.insert(networthSnapshots).values({
-            ...(record as typeof networthSnapshots.$inferInsert),
-            userId,
-          }).run();
-        }
+      // Networth snapshots (no cross-FK; drop id)
+      for (const snapshot of backupData.networthSnapshots ?? []) {
+        const rec = snapshot as Record<string, unknown>;
+        const { id: _drop, ...rest } = rec;
+        db.insert(networthSnapshots).values({
+          ...(rest as typeof networthSnapshots.$inferInsert),
+          userId,
+        }).run();
       }
 
-      // Insert credit subscriptions
-      if (backupData.creditSubscriptions && backupData.creditSubscriptions.length > 0) {
-        for (const cs of backupData.creditSubscriptions) {
-          db.insert(creditSubscriptions).values(cs as typeof creditSubscriptions.$inferInsert).run();
-        }
+      // Credit subscriptions (accountId, subscriptionId remapped)
+      for (const cs of backupData.creditSubscriptions ?? []) {
+        const rec = cs as Record<string, unknown>;
+        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
+        const newSubscriptionId = remap(subMap, fk(rec, 'subscriptionId'));
+        if (newAccountId == null || newSubscriptionId == null) continue;
+        db.insert(creditSubscriptions).values({
+          accountId: newAccountId,
+          subscriptionId: newSubscriptionId,
+        }).run();
       }
     })();
 

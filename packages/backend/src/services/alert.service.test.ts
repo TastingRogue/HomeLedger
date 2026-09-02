@@ -59,7 +59,7 @@ function seedAccount(userId: number, overrides: Partial<typeof schema.accounts.$
   return testDb.insert(schema.accounts).values({
     userId,
     name: overrides.name ?? 'Cuenta Test',
-    type: overrides.type ?? 'D�bito',
+    type: overrides.type ?? 'Débito',
     initialBalance: overrides.initialBalance ?? 5000,
     balanceLimit: overrides.balanceLimit ?? null,
     creditLimit: overrides.creditLimit ?? null,
@@ -260,7 +260,7 @@ describe('AlertService', () => {
       // Balance negativo de -8000 con l�mite de 10000 = 80% utilizaci�n
       seedAccount(userId, {
         name: 'Tarjeta',
-        type: 'Cr�dito',
+        type: 'Crédito',
         initialBalance: -8000,
         creditLimit: 10000,
       });
@@ -274,7 +274,7 @@ describe('AlertService', () => {
       const userId = seedTestUser();
       seedAccount(userId, {
         name: 'Tarjeta',
-        type: 'Cr�dito',
+        type: 'Crédito',
         initialBalance: -5000,
         creditLimit: 10000,
       });
@@ -288,7 +288,7 @@ describe('AlertService', () => {
       const userId = seedTestUser();
       seedAccount(userId, {
         name: 'Tarjeta',
-        type: 'Cr�dito',
+        type: 'Crédito',
         initialBalance: -9000,
         creditLimit: 10000,
       });
@@ -304,7 +304,7 @@ describe('AlertService', () => {
       const userId = seedTestUser();
       const account = seedAccount(userId, {
         name: 'Tarjeta',
-        type: 'Cr�dito',
+        type: 'Crédito',
         initialBalance: -9000,
         creditLimit: 10000,
       });
@@ -327,8 +327,8 @@ describe('AlertService', () => {
     it('debe ignorar cuentas que no son de tipo Cr�dito', async () => {
       const userId = seedTestUser();
       seedAccount(userId, {
-        name: 'D�bito',
-        type: 'D�bito',
+        name: 'Débito',
+        type: 'Débito',
         initialBalance: -8000,
         creditLimit: 10000,
       });
@@ -559,7 +559,7 @@ describe('AlertService', () => {
       const alert = AlertService.createAlert(userId, 'balance_low', 'Test', 'Msg', 'warning', hash);
       expect(alert!.isRead).toBe(false);
 
-      AlertService.markAsRead(alert!.id);
+      AlertService.markAsRead(alert!.id, userId);
 
       const allAlerts = AlertService.list(userId);
       expect(allAlerts[0]!.isRead).toBe(true);

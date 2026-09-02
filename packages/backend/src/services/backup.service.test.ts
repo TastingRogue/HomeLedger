@@ -2,6 +2,7 @@
 import { BackupService, BackupError } from './backup.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, categories, goals } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -355,7 +356,7 @@ describe('BackupService', () => {
       const acc = db.insert(accounts).values({
         userId,
         name: 'Santander',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -403,7 +404,7 @@ describe('BackupService', () => {
       db.insert(accounts).values({
         userId: otherUser.id,
         name: 'Other Account',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 5000,
         status: 'Activo',
         currency: 'MXN',
@@ -427,7 +428,7 @@ describe('BackupService', () => {
       };
 
       expect(() => BackupService.import(userId, backup, false)).toThrow(BackupError);
-      expect(() => BackupService.import(userId, backup, false)).toThrow('Debe confirmar la operaci�n');
+      expect(() => BackupService.import(userId, backup, false)).toThrow('Debe confirmar');
     });
 
     it('should import data and replace existing user data atomically', () => {
@@ -447,7 +448,7 @@ describe('BackupService', () => {
         id: 100,
         userId,
         name: 'OldAccount',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 1000,
         status: 'Activo',
         currency: 'MXN',
@@ -465,7 +466,7 @@ describe('BackupService', () => {
             { id: 200, userId, name: 'NewCategory', isSystem: false, createdAt: now, icon: null, color: null },
           ],
           accounts: [
-            { id: 200, userId, name: 'NewAccount', type: 'D�bito', initialBalance: 5000, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now },
+            { id: 200, userId, name: 'NewAccount', type: 'Débito', initialBalance: 5000, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now },
           ],
           transactions: [],
           transactionSplits: [],
@@ -516,7 +517,7 @@ describe('BackupService', () => {
         id: 300,
         userId,
         name: 'Nu',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 20000,
         status: 'Activo',
         currency: 'MXN',
@@ -555,6 +556,100 @@ describe('BackupService', () => {
       expect(restoredGoals).toHaveLength(1);
       expect(restoredGoals[0]!.name).toBe('Moto');
       expect(restoredGoals[0]!.savedAmount).toBe(10000);
+    });
+
+    it('should import without colliding with another user whose ids overlap the backup', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // A second user already owns rows with ids 500 (category + account) that
+      // overlap the ids used in the backup below. The old id-preserving import
+      // threw "UNIQUE constraint failed". The remapping import must succeed.
+      const otherUser = db.insert(users).values({
+        email: 'collision@test.com',
+        passwordHash: 'hashed',
+        name: 'Collision User',
+        role: 'user',
+        createdAt: now,
+        updatedAt: now,
+      }).returning().get();
+
+      db.insert(categories).values({
+        id: 500,
+        userId: otherUser.id,
+        name: 'OtherUserCategory',
+        isSystem: false,
+        createdAt: now,
+      }).run();
+
+      db.insert(accounts).values({
+        id: 500,
+        userId: otherUser.id,
+        name: 'OtherUserAccount',
+        type: 'Débito',
+        initialBalance: 999,
+        status: 'Activo',
+        currency: 'MXN',
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+
+      // Backup for OUR user reuses ids 500 and cross-references them.
+      const backup = {
+        version: '0.1.0',
+        exportedAt: now,
+        userId,
+        data: {
+          categories: [
+            { id: 500, userId, name: 'MiCategoria', isSystem: false, createdAt: now, icon: null, color: null, type: 'Gasto' },
+          ],
+          accounts: [
+            { id: 500, userId, name: 'MiCuenta', type: 'Débito', initialBalance: 5000, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now },
+          ],
+          transactions: [
+            { id: 500, userId, accountId: 500, categoryId: 500, subcategoryId: null, name: 'Compra', amount: 100, type: 'Gasto', date: now, notes: null, attachmentId: null, createdAt: now, updatedAt: now },
+          ],
+          transactionSplits: [],
+          transfers: [],
+          subscriptions: [],
+          recurringTransactions: [],
+          goals: [],
+          budgets: [],
+          budgetCategories: [],
+          subcategories: [],
+          rules: [],
+          alerts: [],
+          assets: [],
+          liabilities: [],
+          loans: [],
+          loanPayments: [],
+          networthSnapshots: [],
+          creditSubscriptions: [],
+        },
+      };
+
+      // Must not throw despite id 500 already existing for the other user.
+      expect(() => BackupService.import(userId, backup, true)).not.toThrow();
+
+      // Our data was restored under fresh ids...
+      const myCats = db.select().from(categories).where(eq(categories.userId, userId)).all();
+      expect(myCats).toHaveLength(1);
+      expect(myCats[0]!.name).toBe('MiCategoria');
+
+      const myAccounts = db.select().from(accounts).where(eq(accounts.userId, userId)).all();
+      expect(myAccounts).toHaveLength(1);
+      expect(myAccounts[0]!.name).toBe('MiCuenta');
+
+      // ...and the transaction's FKs were remapped to those fresh ids.
+      const myTxs = db.select().from(transactions).where(eq(transactions.userId, userId)).all();
+      expect(myTxs).toHaveLength(1);
+      expect(myTxs[0]!.accountId).toBe(myAccounts[0]!.id);
+      expect(myTxs[0]!.categoryId).toBe(myCats[0]!.id);
+
+      // The other user's colliding rows are untouched.
+      const otherCat = db.select().from(categories).where(eq(categories.userId, otherUser.id)).all();
+      expect(otherCat).toHaveLength(1);
+      expect(otherCat[0]!.name).toBe('OtherUserCategory');
     });
   });
 
@@ -602,7 +697,7 @@ describe('BackupService', () => {
 
     it('should reject backup with invalid version format', () => {
       const backup = { version: 'abc', exportedAt: new Date().toISOString(), data: {} };
-      expect(() => BackupService.validateBackup(backup)).toThrow('formato v�lido');
+      expect(() => BackupService.validateBackup(backup)).toThrow('formato v');
     });
 
     it('should reject data fields that are not arrays', () => {

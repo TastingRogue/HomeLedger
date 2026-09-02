@@ -1,7 +1,8 @@
 ﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { SubscriptionService, SubscriptionError } from './subscription.service.js';
+import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
-import { users, accounts, categories, subscriptions, transactions } from '../db/schema.js';
+import { users, accounts, categories, subscriptions, transactions, transfers } from '../db/schema.js';
 import { SubscriptionCycle } from '@smart-finance/shared';
 import { eq } from 'drizzle-orm';
 import fs from 'node:fs';
@@ -61,7 +62,7 @@ describe('SubscriptionService', () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        type TEXT NOT NULL DEFAULT 'D�bito',
+        type TEXT NOT NULL DEFAULT 'Débito',
         bank TEXT,
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
@@ -119,6 +120,18 @@ describe('SubscriptionService', () => {
       CREATE INDEX IF NOT EXISTS subscriptions_user_id_idx ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS subscriptions_user_id_status_idx ON subscriptions(user_id, status);
       CREATE INDEX IF NOT EXISTS subscriptions_next_payment_date_idx ON subscriptions(next_payment_date);
+
+      CREATE TABLE IF NOT EXISTS transfers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+        destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      );
     `);
   });
 
@@ -126,6 +139,7 @@ describe('SubscriptionService', () => {
     const db = getDb();
     // Clean tables in correct order
     db.delete(transactions).run();
+    db.delete(transfers).run();
     db.delete(subscriptions).run();
     db.delete(accounts).run();
     db.delete(categories).run();
@@ -153,7 +167,7 @@ describe('SubscriptionService', () => {
       .values({
         userId,
         name: 'Cuenta Principal',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 5000,
         status: 'Activo',
         currency: 'MXN',
@@ -208,13 +222,17 @@ describe('SubscriptionService', () => {
       expect(result.amount).toBe(115.00);
       expect(result.cycle).toBe('Semanal');
       expect(result.status).toBe('Activa');
-      expect(result.nextPaymentDate).toBe('2024-01-22'); // +7 days
+      // The startDate IS the first charge date; with autoCharge off it is not advanced.
+      expect(result.nextPaymentDate).toBe('2024-01-15');
     });
 
     it('should create a monthly subscription', () => {
+      // Use a future startDate so autoCharge does not immediately catch up,
+      // keeping nextPaymentDate deterministic (startDate = first charge date).
+      const futureStart = getFutureDateStr(10);
       const result = SubscriptionService.create(userId, {
         name: 'Netflix',
-        startDate: '2024-01-15',
+        startDate: futureStart,
         amount: 199.00,
         cycle: SubscriptionCycle.Mensual,
         categoryId,
@@ -225,7 +243,7 @@ describe('SubscriptionService', () => {
       expect(result.name).toBe('Netflix');
       expect(result.cycle).toBe('Mensual');
       expect(result.autoCharge).toBe(true);
-      expect(result.nextPaymentDate).toBe('2024-02-15'); // +1 month
+      expect(result.nextPaymentDate).toBe(futureStart);
     });
 
     it('should reject subscription with non-existent account', () => {
@@ -368,12 +386,12 @@ describe('SubscriptionService', () => {
 
       SubscriptionService.deactivate(sub.id, userId);
 
-      expect(() => SubscriptionService.deactivate(sub.id, userId)).toThrow('ya est� inactiva');
+      expect(() => SubscriptionService.deactivate(sub.id, userId)).toThrow('inactiva');
     });
   });
 
   describe('processAutoCharges()', () => {
-    it('should create Gasto transaction for due subscriptions with autoCharge', () => {
+    it('should create Gasto transaction for due subscriptions with autoCharge', async () => {
       const db = getDb();
       const todayStr = getTodayStr();
       const now = new Date().toISOString();
@@ -406,13 +424,9 @@ describe('SubscriptionService', () => {
       expect(txns[0]!.amount).toBe(199.00);
       expect(txns[0]!.type).toBe('Gasto');
 
-      // Verify account balance was reduced
-      const account = db
-        .select()
-        .from(accounts)
-        .where(eq(accounts.id, accountId))
-        .get();
-      expect(account!.initialBalance).toBe(5000 - 199.00);
+      // Balance is computed dynamically; the autocharge Gasto reduces it.
+      const balance = await AccountService.calculateBalance(accountId);
+      expect(balance).toBeCloseTo(5000 - 199.00, 2);
     });
 
     it('should not process subscriptions without autoCharge', () => {
@@ -467,7 +481,7 @@ describe('SubscriptionService', () => {
       expect(processed).toBe(0);
     });
 
-    it('should allow balance to go negative (Req 4.7)', () => {
+    it('should allow balance to go negative (Req 4.7)', async () => {
       const db = getDb();
       const todayStr = getTodayStr();
       const now = new Date().toISOString();
@@ -498,13 +512,9 @@ describe('SubscriptionService', () => {
       const processed = SubscriptionService.processAutoCharges();
       expect(processed).toBe(1);
 
-      // Verify balance is negative
-      const account = db
-        .select()
-        .from(accounts)
-        .where(eq(accounts.id, accountId))
-        .get();
-      expect(account!.initialBalance).toBe(50 - 500); // -450
+      // Computed balance may go negative: 50 - 500 = -450
+      const balance = await AccountService.calculateBalance(accountId);
+      expect(balance).toBeCloseTo(-450, 2);
     });
 
     it('should update nextPaymentDate after processing', () => {

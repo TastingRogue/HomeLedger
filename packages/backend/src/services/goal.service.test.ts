@@ -198,7 +198,7 @@ describe('GoalService', () => {
 
       expect(() =>
         GoalService.fund(goal.id, userId, { amount: 50 })
-      ).toThrow('La meta ya est� completada');
+      ).toThrow('La meta ya');
     });
 
     it('should throw error for non-existent goal', () => {
