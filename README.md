@@ -3,10 +3,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
+[![Roadmap](https://img.shields.io/badge/Roadmap-to%20v1.0.0-8b5cf6)](ROADMAP.md)
 
 > **HomeLedger** is a free, open-source, self-hosted personal finance manager — an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
 
-**[Screenshots](#screenshots)** · **[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Support the Project](#support-the-project)**
+**[Screenshots](#screenshots)** · **[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Roadmap](ROADMAP.md)** · **[Support the Project](#support-the-project)**
 
 ---
 
