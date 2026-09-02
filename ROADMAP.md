@@ -55,6 +55,18 @@ upgrades from an existing DB must not lose data.
 - [ ] Test upgrade path: run an older DB, deploy new image, confirm migrations apply cleanly and no data is lost
 - [ ] Document the upgrade procedure in README
 
+### P0.5 — Money correctness (floats) ⛔
+All monetary columns are stored as SQLite `real` (floating point) — confirmed in
+`schema.ts`: `initialBalance`, `amount`, `allocated`, `rollover`, `targetAmount`,
+`savedAmount`, `value`, `balance`, `principal`, `interest`, etc. Floats cause
+rounding errors when summing (classic `0.1 + 0.2 ≠ 0.3`), which is unacceptable
+for a finance app where a total can be off by a cent.
+
+- [ ] Audit every place money is summed/subtracted (balances, budgets, reports, splits, net worth) for float rounding drift
+- [ ] Decide and apply a fix strategy: store money as integer cents, or enforce consistent rounding (e.g. round to 2 decimals at every write/aggregate)
+- [ ] If migrating to integer cents: write a data migration and update all read/write paths + the backup format
+- [ ] Add tests that sum many transactions and assert exact expected totals (no drift)
+
 ### P0.4 — Production security hardening ⛔
 The image ships insecure demo defaults (`JWT_SECRET`, `ADMIN_PASSWORD`) with no
 guard.
@@ -147,6 +159,62 @@ returns `{ locale: 'es' }`), and there is no host-level setting.
 ### P1.4 — Health & observability
 - [ ] Deepen `/api/v1/health` to include a DB connectivity check
 - [ ] Confirm consistent structured error responses across routes
+- [ ] Surface scheduler job status (auto-charge, alert evaluation, budget reset) so a silently-failed cron job is visible to the user/admin
+- [ ] Consistent, configurable structured logging levels
+
+### P1.7 — Automated backups with retention
+Manual JSON export exists, but a finance app needs scheduled backups so a DB
+corruption isn't catastrophic. Keep storage bounded — a fixed number of backups,
+rotating out the oldest.
+
+- [ ] Scheduled automatic backups (cron job; interval configurable, e.g. daily)
+- [ ] **Retention/rotation:** keep a fixed maximum number of backups (configurable, e.g. keep last 7); when a new one is created, delete the oldest so backups never pile up
+- [ ] Store backups under `DATA_DIR` (e.g. `/data/backups`) so they persist with the volume
+- [ ] Restore from an automatic backup via the UI
+- [ ] Verify: backups rotate correctly at the limit; restore works
+
+### P1.8 — Restore safety (dry-run / validation)
+Import currently wipes all data on confirm. Make it safer.
+
+- [ ] Validate and preview a backup **before** it replaces current data (a dry-run that reports counts and any problems)
+- [ ] Confirm the atomic transaction rolls back cleanly on any failure mid-import (no half-restored state)
+- [ ] Clear warning + explicit confirm before destructive replace (already partially present — verify)
+
+### P1.9 — Multi-user hardening (decide the model)
+The app supports multiple users (first registrant becomes admin, rest become
+`user` — confirmed in `auth.service.ts`), but multi-user behavior isn't clearly
+locked down. Decide explicitly whether HomeLedger is single-user or multi-user
+and enforce it.
+
+- [ ] Decide: single-user, or fully-supported multi-user? Document the decision
+- [ ] Audit every data route to confirm strict per-user isolation (no cross-user reads/writes) — the backup bug proved multi-user paths exist
+- [ ] Wire `requireRole` where admin-only actions live (user management, etc.) — it exists but may be unused
+- [ ] If multi-user: a basic admin user-management view (list/disable/delete users, reset a user's password)
+
+### P1.10 — Registration control (admin-managed + allowlist)
+Registration is currently fully open (anyone can register; confirmed in
+`AuthService.register`). On an exposed instance, randoms can create accounts.
+
+- [ ] Registration is controlled by the **admin** (not a hardcoded "first user only" rule): admin can open or close public registration
+- [ ] Optional **email allowlist**: when set, only listed emails may register, even if registration is otherwise open
+- [ ] Default posture on a fresh install should be safe (closed or first-user-only), with the admin able to open it as needed
+- [ ] Surface these controls in an admin settings area, and/or via env for headless setups
+- [ ] Verify: with registration closed, the register endpoint refuses; with an allowlist, only allowed emails succeed
+
+### P1.11 — Password reset / account recovery
+Login and register exist, but there's no way to recover a forgotten password.
+
+- [ ] At minimum: an **admin CLI / script** to reset a user's password (works headless, no email needed)
+- [ ] Optional: email-based reset flow (requires SMTP config — document it as optional)
+- [ ] Verify a locked-out admin can regain access without wiping the DB
+
+### P1.12 — Multi-currency correctness
+Users can pick from 8 currencies, but it's unclear how accounts in *different*
+currencies are handled in aggregates.
+
+- [ ] Determine current behavior: are consolidated balance / net worth / reports summing across different-currency accounts as if they were the same number? (That would be wrong.)
+- [ ] Decide the model: single currency per install, per-account currency with conversion, or clearly separate per-currency totals
+- [ ] Apply and document the chosen model; avoid presenting a meaningless mixed-currency total
 
 ---
 
@@ -188,6 +256,10 @@ These have backend support but no frontend UI, or are incomplete.
 - [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav)
 - [ ] Performance check with a large dataset (thousands of transactions)
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
+- [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)
+- [ ] `CONTRIBUTING.md` + issue/PR templates (supports community growth)
+- [ ] CSV export of transactions (spreadsheet-friendly, separate from the JSON backup)
+- [ ] (Optional) Real dashboard customization — the non-functional "Customize" button was removed; only revisit if it becomes a wanted feature
 
 ---
 
