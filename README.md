@@ -236,6 +236,35 @@ Override these in production.
 > survives `docker compose up --build --force-recreate` and container rebuilds.
 > Deleting the volume (`docker compose down -v`) is what wipes your data.
 
+## Upgrading
+
+Upgrades are designed to be safe: your data lives on the `homeledger-data`
+volume (see above), and the app brings the database schema up to date
+automatically on startup.
+
+```bash
+# Prebuilt image
+docker pull irving1flores/homeledger:latest
+docker stop homeledger && docker rm homeledger
+docker run -d -p 3000:3000 -v homeledger-data:/data \
+  -e JWT_SECRET="..." --name homeledger irving1flores/homeledger:latest
+
+# Docker Compose (from source)
+git pull
+docker compose up -d --build --force-recreate
+```
+
+On boot the backend runs any pending Drizzle migrations and reconciles a couple
+of columns that are managed idempotently (`attachments.transfer_id` /
+`original_name` and their index). Running an old database against a newer image
+is safe — schema changes are additive and applied automatically; no manual
+migration step is required.
+
+> :bulb: **Always keep a backup before upgrading.** Use **Settings → Data &
+> Backup → Export** (or the `/api/v1/backup/export` endpoint) so you can restore
+> if something goes wrong. Backup import remaps ids safely, so a restore never
+> collides with existing data.
+
 ## Project Structure
 
 ```

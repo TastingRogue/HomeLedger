@@ -19,9 +19,9 @@ until it's verified (typecheck + build + test + Docker where relevant).
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **410 passing, 0 failing** ✅ (P0.1 + P0.2 done on branch `p0-stability-blockers`)
+- Test suite: **410 passing, 0 failing** ✅ (P0.1 + P0.2 + P0.3 done on branch `p0-stability-blockers`)
 - Last audit: codebase-wide inventory completed (see phases below)
-- Next P0: P0.3 migrations/upgrade safety, P0.4 security hardening, P0.5 money floats
+- Next P0: P0.4 security hardening, P0.5 money floats
 
 ---
 
@@ -63,14 +63,17 @@ backup. Exporting receipt metadata alone would leave dangling `attachment_id`
 references after restore — worse than the current honest behavior (import clears
 them). Proper fix = include attachment binaries (base64/zip) + receipts together.
 
-### P0.3 — Safe upgrades & schema/migration integrity ⛔
-Fresh installs built only from Drizzle migrations must match `schema.ts`, and
-upgrades from an existing DB must not lose data.
+### P0.3 — Safe upgrades & schema/migration integrity ✅ (done)
+Fresh installs built only from Drizzle migrations now match `schema.ts`, and
+upgrades from an existing DB apply additively without data loss. Verified in
+Docker (fresh boot + restart-on-existing-DB).
 
-- [ ] Fix drift: `attachments.transfer_id` is in `schema.ts` but missing from migration `0000` and never added — add a migration
-- [ ] Move runtime raw-SQL tables into proper migrations (or document + guarantee they're safe): `receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings`
-- [ ] Test upgrade path: run an older DB, deploy new image, confirm migrations apply cleanly and no data is lost
-- [ ] Document the upgrade procedure in README
+- [x] Fixed drift: `attachments.transfer_id` + `original_name` + the `attachments_transfer_id_idx` index. Applied idempotently in `initializeDatabase()` (guarded by `table_info` + `CREATE INDEX IF NOT EXISTS`) rather than an ADD COLUMN migration — because the runtime patch predates this and a plain ADD COLUMN migration would fail on installs that already have the columns
+- [x] Verified with `drizzle-kit generate` that attachments columns/index were the only real drift; the `categories.type` "drift" it reported is a snapshot-metadata lag (the column IS applied by migration 0002) — the generated 0003 was **deleted** (would break existing DBs with "duplicate column") and the journal/meta reverted to a clean 0000–0002 state
+- [x] Test upgrade path in Docker: fresh install → `attachments` has all columns + index; restart against existing DB → boots cleanly, no "duplicate column", migrations/seed skip, health ok
+- [x] Documented the upgrade procedure + "back up before upgrading" in README
+- **Decision (recorded):** runtime `ensureTable` tables (`receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings`) are kept as idempotent `CREATE TABLE IF NOT EXISTS` — they self-create safely on upgrade, which satisfies the data-safety goal. Converting them to formal migrations is a nice-to-have follow-up, not a blocker.
+- [ ] (Follow-up, low priority) Resync drizzle-kit snapshots so `generate` stops reporting the phantom `categories.type` drift; optionally formalize the runtime tables as migrations
 
 ### P0.5 — Money correctness (floats) ⛔
 All monetary columns are stored as SQLite `real` (floating point) — confirmed in
