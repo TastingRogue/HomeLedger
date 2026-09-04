@@ -317,6 +317,137 @@ backup, so a restore clears them. Fix requires bundling binary attachment files.
 
 ---
 
+## Phase P4 — Feature depth (post-1.0, local-first compatible)
+
+These make HomeLedger *great* rather than just correct. None require internet;
+all operate on local data / user-provided files. Not blockers for 1.0.0 — they
+come after the P0 correctness/safety work. Status marks are vs. current code.
+
+### P4.1 — Richer transaction model
+Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
+account, category, optional subcategory. Missing the fields that make ledgers
+powerful.
+
+- [ ] `merchant` / payee, separate from the free-text description
+- [ ] Tags (many-to-many) — schema table + UI; rules already have an `addTag` action but there's no tags table yet
+- [ ] `reconciled` / cleared flag (per transaction)
+- [ ] `pending` vs `posted` status
+- [ ] External transaction id (for import matching)
+- [ ] **Duplicate detection** (by external id / date+amount+merchant heuristic)
+- [ ] Transaction audit history (who/when changed what)
+- [ ] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment (decide if these are types or flags)
+
+### P4.2 — Credit card modeling
+Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows
+on the dashboard/alerts 🟡), but statement-cycle modeling is missing.
+
+- [ ] Statement balance, minimum payment, payment due date, statement closing date
+- [ ] APR / interest tracking
+- [ ] Payment handling that never double-counts (a CC payment is a transfer: checking ↓, card ↓ — not an expense)
+- [ ] Payment history + available credit surfaced clearly
+
+### P4.3 — Envelope budgeting (Actual-style)
+Budgets exist (monthly/weekly, per-category, progress 🟡). Upgrade toward
+envelope budgeting.
+
+- [ ] "Available to spend" / assign-what-you-have model
+- [ ] Rollover / carry-over of unspent budget
+- [ ] Budget by tag (in addition to category)
+- [ ] Overspending indicators + alerts
+
+### P4.4 — Smart importer (local files only)
+Parsers exist (BBVA/Santander/Nu; CSV/XLSX/OFX/QIF/JSON 🟡). Make the pipeline
+robust — all on the uploaded file, no network.
+
+- [ ] Duplicate detection against existing transactions
+- [ ] Merchant normalization
+- [ ] Pending → posted matching
+- [ ] Currency + date normalization, debit/credit detection
+- [ ] Automatic account detection
+- [ ] Import history + **undo import**
+
+### P4.5 — Rules & auto-categorization UX (builds on P2.1)
+Rules engine + UI already tracked in P2.1. Add the "feels smart without AI" bits.
+
+- [ ] "Rule learning": after the user categorizes e.g. AMAZON → Shopping, offer "apply to future AMAZON transactions?"
+- [ ] More trigger/action coverage (amount ranges, flag-for-review, mark recurring, ignore)
+
+### P4.6 — CFDI / Mexican invoice flow (local file, MX differentiator)
+OCR already parses some CFDI XML 🟡. Make it a first-class local flow.
+
+- [ ] Upload CFDI XML → extract RFC, merchant, date, subtotal, IVA, total, UUID → create transaction + receipt
+- [ ] Item-level categorization from receipts (line items → categories)
+
+### P4.7 — Subscription intelligence
+Subscriptions + auto-charge exist. Add insight (all computed locally).
+
+- [ ] Annual cost projection + last-12-months total
+- [ ] Price-increase detection ("Netflix went from $269 to $299")
+
+### P4.8 — Forecasting & net-worth history
+Net worth + goals exist. Add projection + history (from local data).
+
+- [ ] Goal completion forecast (target, current, monthly contribution → estimated date)
+- [ ] Net-worth history chart (1m / 6m / 1y / 5y / all) from `networth_snapshots`
+
+### P4.9 — Global search
+- [ ] Cross-entity search (transactions, receipts, subscriptions) with filters (date, account, category, merchant, amount, tag, type)
+
+### P4.10 — Reports depth + custom reports
+Several reports exist 🟡. Extend and allow user-defined reports (rendered locally).
+
+- [ ] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports
+
+### P4.11 — Multi-currency, manual-first (aligns with local-first)
+- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency
+- [ ] Optional, user-enabled FX auto-fetch only (off by default) — ties to P1.12
+
+### P4.12 — Auth depth: 2FA / passkeys
+Baseline hardening is P0.4. This is the deeper account-security layer.
+
+- [ ] TOTP 2FA (offline authenticator apps — no cloud)
+- [ ] Passkeys / WebAuthn
+- [ ] Login history + revoke individual session
+
+### P4.13 — API maturity (local endpoints)
+`/api/v1` + API keys exist. Make it a real platform surface.
+
+- [ ] OpenAPI spec + Swagger UI
+- [ ] Webhooks to a **user-configured** endpoint (e.g. Home Assistant, local script): `transaction.created`, `budget.exceeded`, `goal.completed`, `subscription.upcoming`
+- [ ] Scoped API keys
+
+### P4.14 — PWA / mobile (offline-capable)
+Frontend is responsive. A local-first PWA is the natural mobile story.
+
+- [ ] Installable PWA + offline mode (service worker already present — verify/extend)
+- [ ] Quick-add expense (sub-5-second flow), mobile dashboard
+- [ ] Camera receipt capture (on-device), optional biometric unlock
+
+---
+
+## FUTURE / v2 — big, optional, explicitly NOT in the local-first core
+
+Tracked for vision, but these either conflict with local-first or are large
+separate initiatives. Not required for 1.0.0 and not assumed for v1.x.
+
+- **Automatic bank sync** (Plaid / SimpleFIN / per-bank): OUT of the core — it
+  transmits financial data to a cloud service, conflicting with local-first. If
+  ever built, it MUST be an opt-in, off-by-default plugin the user enables, with
+  the manual/file-import path remaining the default. (Note: Plaid does not cover
+  Mexican Transactions, so it can't be "the" solution anyway.)
+- **Investments / portfolio** (brokerage, retirement, crypto, ETFs, FIBRAs,
+  CETES, dividends, allocation, performance): large separate initiative. If
+  built, must be **manual-entry-first**; any live price fetch is optional and
+  user-enabled only. Great v2 differentiator, not a 1.0 item.
+
+### Explicitly NOT doing (scope guard)
+Trading / buying-selling securities · payment processing · issuing loans · own
+banking · credit scoring · crypto exchange · full business accounting · payroll ·
+full business invoicing. These turn HomeLedger into a fintech/accounting company
+instead of an excellent personal-finance app.
+
+---
+
 ## Definition of Done for v1.0.0
 
 All P0 checked, and P1 substantially done:
