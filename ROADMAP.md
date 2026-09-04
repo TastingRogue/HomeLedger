@@ -45,7 +45,7 @@ Implications for the feature list:
 - Current version: **0.1.0** (published; amd64-only Docker image)
 - Test suite: **410 passing, 0 failing** ✅ (P0.1 + P0.2 + P0.3 done on branch `p0-stability-blockers`)
 - Last audit: codebase-wide inventory completed (see phases below)
-- Next P0: P0.4 security hardening, P0.5 money floats
+- Next P0: P0.4 security hardening, then P0.5 money floats
 
 ---
 
@@ -99,6 +99,15 @@ Docker (fresh boot + restart-on-existing-DB).
 - **Decision (recorded):** runtime `ensureTable` tables (`receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings`) are kept as idempotent `CREATE TABLE IF NOT EXISTS` — they self-create safely on upgrade, which satisfies the data-safety goal. Converting them to formal migrations is a nice-to-have follow-up, not a blocker.
 - [ ] (Follow-up, low priority) Resync drizzle-kit snapshots so `generate` stops reporting the phantom `categories.type` drift; optionally formalize the runtime tables as migrations
 
+### P0.4 — Production security hardening ⛔
+The image ships insecure demo defaults (`JWT_SECRET`, `ADMIN_PASSWORD`) with no
+guard.
+
+- [ ] On boot with `NODE_ENV=production`, refuse to start (or loud warning) if `JWT_SECRET` is the known demo value or too weak, and if `ADMIN_PASSWORD` is `changeme123`
+- [ ] Add `trustProxy` config to Fastify so IP-based rate limiting/logging works behind a reverse proxy (`server.ts` line ~26)
+- [ ] Verify auth middleware covers all sensitive routes; confirm `requireRole` is wired where it should be
+- [ ] Re-verify: password min length, auth rate limit (10/min), CORS via `CORS_ORIGIN`
+
 ### P0.5 — Money correctness (floats) ⛔
 All monetary columns are stored as SQLite `real` (floating point) — confirmed in
 `schema.ts`: `initialBalance`, `amount`, `allocated`, `rollover`, `targetAmount`,
@@ -110,15 +119,6 @@ for a finance app where a total can be off by a cent.
 - [ ] Decide and apply a fix strategy: store money as integer cents, or enforce consistent rounding (e.g. round to 2 decimals at every write/aggregate)
 - [ ] If migrating to integer cents: write a data migration and update all read/write paths + the backup format
 - [ ] Add tests that sum many transactions and assert exact expected totals (no drift)
-
-### P0.4 — Production security hardening ⛔
-The image ships insecure demo defaults (`JWT_SECRET`, `ADMIN_PASSWORD`) with no
-guard.
-
-- [ ] On boot with `NODE_ENV=production`, refuse to start (or loud warning) if `JWT_SECRET` is the known demo value or too weak, and if `ADMIN_PASSWORD` is `changeme123`
-- [ ] Add `trustProxy` config to Fastify so IP-based rate limiting/logging works behind a reverse proxy (`server.ts` line ~26)
-- [ ] Verify auth middleware covers all sensitive routes; confirm `requireRole` is wired where it should be
-- [ ] Re-verify: password min length, auth rate limit (10/min), CORS via `CORS_ORIGIN`
 
 ---
 
@@ -141,7 +141,7 @@ The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
 - [ ] Byte-level parity check between `es.ts` and `en.ts`
 - [ ] Fix stray hardcoded strings (e.g. `recibos/+page.svelte` `<title>`, `register/+page.svelte` password placeholder)
 
-### P1.4b — Standardize i18n so new languages are easy to add
+### P1.4 — Standardize i18n so new languages are easy to add
 Adding a language today means editing several hardcoded spots. Refactor to a
 single **language registry** so a new language = one dictionary file + one
 registry entry, with type-safety and no hardcoded fallbacks.
@@ -158,12 +158,12 @@ Tasks:
 - [ ] Derive `SupportedLocale` from the registry keys (no hand-maintained union)
 - [ ] Build the `dictionaries` map and the Settings dropdown options from the registry (no hardcoded lists)
 - [ ] Make the base/reference dictionary (English) the single source of truth; type the other dictionaries so **missing keys are a compile error** (enforced parity)
-- [ ] Replace hardcoded `es` fallbacks with the configured default → English chain (ties into P1.5)
+- [ ] Replace hardcoded `es` fallbacks with the configured default → English chain (ties into P1.6)
 - [ ] Derive the calendar/`Intl` locale tag from the registry instead of the ad-hoc `es === 'en' ? 'en-US' : 'es-MX'` logic in `DatePicker.svelte`
 - [ ] Document "how to add a language" in the README/CONTRIBUTING (one file + one registry line)
 - [ ] Verify: adding a throwaway 3rd language works end to end with only a dictionary + registry entry
 
-### P1.6 — Better-defined, localized system categories
+### P1.5 — Better-defined, localized system categories
 Today `packages/backend/src/db/seed.ts` seeds a fixed set of **Spanish-only**,
 **global** (`userId: null`, `isSystem: true`) system categories from a legacy
 Notion export (`Comida`, `Compras`, `Corrección`, `Despensa`, `Dividendos`,
@@ -187,7 +187,7 @@ else applies.
 - [ ] i18n keys for all default category names (es/en parity)
 - [ ] Verify: first launch in English → English categories; in Spanish → Spanish; switching language behaves per the chosen option
 
-### P1.5 — Host-configurable default language
+### P1.6 — Host-configurable default language
 Let the person deploying the app choose the default UI language; fall back to
 **English** when nothing is configured. Currently the fallback is hardcoded to
 Spanish in `packages/frontend/src/lib/stores/preferences.ts` (`loadFromStorage`
@@ -200,13 +200,13 @@ returns `{ locale: 'es' }`), and there is no host-level setting.
 - [ ] Document `DEFAULT_LOCALE` in the README env table, `.env.example`, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
 - [ ] Verify: fresh install with no config → English; with `DEFAULT_LOCALE=es` → Spanish; a user's saved choice always wins
 
-### P1.4 — Health & observability
+### P1.7 — Health & observability
 - [ ] Deepen `/api/v1/health` to include a DB connectivity check
 - [ ] Confirm consistent structured error responses across routes
 - [ ] Surface scheduler job status (auto-charge, alert evaluation, budget reset) so a silently-failed cron job is visible to the user/admin
 - [ ] Consistent, configurable structured logging levels
 
-### P1.7 — Automated backups with retention
+### P1.8 — Automated backups with retention
 Manual JSON export exists, but a finance app needs scheduled backups so a DB
 corruption isn't catastrophic. Keep storage bounded — a fixed number of backups,
 rotating out the oldest.
@@ -217,14 +217,14 @@ rotating out the oldest.
 - [ ] Restore from an automatic backup via the UI
 - [ ] Verify: backups rotate correctly at the limit; restore works
 
-### P1.8 — Restore safety (dry-run / validation)
+### P1.9 — Restore safety (dry-run / validation)
 Import currently wipes all data on confirm. Make it safer.
 
 - [ ] Validate and preview a backup **before** it replaces current data (a dry-run that reports counts and any problems)
 - [ ] Confirm the atomic transaction rolls back cleanly on any failure mid-import (no half-restored state)
 - [ ] Clear warning + explicit confirm before destructive replace (already partially present — verify)
 
-### P1.9 — Multi-user hardening (decide the model)
+### P1.10 — Multi-user hardening (decide the model)
 The app supports multiple users (first registrant becomes admin, rest become
 `user` — confirmed in `auth.service.ts`), but multi-user behavior isn't clearly
 locked down. Decide explicitly whether HomeLedger is single-user or multi-user
@@ -235,7 +235,7 @@ and enforce it.
 - [ ] Wire `requireRole` where admin-only actions live (user management, etc.) — it exists but may be unused
 - [ ] If multi-user: a basic admin user-management view (list/disable/delete users, reset a user's password)
 
-### P1.10 — Registration control (admin-managed + allowlist)
+### P1.11 — Registration control (admin-managed + allowlist)
 Registration is currently fully open (anyone can register; confirmed in
 `AuthService.register`). On an exposed instance, randoms can create accounts.
 
@@ -245,14 +245,14 @@ Registration is currently fully open (anyone can register; confirmed in
 - [ ] Surface these controls in an admin settings area, and/or via env for headless setups
 - [ ] Verify: with registration closed, the register endpoint refuses; with an allowlist, only allowed emails succeed
 
-### P1.11 — Password reset / account recovery
+### P1.12 — Password reset / account recovery
 Login and register exist, but there's no way to recover a forgotten password.
 
 - [ ] At minimum: an **admin CLI / script** to reset a user's password (works headless, no email needed)
 - [ ] Optional: email-based reset flow (requires SMTP config — document it as optional)
 - [ ] Verify a locked-out admin can regain access without wiping the DB
 
-### P1.12 — Multi-currency correctness
+### P1.13 — Multi-currency correctness
 Users can pick from 8 currencies, but it's unclear how accounts in *different*
 currencies are handled in aggregates.
 
@@ -400,7 +400,7 @@ Several reports exist 🟡. Extend and allow user-defined reports (rendered loca
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
 - [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency
-- [ ] Optional, user-enabled FX auto-fetch only (off by default) — ties to P1.12
+- [ ] Optional, user-enabled FX auto-fetch only (off by default) — ties to P1.13
 
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.
