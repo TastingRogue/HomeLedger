@@ -16,6 +16,30 @@ until it's verified (typecheck + build + test + Docker where relevant).
 
 ---
 
+## Product principles (guide every decision)
+
+**Local-first, offline by default.** HomeLedger runs entirely on the user's own
+machine/server and makes **no outbound internet connections** to function.
+Verified today: the backend has zero external HTTP calls, and the frontend loads
+no CDNs, fonts, or analytics — everything is self-contained and served from the
+same origin. The only time HomeLedger is reachable from the internet is if the
+**user themselves** chooses to expose it (reverse proxy, VPN, tunnel). No
+telemetry, no phone-home, ever.
+
+Implications for the feature list:
+- **Data in = manual entry + local file import** (CSV / OFX / QIF / XLSX / CFDI
+  XML). This is the primary, first-class path — no cloud dependency.
+- **On-device OCR** (tesseract / poppler) stays fully offline.
+- **Automatic bank sync (Plaid/SimpleFIN/etc.) is explicitly OUT of the core.**
+  It's an inherently cloud service that transmits financial data off-device,
+  which conflicts with local-first. If ever added, it must be a clearly optional,
+  off-by-default plugin the user opts into — never required, never default.
+- **Anything needing live external data** (FX rates, stock/crypto prices) must be
+  **manual-entry-first**; any auto-fetch is optional and user-enabled only.
+- **PWA / offline mode and Home Assistant (local network)** fit this model well.
+
+---
+
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
