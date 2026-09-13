@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from './client';
+import { apiGet, apiPost, apiPut, apiDelete, apiFetchBlob } from './client';
 
 /** Transaction type as used by the backend and shared package. */
 export type TransactionType = 'Ingreso' | 'Gasto';
@@ -109,4 +109,22 @@ export function splitTransaction(id: number, splits: SplitInput[]): Promise<Tran
 /** Clear all splits for a transaction (revert to its main category only). */
 export async function clearSplits(id: number): Promise<void> {
 	await apiDelete(`/transactions/${id}/split`);
+}
+
+/**
+ * Export the user's transactions (matching the given filters) as a CSV file.
+ * Returns the file contents as a Blob for the caller to download. The server
+ * exports the FULL filtered dataset, not just a page.
+ */
+export function exportTransactionsCsv(filters?: TransactionFilters): Promise<Blob> {
+	const params = new URLSearchParams();
+	if (filters) {
+		// Pagination params don't apply to a full export; skip them.
+		const { page: _p, pageSize: _ps, ...rest } = filters;
+		Object.entries(rest).forEach(([key, value]) => {
+			if (value !== undefined && value !== '') params.set(key, String(value));
+		});
+	}
+	const query = params.toString() ? `?${params.toString()}` : '';
+	return apiFetchBlob(`/transactions/export.csv${query}`);
 }

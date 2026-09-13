@@ -327,6 +327,61 @@ export class TransactionService {
   }
 
   /**
+   * Returns ALL transactions matching the given filters (no pagination), with
+   * account and category names resolved via joins. Used for CSV export, where
+   * the user expects the whole filtered dataset in one file rather than a page.
+   * Ordered by date descending to match the list view.
+   */
+  static listAllForExport(
+    userId: number,
+    filters: Pick<TransactionFilters, 'accountId' | 'categoryId' | 'type' | 'startDate' | 'endDate'>
+  ): {
+    date: string;
+    name: string;
+    type: string;
+    amount: number;
+    accountName: string;
+    categoryName: string;
+    notes: string;
+  }[] {
+    const db = getDb();
+
+    const conditions = [eq(transactions.userId, userId)];
+    if (filters.accountId) conditions.push(eq(transactions.accountId, filters.accountId));
+    if (filters.categoryId) conditions.push(eq(transactions.categoryId, filters.categoryId));
+    if (filters.type) conditions.push(eq(transactions.type, filters.type));
+    if (filters.startDate) conditions.push(gte(transactions.date, filters.startDate));
+    if (filters.endDate) conditions.push(lte(transactions.date, filters.endDate));
+
+    const rows = db
+      .select({
+        date: transactions.date,
+        name: transactions.name,
+        type: transactions.type,
+        amount: transactions.amount,
+        accountName: accounts.name,
+        categoryName: categories.name,
+        notes: transactions.notes,
+      })
+      .from(transactions)
+      .leftJoin(accounts, eq(transactions.accountId, accounts.id))
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(...conditions))
+      .orderBy(desc(transactions.date))
+      .all();
+
+    return rows.map((r) => ({
+      date: r.date,
+      name: r.name,
+      type: r.type,
+      amount: r.amount,
+      accountName: r.accountName ?? '',
+      categoryName: r.categoryName ?? '',
+      notes: r.notes ?? '',
+    }));
+  }
+
+  /**
    * Registro rápido de transacción.
    * Auto-completa fecha/hora con zona horaria CST (America/Mexico_City).
    * Usa el nombre de la categoría como nombre de la transacción.

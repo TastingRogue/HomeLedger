@@ -7,6 +7,7 @@ import {
 } from '../../validators/transaction.schema.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 import { TransactionType } from '@homeledger/shared';
+import { toCsv } from '../../utils/csv.js';
 import { z } from 'zod';
 
 /**
@@ -87,6 +88,44 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       success: true,
       data: { ...result, items: enrichedItems },
     });
+  });
+
+  /**
+   * GET /api/v1/transactions/export.csv
+   * Export ALL of the user's transactions matching the current filters as a CSV
+   * file (spreadsheet-friendly, separate from the JSON backup). Same query
+   * params as the list route. A literal path so it never collides with /:id.
+   */
+  app.get('/export.csv', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const query = request.query as Record<string, string | undefined>;
+
+    const typeParam = query.type as string | undefined;
+    const validType = typeParam && Object.values(TransactionType).includes(typeParam as TransactionType)
+      ? (typeParam as TransactionType)
+      : undefined;
+
+    const rows = TransactionService.listAllForExport(user.userId, {
+      accountId: query.accountId ? parseInt(query.accountId, 10) : undefined,
+      categoryId: query.categoryId ? parseInt(query.categoryId, 10) : undefined,
+      type: validType,
+      startDate: query.startDate || undefined,
+      endDate: query.endDate || undefined,
+    });
+
+    const headers = ['Date', 'Name', 'Type', 'Amount', 'Account', 'Category', 'Notes'];
+    const body = toCsv(
+      headers,
+      rows.map((r) => [r.date, r.name, r.type, r.amount, r.accountName, r.categoryName, r.notes])
+    );
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    // Prepend a UTF-8 BOM so Excel opens accented text (á, ñ, €) correctly.
+    return reply
+      .header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="homeledger-transactions-${stamp}.csv"`)
+      .status(200)
+      .send('\uFEFF' + body);
   });
 
   /**

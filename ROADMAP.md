@@ -385,7 +385,7 @@ survive a restore with fully remapped foreign keys.
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
 - [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)
 - [ ] `CONTRIBUTING.md` + issue/PR templates (supports community growth)
-- [ ] CSV export of transactions (spreadsheet-friendly, separate from the JSON backup)
+- [x] CSV export of transactions ✅ (spreadsheet-friendly, separate from the JSON backup). **Server-side** so the FULL filtered dataset exports (not just the paginated page): `GET /api/v1/transactions/export.csv` (per-user auth, literal path so it never collides with `/:id`) reuses the same query filters as the list route via a new `TransactionService.listAllForExport` (all matching rows, account/category names via joins, date desc). CSV is built with a pure, unit-tested `utils/csv.ts` (`toCsv`) doing RFC-4180 escaping (quote fields with comma/quote/CR/LF, double internal quotes, CRLF rows), columns `Date,Name,Type,Amount,Account,Category,Notes`, served as `text/csv; charset=utf-8` with a `Content-Disposition` attachment filename and a **UTF-8 BOM** so Excel renders accents. Frontend: `exportTransactionsCsv(filters)` (via `apiFetchBlob`) + an **Export CSV** button in the transactions filter bar that respects the current active filters and downloads the file (disabled when there are no rows). i18n `transactions.export_csv`/`export_error` (es/en parity 1029). Verified: backend typecheck 0/0 + suite 486/486 (10 CSV-helper tests + a route-wiring 401 test), frontend typecheck 0/0 + build clean.
 - [ ] (Optional) Real dashboard customization — the non-functional "Customize" button was removed; only revisit if it becomes a wanted feature
 
 ### Design craft (from the `apple-design` skill)

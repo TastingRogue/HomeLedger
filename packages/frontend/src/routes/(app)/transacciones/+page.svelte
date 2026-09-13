@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
-  import { getTransactionById, splitTransaction, clearSplits, type TransactionSplit } from '$lib/api/transactions';
+  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, type TransactionSplit } from '$lib/api/transactions';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -210,6 +210,34 @@
   function goToPage(page: number) { if (page >= 1 && page <= totalPages) { currentPage = page; loadTransactions(); } }
   function applyFilters() { currentPage = 1; loadTransactions(); }
   function clearFilters() { filterAccountId = ''; filterCategoryId = ''; filterType = ''; filterStartDate = ''; filterEndDate = ''; currentPage = 1; loadTransactions(); }
+
+  // --- CSV export (respects the current filters; exports the full dataset) ---
+  let exporting = $state(false);
+  async function handleExportCsv() {
+    exporting = true;
+    error = '';
+    try {
+      const blob = await exportTransactionsCsv({
+        accountId: filterAccountId ? Number(filterAccountId) : undefined,
+        categoryId: filterCategoryId ? Number(filterCategoryId) : undefined,
+        type: (filterType || undefined) as TxType | undefined,
+        startDate: filterStartDate || undefined,
+        endDate: filterEndDate || undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `homeledger-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : $t('transactions.export_error');
+    } finally {
+      exporting = false;
+    }
+  }
 
   // --- Detail Popup ---
   function openDetail(tx: Transaction) {
@@ -443,6 +471,9 @@
     {#if filterAccountId || filterCategoryId || filterStartDate || filterEndDate}
       <button class="btn-clear" onclick={clearFilters}>{$t('transactions.clear_filters')}</button>
     {/if}
+    <button class="btn-export" onclick={handleExportCsv} disabled={exporting || total === 0} title={$t('transactions.export_csv')}>
+      {exporting ? $t('common.loading') : $t('transactions.export_csv')}
+    </button>
   </div>
 
   {#if error}
@@ -839,6 +870,9 @@
   .btn-filter:hover { opacity: 0.9; }
   .btn-clear { padding: 0.3rem 0.5rem; background: none; color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: var(--radius-sm); font-size: 0.72rem; cursor: pointer; align-self: flex-end; }
   .btn-clear:hover { background: var(--tag-red-bg); }
+  .btn-export { padding: 0.3rem 0.6rem; background: none; color: var(--accent-green); border: 1px solid var(--accent-green); border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 500; cursor: pointer; align-self: flex-end; margin-left: auto; }
+  .btn-export:hover:not(:disabled) { background: var(--tag-green-bg); }
+  .btn-export:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* --- Alerts & States --- */
   .alert-error { background: var(--tag-red-bg); color: var(--accent-red); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; }

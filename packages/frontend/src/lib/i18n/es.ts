@@ -213,6 +213,8 @@ export const es = {
   'transactions.filter_from': 'Desde',
   'transactions.filter_to': 'Hasta',
   'transactions.clear_filters': '× Limpiar',
+  'transactions.export_csv': 'Exportar CSV',
+  'transactions.export_error': 'No se pudo exportar el CSV.',
   'transactions.no_results': 'No se encontraron transacciones.',
   'transactions.error_loading': 'Error al cargar transacciones',
   'transactions.delete_title': 'Eliminar Transacción',

@@ -214,6 +214,8 @@ export const en: Record<TranslationKey, string> = {
   'transactions.filter_from': 'From',
   'transactions.filter_to': 'To',
   'transactions.clear_filters': '× Clear',
+  'transactions.export_csv': 'Export CSV',
+  'transactions.export_error': 'Could not export CSV.',
   'transactions.no_results': 'No transactions found.',
   'transactions.error_loading': 'Error loading transactions',
   'transactions.delete_title': 'Delete Transaction',
