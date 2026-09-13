@@ -147,11 +147,20 @@ docker run -d \
   -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
   -e ADMIN_EMAIL="admin@homeledger.local" \
   -e ADMIN_PASSWORD="your-strong-password" \
+  -e DEFAULT_LOCALE="en" \
+  -e DISPLAY_CURRENCY="USD" \
   --name homeledger \
   irving1flores/homeledger:latest
 
 # App + API available at http://localhost:3000
 ```
+
+> :globe_with_meridians: **Language & currency at first run.** `DEFAULT_LOCALE`
+> (`en` or `es`, default `en`) sets the interface language and the language your
+> default categories are seeded in; `DISPLAY_CURRENCY` (default `MXN`) sets the
+> install's currency. Both are optional — omit them to take the defaults. **Each
+> user can switch their own language afterwards** in **Settings**, and an admin
+> can change the currency in-app; see [Environment Variables](#environment-variables).
 
 ### Run from Docker Desktop (no command line)
 
@@ -166,7 +175,10 @@ will show `ERR_CONNECTION_REFUSED`.
    browser.
 4. *(Optional)* Add a volume so your data survives restarts: **Host path** a
    folder of your choice, **Container path** `/data`.
-5. Click **Run**, then open <http://localhost:3000>.
+5. *(Optional)* Under **Environment variables**, set `DEFAULT_LOCALE` to `en` or
+   `es` for the starting language, and `DISPLAY_CURRENCY` (e.g. `USD`, `MXN`) for
+   the currency. You can also switch your language later in **Settings**.
+6. Click **Run**, then open <http://localhost:3000>.
 
 Log in with the demo credentials:
 
