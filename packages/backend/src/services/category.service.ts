@@ -163,7 +163,7 @@ export class CategoryService {
    *
    * @throws CategoryError si la categoría no existe, es del sistema, o el nombre ya existe
    */
-  static async update(categoryId: number, userId: number, input: { name?: string; icon?: string | null; color?: string | null; type?: string }) {
+  static async update(categoryId: number, userId: number, input: { name?: string; icon?: string | null; color?: string | null; type?: string }, role?: string) {
     const db = getDb();
 
     // Verificar que la categoría existe
@@ -180,9 +180,16 @@ export class CategoryService {
       );
     }
 
-    // System categories can be edited by any user (they are shared)
-    // User categories must belong to the user
-    if (!category.isSystem && category.userId !== userId) {
+    // System categories are the shared, admin-curated set: only an admin may
+    // edit them. User categories must belong to the requesting user.
+    if (category.isSystem) {
+      if (role !== 'admin') {
+        throw new CategoryError(
+          'Solo un administrador puede editar las categorías del sistema',
+          'FORBIDDEN'
+        );
+      }
+    } else if (category.userId !== userId) {
       throw new CategoryError(
         'Categoría no encontrada',
         'CATEGORY_NOT_FOUND'

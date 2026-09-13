@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
+import { eq, and, or, desc, gte, lte, count } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { transactions, transactionSplits, accounts, categories } from '../db/schema.js';
 import type { CreateTransactionSchema, UpdateTransactionSchema, QuickTransactionInput } from '../validators/transaction.schema.js';
@@ -58,11 +58,11 @@ export class TransactionService {
       );
     }
 
-    // Validate category exists
+    // Validate category exists AND is usable by this user (system or own).
     const category = db
       .select({ id: categories.id })
       .from(categories)
-      .where(eq(categories.id, input.categoryId))
+      .where(and(eq(categories.id, input.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
       .get();
 
     if (!category) {
@@ -144,7 +144,7 @@ export class TransactionService {
       const newCategory = db
         .select({ id: categories.id })
         .from(categories)
-        .where(eq(categories.id, input.categoryId))
+        .where(and(eq(categories.id, input.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
         .get();
 
       if (!newCategory) {
@@ -305,11 +305,11 @@ export class TransactionService {
       );
     }
 
-    // Validate and get category name
+    // Validate and get category name (system or own)
     const category = db
       .select({ id: categories.id, name: categories.name })
       .from(categories)
-      .where(eq(categories.id, input.categoryId))
+      .where(and(eq(categories.id, input.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
       .get();
 
     if (!category) {
@@ -403,12 +403,12 @@ export class TransactionService {
       );
     }
 
-    // Validate all categories exist
+    // Validate all categories exist and are usable by this user (system or own)
     for (const splitInput of splits) {
       const cat = db
         .select({ id: categories.id })
         .from(categories)
-        .where(eq(categories.id, splitInput.categoryId))
+        .where(and(eq(categories.id, splitInput.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
         .get();
 
       if (!cat) {

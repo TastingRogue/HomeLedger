@@ -114,7 +114,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
  * FORBIDDEN-type errors get 403, everything else gets 401.
  */
 function getAuthErrorStatusCode(code: string): number {
-  const forbiddenCodes = ['FORBIDDEN', 'INSUFFICIENT_PERMISSIONS'];
+  const forbiddenCodes = ['FORBIDDEN', 'INSUFFICIENT_PERMISSIONS', 'ACCOUNT_DISABLED'];
 
   if (forbiddenCodes.includes(code)) {
     return 403;

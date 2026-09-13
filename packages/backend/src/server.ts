@@ -9,6 +9,7 @@ import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
 import { getSchedulerStatus } from './scheduler/status.js';
 import { authRoutes } from './routes/v1/auth.routes.js';
+import { userRoutes } from './routes/v1/users.routes.js';
 import { accountRoutes } from './routes/v1/accounts.routes.js';
 import { transactionRoutes } from './routes/v1/transactions.routes.js';
 import { transferRoutes } from './routes/v1/transfers.routes.js';
@@ -90,6 +91,7 @@ export async function buildApp() {
     data: getSchedulerStatus(),
   }));
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(userRoutes, { prefix: '/api/v1/users' });
   await app.register(accountRoutes, { prefix: '/api/v1/accounts' });
   await app.register(transactionRoutes, { prefix: '/api/v1/transactions' });
   await app.register(transferRoutes, { prefix: '/api/v1/transfers' });

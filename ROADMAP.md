@@ -260,10 +260,22 @@ The app supports multiple users (first registrant becomes admin, rest become
 locked down. Decide explicitly whether HomeLedger is single-user or multi-user
 and enforce it.
 
-- [ ] Decide: single-user, or fully-supported multi-user? Document the decision
-- [ ] Audit every data route to confirm strict per-user isolation (no cross-user reads/writes) — the backup bug proved multi-user paths exist
-- [ ] Wire `requireRole` where admin-only actions live (user management, etc.) — it exists but may be unused
-- [ ] If multi-user: a basic admin user-management view (list/disable/delete users, reset a user's password)
+**Decision (user-confirmed): multi-user, admin-controlled.** HomeLedger is a
+self-hosted **household** app. The first registrant is the admin and controls the
+instance (default language, registration, backups, user management). Additional
+users can be allowed in; each user's financial data is strictly isolated from the
+others. This matches the existing first-user-admin code and the local-first
+principle (it's your household's server, not public SaaS).
+
+- [x] Decision documented (above): multi-user, admin-controlled.
+- [x] Full per-user isolation audit (delegated deep audit of every route/service). Result: **no currently-exploitable cross-user IDOR** — every user-supplied `:id` mutation is guarded either in-service (`AND userId = ?`) or at the route layer. Fixed the latent defense-in-depth gaps it found:
+  - **`AccountService`** was the main gap — `update/deactivate/getById/...` filtered only by `id`, relying entirely on route guards. Threaded `userId` into these and filter `AND userId = ?` in-query (route guards kept as defense-in-depth).
+  - **`AuthService.revokeApiKey`** was unscoped by user (landmine if ever routed) — now scoped to the caller's own keys.
+  - **FK ownership on create** — `categoryId` in transactions/subscriptions/budgets was existence-only; now must be a system category or owned by the user (a user can't reference another user's private category).
+  - **`AttachmentService` link** — `transactionId`/`transferId` are now verified to belong to the user before linking.
+- [x] Wired `requireRole` for admin actions: system-category edit/delete is now **admin-only** (users manage their own categories; only the admin curates the shared system set); plus the P1.7 scheduler status and P1.8 snapshot routes.
+- [x] Admin user-management **backend** (all `requireRole(['admin'])`): list users, enable/disable, delete, reset a user's password (`users.routes.ts` + `UserService`). First-admin safety: can't disable/delete/demote the last admin or yourself into lockout.
+- [ ] (Follow-up) Frontend admin user-management view — pairs with the deferred P1.8/P1.9 admin UI.
 
 ### P1.11 — Registration control (admin-managed + allowlist)
 Registration is currently fully open (anyone can register; confirmed in

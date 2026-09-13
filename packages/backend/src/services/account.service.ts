@@ -76,14 +76,14 @@ export class AccountService {
    *
    * @throws AccountError si la cuenta no existe o el nombre ya está en uso
    */
-  static async update(id: number, input: UpdateAccountSchema) {
+  static async update(id: number, userId: number, input: UpdateAccountSchema) {
     const db = getDb();
 
-    // Verificar que la cuenta existe
+    // Verificar que la cuenta existe y pertenece al usuario (aislamiento por usuario)
     const existing = db
       .select()
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     if (!existing) {
@@ -119,7 +119,7 @@ export class AccountService {
         ...(input.currency !== undefined && { currency: input.currency }),
         updatedAt: now,
       })
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .returning()
       .get();
 
@@ -130,15 +130,15 @@ export class AccountService {
    * Desactiva una cuenta cambiando su estado a "Inactivo".
    * Las cuentas inactivas se excluyen del panel principal.
    *
-   * @throws AccountError si la cuenta no existe
+   * @throws AccountError si la cuenta no existe o no pertenece al usuario
    */
-  static async deactivate(id: number) {
+  static async deactivate(id: number, userId: number) {
     const db = getDb();
 
     const existing = db
       .select({ id: accounts.id })
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     if (!existing) {
@@ -149,7 +149,7 @@ export class AccountService {
 
     db.update(accounts)
       .set({ status: 'Inactivo', updatedAt: now })
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .run();
   }
 
@@ -177,13 +177,13 @@ export class AccountService {
    * Obtiene una cuenta por su ID.
    * Retorna null si no existe.
    */
-  static async getById(id: number) {
+  static async getById(id: number, userId: number) {
     const db = getDb();
 
     const result = db
       .select()
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     return result ?? null;

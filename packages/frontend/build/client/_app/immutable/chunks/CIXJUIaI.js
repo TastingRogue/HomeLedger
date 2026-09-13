@@ -1,1 +1,0 @@
-import{c as o,E as a,i as c,s as p,d as _}from"./DbcQfYEm.js";import{B as u,p as f}from"./CJ_ma-EI.js";function v(e,r,...t){var s=new u(e);o(()=>{const n=r()??null;n==null&&c(),s.ensure(n,n&&(i=>n(i,...t)))},a)}function d(e,r){const t=(s,...n)=>{var i=_;p(e);try{return r(s,...n)}finally{p(i)}};return f(t),t}export{v as s,d as w};

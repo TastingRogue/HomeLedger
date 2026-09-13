@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
-import { eq, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import type { RegisterSchema, LoginSchema } from '../validators/auth.schema.js';
@@ -137,6 +137,11 @@ export class AuthService {
     const isValid = await bcrypt.compare(input.password, foundUser.passwordHash);
     if (!isValid) {
       throw new AuthError('Credenciales inválidas', 'INVALID_CREDENTIALS');
+    }
+
+    // Disabled accounts cannot log in.
+    if (foundUser.disabled) {
+      throw new AuthError('La cuenta está deshabilitada. Contacta al administrador.', 'ACCOUNT_DISABLED');
     }
 
     // Generate tokens
@@ -275,9 +280,14 @@ export class AuthService {
   /**
    * Revoke (delete) an API key by its ID.
    */
-  static async revokeApiKey(keyId: number): Promise<void> {
+  static async revokeApiKey(keyId: number, userId: number): Promise<void> {
     const db = getDb();
-    const deleted = db.delete(apiKeys).where(eq(apiKeys.id, keyId)).returning().all();
+    // Scope to the caller's own keys so a user can never revoke another user's key.
+    const deleted = db
+      .delete(apiKeys)
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+      .returning()
+      .all();
 
     if (deleted.length === 0) {
       throw new AuthError('API key no encontrada', 'API_KEY_NOT_FOUND');

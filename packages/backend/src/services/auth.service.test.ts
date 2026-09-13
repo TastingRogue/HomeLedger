@@ -23,6 +23,7 @@ describe('AuthService', () => {
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
+        disabled INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -272,7 +273,7 @@ describe('AuthService', () => {
       });
 
       const apiKey = await AuthService.generateApiKey(registerResult.user.id, 'My Key');
-      await AuthService.revokeApiKey(apiKey.id);
+      await AuthService.revokeApiKey(apiKey.id, registerResult.user.id);
 
       // Validate should return null after revocation
       const result = await AuthService.validateApiKey(apiKey.key);
@@ -280,7 +281,7 @@ describe('AuthService', () => {
     });
 
     it('should throw when revoking non-existent key', async () => {
-      await expect(AuthService.revokeApiKey(99999)).rejects.toThrow(AuthError);
+      await expect(AuthService.revokeApiKey(99999, 1)).rejects.toThrow(AuthError);
     });
   });
 

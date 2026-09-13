@@ -1,1 +1,0 @@
-const n=/\r/g;function h(e){e=e.replace(n,"");let t=5381,r=e.length;for(;r--;)t=(t<<5)-t^e.charCodeAt(r);return(t>>>0).toString(36)}const s=["touchstart","touchmove"];function u(e){return s.includes(e)}function a(e){return e==null?void 0:e.replace(/\//g,"/​")}export{h,u as i,a as s};

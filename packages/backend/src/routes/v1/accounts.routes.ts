@@ -68,7 +68,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const account = await AccountService.getById(id);
+    const account = await AccountService.getById(id, user.userId);
 
     if (!account) {
       return reply.status(404).send({
@@ -80,7 +80,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Ensure the account belongs to the authenticated user
+    // Defense-in-depth: getById is now user-scoped, but keep the explicit check.
     if (account.userId !== user.userId) {
       return reply.status(404).send({
         success: false,
@@ -144,8 +144,8 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Verify account exists and belongs to user
-    const existing = await AccountService.getById(id);
+    // Verify account exists and belongs to user (getById is user-scoped; kept explicit)
+    const existing = await AccountService.getById(id, user.userId);
     if (!existing || existing.userId !== user.userId) {
       return reply.status(404).send({
         success: false,
@@ -159,7 +159,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
     const parsed = updateAccountSchema.parse(request.body);
 
     try {
-      const updated = await AccountService.update(id, parsed);
+      const updated = await AccountService.update(id, user.userId, parsed);
 
       return reply.status(200).send({
         success: true,
@@ -191,8 +191,8 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Verify account exists and belongs to user
-    const existing = await AccountService.getById(id);
+    // Verify account exists and belongs to user (getById is user-scoped; kept explicit)
+    const existing = await AccountService.getById(id, user.userId);
     if (!existing || existing.userId !== user.userId) {
       return reply.status(404).send({
         success: false,
@@ -204,7 +204,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      await AccountService.deactivate(id);
+      await AccountService.deactivate(id, user.userId);
 
       return reply.status(200).send({
         success: true,

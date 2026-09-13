@@ -10,6 +10,8 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
   role: text('role', { enum: ['admin', 'user', 'viewer'] }).notNull().default('user'),
+  // When true, the user cannot log in (admin can disable an account without deleting it).
+  disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [

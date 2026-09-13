@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
+import { eq, and, or, gte, lte, sql, sum } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
@@ -93,12 +93,12 @@ export class BudgetService {
       );
     }
 
-    // Validate that all categories exist
+    // Validate that all categories exist AND are usable by this user (system or own)
     for (const cat of input.categories) {
       const existing = db
         .select({ id: categories.id })
         .from(categories)
-        .where(eq(categories.id, cat.categoryId))
+        .where(and(eq(categories.id, cat.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
         .get();
 
       if (!existing) {
@@ -761,8 +761,16 @@ export class BudgetService {
           .where(eq(budgetCategories.budgetId, id))
           .run();
 
-        // Insert new ones
+        // Insert new ones (validate each category is usable by this user first)
         for (const cat of input.categories) {
+          const okCat = db
+            .select({ id: categories.id })
+            .from(categories)
+            .where(and(eq(categories.id, cat.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
+            .get();
+          if (!okCat) {
+            throw new BudgetError(`La categoría con ID ${cat.categoryId} no existe`, 'CATEGORY_NOT_FOUND');
+          }
           db.insert(budgetCategories)
             .values({
               budgetId: id,

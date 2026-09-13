@@ -1,1 +1,0 @@
-import{a as c,e as n,f as u,g as o}from"./DzggUsHT.js";function e(){return c("/accounts")}function i(t){return c(`/accounts/${t}`)}function r(t){return u("/accounts",t)}function f(t,a){return n(`/accounts/${t}`,a)}async function p(t){await o(`/accounts/${t}/deactivate`)}export{r as c,p as d,i as g,e as l,f as u};

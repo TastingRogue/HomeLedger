@@ -27,8 +27,8 @@ export async function transferRoutes(app: FastifyInstance): Promise<void> {
     // Enrich with account names
     const enriched = await Promise.all(
       transfers.map(async (t) => {
-        const source = await AccountService.getById(t.sourceAccountId);
-        const dest = await AccountService.getById(t.destinationAccountId);
+        const source = await AccountService.getById(t.sourceAccountId, user.userId);
+        const dest = await AccountService.getById(t.destinationAccountId, user.userId);
         return {
           ...t,
           fromAccountName: source?.name ?? '—',

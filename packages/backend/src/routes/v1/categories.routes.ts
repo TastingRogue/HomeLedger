@@ -33,6 +33,9 @@ function handleCategoryError(error: CategoryError, reply: FastifyReply): Fastify
     case 'CATEGORY_NAME_TOO_LONG':
       statusCode = 400;
       break;
+    case 'FORBIDDEN':
+      statusCode = 403;
+      break;
     default:
       statusCode = 400;
   }
@@ -135,7 +138,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
     const parsed = updateCategorySchema.parse(request.body);
 
     try {
-      const updated = await CategoryService.update(id, user.userId, parsed);
+      const updated = await CategoryService.update(id, user.userId, parsed, user.role);
 
       return reply.status(200).send({
         success: true,
