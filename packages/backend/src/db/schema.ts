@@ -296,13 +296,28 @@ export const assets = sqliteTable('assets', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  value: real('value').notNull(),
+  // Current estimated value (used for net worth). Renamed from `value` in 0008.
+  currentValue: real('current_value').notNull(),
   type: text('type').notNull(),
+  // ── First-class asset fields (P4). All optional so a bare name+value still works. ──
+  brand: text('brand'),
+  model: text('model'),
+  serialNumber: text('serial_number'),
+  // Broad category for grouping/filtering (free-form; UI suggests a set).
+  category: text('category'),
+  purchaseDate: text('purchase_date'),
+  purchasePrice: real('purchase_price'),
+  location: text('location'),
+  status: text('status', { enum: ['active', 'sold', 'disposed'] }).notNull().default('active'),
+  // Optional links into Money (the purchase transaction) and its receipt.
+  purchaseTransactionId: integer('purchase_transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+  receiptAttachmentId: integer('receipt_attachment_id').references(() => attachments.id, { onDelete: 'set null' }),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
   index('assets_user_id_idx').on(table.userId),
+  index('assets_purchase_transaction_id_idx').on(table.purchaseTransactionId),
 ]);
 
 export const liabilities = sqliteTable('liabilities', {

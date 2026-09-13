@@ -57,6 +57,13 @@
       "when": 1787696600000,
       "tag": "0007_per_user_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787696700000,
+      "tag": "0008_assets_first_class",
+      "breakpoints": true
     }
   ]
 }

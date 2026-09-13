@@ -22,15 +22,35 @@ export class NetWorthError extends Error {
  */
 export interface CreateAssetInput {
   name: string;
-  value: number;
+  currentValue: number;
   type: string;
+  brand?: string | null;
+  model?: string | null;
+  serialNumber?: string | null;
+  category?: string | null;
+  purchaseDate?: string | null;
+  purchasePrice?: number | null;
+  location?: string | null;
+  status?: 'active' | 'sold' | 'disposed';
+  purchaseTransactionId?: number | null;
+  receiptAttachmentId?: number | null;
   notes?: string | null;
 }
 
 export interface UpdateAssetInput {
   name?: string;
-  value?: number;
+  currentValue?: number;
   type?: string;
+  brand?: string | null;
+  model?: string | null;
+  serialNumber?: string | null;
+  category?: string | null;
+  purchaseDate?: string | null;
+  purchasePrice?: number | null;
+  location?: string | null;
+  status?: 'active' | 'sold' | 'disposed';
+  purchaseTransactionId?: number | null;
+  receiptAttachmentId?: number | null;
   notes?: string | null;
 }
 
@@ -92,7 +112,7 @@ export class NetWorthService {
 
     // Sumar valores de todos los activos del usuario
     const assetSumResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${assets.value}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${assets.currentValue}), 0)` })
       .from(assets)
       .where(eq(assets.userId, userId))
       .get();
@@ -178,7 +198,7 @@ export class NetWorthService {
       );
     }
 
-    if (input.value === undefined || input.value === null) {
+    if (input.currentValue === undefined || input.currentValue === null) {
       throw new NetWorthError(
         'El valor del activo es obligatorio',
         'ASSET_VALUE_REQUIRED'
@@ -199,8 +219,18 @@ export class NetWorthService {
       .values({
         userId,
         name: input.name.trim(),
-        value: input.value,
+        currentValue: input.currentValue,
         type: input.type,
+        brand: input.brand ?? null,
+        model: input.model ?? null,
+        serialNumber: input.serialNumber ?? null,
+        category: input.category ?? null,
+        purchaseDate: input.purchaseDate ?? null,
+        purchasePrice: input.purchasePrice ?? null,
+        location: input.location ?? null,
+        status: input.status ?? 'active',
+        purchaseTransactionId: input.purchaseTransactionId ?? null,
+        receiptAttachmentId: input.receiptAttachmentId ?? null,
         notes: input.notes ?? null,
         createdAt: now,
         updatedAt: now,
@@ -243,8 +273,8 @@ export class NetWorthService {
       updateData['name'] = input.name.trim();
     }
 
-    if (input.value !== undefined) {
-      updateData['value'] = input.value;
+    if (input.currentValue !== undefined) {
+      updateData['currentValue'] = input.currentValue;
     }
 
     if (input.type !== undefined) {
@@ -256,6 +286,14 @@ export class NetWorthService {
       }
       updateData['type'] = input.type;
     }
+
+    // Optional first-class fields (P4): only touched when provided.
+    for (const key of ['brand', 'model', 'serialNumber', 'category', 'purchaseDate', 'location', 'status'] as const) {
+      if (input[key] !== undefined) updateData[key] = input[key] ?? null;
+    }
+    if (input.purchasePrice !== undefined) updateData['purchasePrice'] = input.purchasePrice ?? null;
+    if (input.purchaseTransactionId !== undefined) updateData['purchaseTransactionId'] = input.purchaseTransactionId ?? null;
+    if (input.receiptAttachmentId !== undefined) updateData['receiptAttachmentId'] = input.receiptAttachmentId ?? null;
 
     if (input.notes !== undefined) {
       updateData['notes'] = input.notes ?? null;
