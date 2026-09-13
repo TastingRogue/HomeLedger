@@ -481,4 +481,4 @@ Keep these in sync (all currently `0.1.0`):
 - **Balance model:** account balances are computed dynamically from transactions/transfers (`AccountService.calculateBalance`); `initialBalance` is never mutated. Tests must follow this.
 - **Raw-SQL tables:** `receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings` are created at runtime outside Drizzle (via `ensureTable` patterns). Formalizing them is a P0.3 item.
 - **arm64:** must be built on native arm64 runners; QEMU emulation hangs compiling `better-sqlite3`.
-- **Naming:** app is "HomeLedger"; internal package scope is still `@smart-finance/*` (cosmetic, low priority — not user-facing).
+- **Naming:** app is "HomeLedger"; internal package scope was renamed from `@smart-finance/*` to `@homeledger/*` (done — all package.json names, imports, and the lockfile updated; verified with typecheck + build + 410 tests).

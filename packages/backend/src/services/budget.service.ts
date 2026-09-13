@@ -2,8 +2,8 @@ import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
-import { BudgetPeriod, AlertType, AlertSeverity } from '@smart-finance/shared';
-import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@smart-finance/shared';
+import { BudgetPeriod, AlertType, AlertSeverity } from '@homeledger/shared';
+import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@homeledger/shared';
 import crypto from 'node:crypto';
 
 // ============================================

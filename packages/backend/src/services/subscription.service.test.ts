@@ -3,7 +3,7 @@ import { SubscriptionService, SubscriptionError } from './subscription.service.j
 import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, categories, subscriptions, transactions, transfers } from '../db/schema.js';
-import { SubscriptionCycle } from '@smart-finance/shared';
+import { SubscriptionCycle } from '@homeledger/shared';
 import { eq } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';

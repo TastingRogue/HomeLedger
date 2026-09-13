@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BudgetPeriod } from '@smart-finance/shared';
+import { BudgetPeriod } from '@homeledger/shared';
 
 /**
  * Schema de validación para creación de presupuestos.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AccountType } from '@smart-finance/shared';
+import { AccountType } from '@homeledger/shared';
 
 /**
  * Schema de validación para creación de cuentas financieras.

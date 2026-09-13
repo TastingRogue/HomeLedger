@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransactionType } from '@smart-finance/shared';
+import { TransactionType } from '@homeledger/shared';
 
 /**
  * Validación personalizada para montos con máximo 2 decimales.

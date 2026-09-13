@@ -12,7 +12,7 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { imports, transactions, accounts, categories } from '../db/schema.js';
-import { TransactionType } from '@smart-finance/shared';
+import { TransactionType } from '@homeledger/shared';
 import { TransactionService } from './transaction.service.js';
 import { RulesEngineService } from './rules-engine.service.js';
 import {

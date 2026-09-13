@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GoalType } from '@smart-finance/shared';
+import { GoalType } from '@homeledger/shared';
 
 /**
  * Schema de validación para creación de metas de ahorro.

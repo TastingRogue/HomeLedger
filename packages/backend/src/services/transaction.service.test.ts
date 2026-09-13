@@ -3,7 +3,7 @@ import { TransactionService, TransactionError } from './transaction.service.js';
 import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, categories, transactions, transactionSplits, transfers } from '../db/schema.js';
-import { TransactionType } from '@smart-finance/shared';
+import { TransactionType } from '@homeledger/shared';
 
 // Set test environment variables
 process.env['DATA_DIR'] = './data/test-transaction';

@@ -5,7 +5,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AccountService } from './account.service.js';
-import { AccountType } from '@smart-finance/shared';
+import { AccountType } from '@homeledger/shared';
 import * as schema from '../db/schema.js';
 import * as connectionModule from '../db/connection.js';
 
