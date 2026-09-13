@@ -12,7 +12,9 @@
   /* ─── Text ─── */
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* Lightened from #64748b so muted text clears WCAG AA (4.5:1) on every
+     surface (was 3.3–4.0:1, failing on cards/elevated). */
+  --text-muted: #7c8ba3;
   --text-link: #60a5fa;
 
   /* ─── Accents ─── */
@@ -143,7 +145,9 @@
   /* ─── Text ─── */
   --text-primary: #16202e;
   --text-secondary: #4a5769;
-  --text-muted: #8492a6;
+  /* Darkened from #8492a6 so muted text clears WCAG AA (4.5:1) on cards/white
+     surfaces (was 2.8–3.2:1; now 4.5–5.1 on surface/elevated/card). */
+  --text-muted: #616e88;
   --text-link: #2563eb;
 
   /* ─── Accents (slightly deepened for contrast on light surfaces) ─── */
