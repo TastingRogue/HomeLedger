@@ -735,4 +735,109 @@ describe('BackupService', () => {
       expect(BackupService.parseMajorVersion('1.2')).toBeNull();
     });
   });
+
+  describe('previewImport() (dry-run)', () => {
+    it('validates the backup and reports it without touching data', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // Existing data that a real import WOULD replace.
+      db.insert(categories).values({ id: 100, userId, name: 'OldCat', isSystem: false, createdAt: now }).run();
+      db.insert(accounts).values({ id: 100, userId, name: 'OldAcc', type: 'Débito', initialBalance: 1000, status: 'Activo', currency: 'MXN', createdAt: now, updatedAt: now }).run();
+
+      const backup = {
+        version: '0.1.0',
+        exportedAt: now,
+        userId,
+        data: {
+          categories: [{ id: 200, userId, name: 'NewCat', isSystem: false, createdAt: now, icon: null, color: null }],
+          accounts: [
+            { id: 200, userId, name: 'A1', type: 'Débito', initialBalance: 0, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now },
+            { id: 201, userId, name: 'A2', type: 'Débito', initialBalance: 0, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now },
+          ],
+          transactions: [
+            { id: 300, userId, accountId: 200, categoryId: 200, name: 'T', amount: 10, type: 'Gasto', date: now, createdAt: now, updatedAt: now },
+          ],
+        },
+      };
+
+      const preview = BackupService.previewImport(userId, backup);
+
+      // Reports backup counts…
+      expect(preview.backupCounts['accounts']).toBe(2);
+      expect(preview.backupCounts['categories']).toBe(1);
+      expect(preview.backupCounts['transactions']).toBe(1);
+      // …and current counts that would be replaced.
+      expect(preview.currentCounts['accounts']).toBe(1);
+      expect(preview.currentCounts['categories']).toBe(1);
+      expect(preview.version).toBe('0.1.0');
+
+      // Crucially: no writes happened — the existing data is untouched.
+      expect(db.select().from(accounts).all()).toHaveLength(1);
+      expect(db.select().from(accounts).all()[0]!.name).toBe('OldAcc');
+    });
+
+    it('warns about rows that reference entities absent from the backup', () => {
+      const now = new Date().toISOString();
+      const backup = {
+        version: '0.1.0',
+        exportedAt: now,
+        userId,
+        data: {
+          accounts: [{ id: 200, userId, name: 'A', type: 'Débito', initialBalance: 0, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now }],
+          categories: [], // no categories in the backup
+          transactions: [
+            // references categoryId 999 which is absent → should be flagged
+            { id: 300, userId, accountId: 200, categoryId: 999, name: 'T', amount: 10, type: 'Gasto', date: now, createdAt: now, updatedAt: now },
+          ],
+        },
+      };
+
+      const preview = BackupService.previewImport(userId, backup);
+      expect(preview.warnings.some((w) => w.includes('categoría'))).toBe(true);
+    });
+
+    it('throws on an invalid backup without writing', () => {
+      expect(() => BackupService.previewImport(userId, { version: '2.0.0', exportedAt: new Date().toISOString(), data: {} }))
+        .toThrow(BackupError);
+    });
+  });
+
+  describe('import() atomicity', () => {
+    it('rolls back cleanly on a mid-import failure (no partial restore)', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // Seed original data we expect to survive a failed import.
+      db.insert(categories).values({ id: 100, userId, name: 'KeepCat', isSystem: false, createdAt: now }).run();
+      db.insert(accounts).values({ id: 100, userId, name: 'KeepAcc', type: 'Débito', initialBalance: 777, status: 'Activo', currency: 'MXN', createdAt: now, updatedAt: now }).run();
+
+      // Backup that passes validation but fails mid-insert: a transaction with a
+      // NOT NULL `amount` set to null violates the constraint during insert.
+      const badBackup = {
+        version: '0.1.0',
+        exportedAt: now,
+        userId,
+        data: {
+          categories: [{ id: 200, userId, name: 'NewCat', isSystem: false, createdAt: now, icon: null, color: null }],
+          accounts: [{ id: 200, userId, name: 'NewAcc', type: 'Débito', initialBalance: 5000, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now }],
+          transactions: [
+            { id: 300, userId, accountId: 200, categoryId: 200, name: 'Bad', amount: null, type: 'Gasto', date: now, createdAt: now, updatedAt: now },
+          ],
+        },
+      };
+
+      expect(() => BackupService.import(userId, badBackup, true)).toThrow();
+
+      // The transaction wrapped the delete+insert, so the original data must be intact.
+      const accs = db.select().from(accounts).all();
+      expect(accs).toHaveLength(1);
+      expect(accs[0]!.name).toBe('KeepAcc');
+      expect(accs[0]!.initialBalance).toBe(777);
+      const cats = db.select().from(categories).all();
+      expect(cats.map((c) => c.name)).toContain('KeepCat');
+      // The half-inserted "NewAcc"/"NewCat" must NOT be present.
+      expect(accs.map((a) => a.name)).not.toContain('NewAcc');
+    });
+  });
 });

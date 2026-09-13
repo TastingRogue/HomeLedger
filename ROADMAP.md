@@ -248,9 +248,11 @@ rotating out the oldest.
 ### P1.9 — Restore safety (dry-run / validation)
 Import currently wipes all data on confirm. Make it safer.
 
-- [ ] Validate and preview a backup **before** it replaces current data (a dry-run that reports counts and any problems)
-- [ ] Confirm the atomic transaction rolls back cleanly on any failure mid-import (no half-restored state)
-- [ ] Clear warning + explicit confirm before destructive replace (already partially present — verify)
+- [x] Dry-run preview: `BackupService.previewImport(userId, backup)` validates the backup (reusing `validateBackup`) then returns a **non-destructive** summary — `backupCounts` per entity, `currentCounts` per entity (what would be replaced), and `warnings[]` for rows the import would silently skip (orphaned FKs: transactions/subscriptions referencing an account/category absent from the backup). Zero writes. Exposed at `POST /api/v1/backup/preview` (auth'd, per-user, read-only).
+- [x] Verified atomic rollback with a test: a validation-passing backup that fails mid-insert (NOT NULL `amount`) leaves the user's original data **fully intact** — no half-restore (the delete+insert are wrapped in one `sqlite.transaction`).
+- [x] Destructive-replace guard confirmed: `import` without `confirmed:true` throws `CONFIRMATION_REQUIRED` (409 at the route), covered by an existing test.
+- [x] Verified: backend typecheck 0/0, full suite **433/433** (added 4 tests: preview reports+no-writes, orphan warnings, invalid-backup throw, atomicity rollback), frontend build clean.
+- [ ] (Follow-up) Frontend: show the preview (counts + warnings) in the import UI before the user confirms the replace — pairs with the P1.8 snapshot admin UI.
 
 ### P1.10 — Multi-user hardening (decide the model)
 The app supports multiple users (first registrant becomes admin, rest become

@@ -75,6 +75,21 @@ export interface BackupFile {
 }
 
 /**
+ * Non-destructive preview of what an import would do, so the user can review
+ * before the (destructive) replace. Produced by `previewImport`; performs no writes.
+ */
+export interface ImportPreview {
+  version: string;
+  exportedAt: string;
+  /** Rows per entity in the backup (what would be restored). */
+  backupCounts: Record<string, number>;
+  /** Rows per entity currently owned by the user (what would be replaced). */
+  currentCounts: Record<string, number>;
+  /** Non-fatal issues: rows that would be skipped/orphaned on import. */
+  warnings: string[];
+}
+
+/**
  * Servicio de respaldo de datos.
  * Permite exportar todos los datos de un usuario a JSON e importarlos restaurando el estado completo.
  *
@@ -715,5 +730,88 @@ export class BackupService {
     const match = version.match(/^(\d+)\.\d+\.\d+/);
     if (!match) return null;
     return parseInt(match[1]!, 10);
+  }
+
+  /**
+   * Non-destructive dry-run for an import. Validates the backup and reports what
+   * WOULD happen — per-entity counts in the backup, the current counts that
+   * would be replaced, and warnings for rows the import would silently skip
+   * (orphaned foreign keys). Performs NO writes.
+   *
+   * @throws BackupError if the backup fails structural/version validation
+   */
+  static previewImport(userId: number, backup: unknown): ImportPreview {
+    const validated = BackupService.validateBackup(backup);
+    const data = validated.data;
+
+    // Rows per entity present in the backup.
+    const entities = Object.keys(data) as (keyof BackupData)[];
+    const backupCounts: Record<string, number> = {};
+    for (const key of entities) {
+      backupCounts[key] = (data[key] as unknown[]).length;
+    }
+
+    // Current per-user counts (what the import would replace). Counted via SQL
+    // aggregates — read-only, cheap even for large tables.
+    const currentCounts: Record<string, number> = {
+      accounts: BackupService.countByUser('accounts', userId),
+      transactions: BackupService.countByUser('transactions', userId),
+      transfers: BackupService.countByUser('transfers', userId),
+      subscriptions: BackupService.countByUser('subscriptions', userId),
+      goals: BackupService.countByUser('goals', userId),
+      budgets: BackupService.countByUser('budgets', userId),
+      categories: BackupService.countByUser('categories', userId),
+      rules: BackupService.countByUser('rules', userId),
+      alerts: BackupService.countByUser('alerts', userId),
+      assets: BackupService.countByUser('assets', userId),
+      liabilities: BackupService.countByUser('liabilities', userId),
+      loans: BackupService.countByUser('loans', userId),
+      networthSnapshots: BackupService.countByUser('networth_snapshots', userId),
+      recurringTransactions: BackupService.countByUser('recurring_transactions', userId),
+    };
+
+    // Warnings: mirror the import's skip logic so the user sees what won't survive.
+    const warnings: string[] = [];
+    const idSet = (rows: unknown[]): Set<number> => {
+      const s = new Set<number>();
+      for (const r of rows) {
+        const id = (r as Record<string, unknown>)['id'];
+        if (typeof id === 'number') s.add(id);
+      }
+      return s;
+    };
+    const fkOf = (row: unknown, key: string): number | null => {
+      const v = (row as Record<string, unknown>)[key];
+      return typeof v === 'number' ? v : null;
+    };
+
+    const accountIds = idSet(data.accounts);
+    const categoryIds = idSet(data.categories);
+
+    const countOrphans = (rows: unknown[], key: string, valid: Set<number>): number =>
+      rows.filter((r) => { const fk = fkOf(r, key); return fk != null && !valid.has(fk); }).length;
+
+    const txMissingAccount = countOrphans(data.transactions, 'accountId', accountIds);
+    if (txMissingAccount > 0) warnings.push(`${txMissingAccount} transacción(es) referencian una cuenta ausente del respaldo y se omitirán.`);
+    const txMissingCategory = countOrphans(data.transactions, 'categoryId', categoryIds);
+    if (txMissingCategory > 0) warnings.push(`${txMissingCategory} transacción(es) referencian una categoría ausente del respaldo y se omitirán.`);
+    const subsMissingCategory = countOrphans(data.subscriptions, 'categoryId', categoryIds);
+    if (subsMissingCategory > 0) warnings.push(`${subsMissingCategory} suscripción(es) referencian una categoría ausente del respaldo y se omitirán.`);
+
+    return {
+      version: validated.version,
+      exportedAt: validated.exportedAt,
+      backupCounts,
+      currentCounts,
+      warnings,
+    };
+  }
+
+  /** Read-only count of rows in a user-scoped table. Table name is a fixed literal. */
+  private static countByUser(table: string, userId: number): number {
+    const row = getSqlite()
+      .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`)
+      .get(userId) as { n: number } | undefined;
+    return row?.n ?? 0;
   }
 }

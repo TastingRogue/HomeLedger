@@ -91,6 +91,37 @@ export async function backupRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * POST /api/v1/backup/preview
+   * Dry-run for an import: validates the backup and returns a non-destructive
+   * summary (per-entity backup counts, current counts to be replaced, warnings).
+   * Performs no writes — safe to call before the destructive /import.
+   *
+   * Body: { backup: BackupFile } (or the backup object directly)
+   */
+  app.post('/preview', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const body = request.body as Record<string, unknown> | null;
+
+    if (!body || typeof body !== 'object') {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'INVALID_BODY', message: 'El cuerpo de la solicitud debe ser un objeto JSON válido.' },
+      });
+    }
+
+    const backup = body['backup'] ?? body;
+    try {
+      const preview = BackupService.previewImport(user.userId, backup);
+      return reply.status(200).send({ success: true, data: preview });
+    } catch (error) {
+      if (error instanceof BackupError) {
+        return handleBackupError(error, reply);
+      }
+      throw error;
+    }
+  });
+
+  /**
    * GET /api/v1/backup/history
    * Get backup history for the authenticated user.
    * Note: Full backup history tracking is not yet implemented.
