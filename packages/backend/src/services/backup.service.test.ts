@@ -254,6 +254,55 @@ describe('BackupService', () => {
         subscription_id INTEGER NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS credit_subscriptions_account_id_idx ON credit_subscriptions(account_id);
+
+      CREATE TABLE IF NOT EXISTS attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        transfer_id INTEGER REFERENCES transfers(id) ON DELETE SET NULL,
+        filename TEXT NOT NULL,
+        original_name TEXT,
+        mime_type TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        path TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS attachments_user_id_idx ON attachments(user_id);
+
+      CREATE TABLE IF NOT EXISTS receipt_analyses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        attachment_id INTEGER NOT NULL UNIQUE REFERENCES attachments(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        transaction_id INTEGER,
+        merchant TEXT,
+        receipt_date TEXT,
+        subtotal REAL,
+        tax REAL,
+        total REAL,
+        currency TEXT NOT NULL DEFAULT 'MXN',
+        document_type TEXT NOT NULL DEFAULT 'unknown',
+        source_type TEXT NOT NULL DEFAULT 'unknown',
+        status TEXT NOT NULL DEFAULT 'pending',
+        confidence REAL,
+        raw_text TEXT,
+        uuid TEXT,
+        issuer_rfc TEXT,
+        issuer_name TEXT,
+        error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS receipt_analyses_user_id_idx ON receipt_analyses(user_id);
+
+      CREATE TABLE IF NOT EXISTS receipt_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        analysis_id INTEGER NOT NULL REFERENCES receipt_analyses(id) ON DELETE CASCADE,
+        description TEXT NOT NULL,
+        quantity REAL,
+        unit_price REAL,
+        total REAL
+      );
+      CREATE INDEX IF NOT EXISTS receipt_items_analysis_id_idx ON receipt_items(analysis_id);
     `);
   });
 
@@ -262,6 +311,9 @@ describe('BackupService', () => {
     const sqlite = getSqlite();
     // Clean all tables
     sqlite.exec(`
+      DELETE FROM receipt_items;
+      DELETE FROM receipt_analyses;
+      DELETE FROM attachments;
       DELETE FROM credit_subscriptions;
       DELETE FROM loan_payments;
       DELETE FROM networth_snapshots;
@@ -308,7 +360,7 @@ describe('BackupService', () => {
     const shmPath = dbPath + '-shm';
     if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
     const dir = path.resolve('./data/test-backup');
-    if (fs.existsSync(dir)) fs.rmdirSync(dir);
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
   });
 
   describe('export()', () => {
@@ -541,6 +593,81 @@ describe('BackupService', () => {
       expect(restoredGoals).toHaveLength(1);
       expect(restoredGoals[0]!.name).toBe('Moto');
       expect(restoredGoals[0]!.savedAmount).toBe(10000);
+    });
+
+    it('round-trips attachments (incl. binary file on disk) and receipts with remapped FKs', () => {
+      const db = getDb();
+      const sqlite = getSqlite();
+      const now = new Date().toISOString();
+
+      // Base data: a category, account, and a transaction the attachment links to.
+      const cat = db.insert(categories).values({ userId, name: 'Comida', isSystem: false, createdAt: now }).returning().get();
+      const acc = db.insert(accounts).values({ userId, name: 'Nu', type: 'Débito', initialBalance: 100, status: 'Activo', currency: 'MXN', createdAt: now, updatedAt: now }).returning().get();
+      const tx = db.insert(transactions).values({ userId, accountId: acc.id, categoryId: cat.id, name: 'Ticket', amount: 42, type: 'Gasto', date: now, createdAt: now, updatedAt: now }).returning().get();
+
+      // Write a real binary file on disk + insert the attachment row pointing at it.
+      const uploadDir = path.resolve('./data/test-backup/attachments');
+      fs.mkdirSync(uploadDir, { recursive: true });
+      const storedName = 'roundtrip-fixture.bin';
+      const filePath = path.join(uploadDir, storedName);
+      const fileBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01, 0x02, 0x03, 0xff]);
+      fs.writeFileSync(filePath, fileBytes);
+      const att = sqlite
+        .prepare('INSERT INTO attachments (user_id, transaction_id, transfer_id, filename, original_name, mime_type, size, path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(userId, tx.id, null, storedName, 'recibo.png', 'image/png', fileBytes.length, filePath, now);
+      const attId = Number(att.lastInsertRowid);
+
+      // Receipt analysis + one line item for that attachment.
+      const ra = sqlite
+        .prepare("INSERT INTO receipt_analyses (attachment_id, user_id, transaction_id, merchant, total, currency, document_type, source_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'MXN', 'unknown', 'ocr', 'completed', ?, ?)")
+        .run(attId, userId, tx.id, 'OXXO', 42, now, now);
+      const analysisId = Number(ra.lastInsertRowid);
+      sqlite.prepare('INSERT INTO receipt_items (analysis_id, description, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)').run(analysisId, 'Refresco', 2, 21, 42);
+
+      // Export, then wipe everything (rows + the file on disk).
+      const exported = BackupService.export(userId);
+      // Sanity: the export captured the binary inline.
+      const exportedAtt = exported.data.attachments[0] as Record<string, unknown>;
+      expect(exported.data.attachments).toHaveLength(1);
+      expect(typeof exportedAtt['fileBase64']).toBe('string');
+      expect(Buffer.from(exportedAtt['fileBase64'] as string, 'base64').equals(fileBytes)).toBe(true);
+      expect(exported.data.receiptAnalyses).toHaveLength(1);
+      expect(exported.data.receiptItems).toHaveLength(1);
+
+      fs.unlinkSync(filePath);
+      sqlite.exec('DELETE FROM receipt_items; DELETE FROM receipt_analyses; DELETE FROM attachments;');
+      db.delete(transactions).run();
+      db.delete(accounts).run();
+      db.delete(categories).run();
+
+      // Import back.
+      BackupService.import(userId, exported, true);
+
+      // Attachment row restored with a remapped transaction_id and a written file.
+      const restoredAtt = sqlite.prepare('SELECT * FROM attachments WHERE user_id = ?').all(userId) as Record<string, unknown>[];
+      expect(restoredAtt).toHaveLength(1);
+      const newTx = db.select().from(transactions).where(eq(transactions.userId, userId)).all();
+      expect(newTx).toHaveLength(1);
+      expect(restoredAtt[0]!['transaction_id']).toBe(newTx[0]!.id);
+      // File was rewritten to disk under the new stored path with identical bytes.
+      const restoredPath = restoredAtt[0]!['path'] as string;
+      expect(fs.existsSync(restoredPath)).toBe(true);
+      expect(fs.readFileSync(restoredPath).equals(fileBytes)).toBe(true);
+
+      // Receipt analysis restored, pointing at the new attachment + transaction.
+      const restoredRa = sqlite.prepare('SELECT * FROM receipt_analyses WHERE user_id = ?').all(userId) as Record<string, unknown>[];
+      expect(restoredRa).toHaveLength(1);
+      expect(restoredRa[0]!['attachment_id']).toBe(restoredAtt[0]!['id']);
+      expect(restoredRa[0]!['transaction_id']).toBe(newTx[0]!.id);
+      expect(restoredRa[0]!['merchant']).toBe('OXXO');
+
+      // Receipt item restored, pointing at the new analysis id.
+      const restoredItems = sqlite.prepare('SELECT * FROM receipt_items WHERE analysis_id = ?').all(restoredRa[0]!['id']) as Record<string, unknown>[];
+      expect(restoredItems).toHaveLength(1);
+      expect(restoredItems[0]!['description']).toBe('Refresco');
+
+      // Clean up the rewritten file.
+      if (fs.existsSync(restoredPath)) fs.unlinkSync(restoredPath);
     });
 
     it('should import without colliding with another user whose ids overlap the backup', () => {

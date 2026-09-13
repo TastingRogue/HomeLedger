@@ -81,12 +81,10 @@ the current user's rows, so restoring collided with other users' `categories.id`
 - [x] `npm run test` → 0 failing (410 passing); `typecheck` clean
 - [ ] Verify end-to-end in Docker (export → import with 2 users) — pending Docker run
 
-**Deferred to P2.6 (needs binary-file handling):** receipts (`receipt_analyses`
-/ `receipt_items`) and attachments are NOT in the backup export. Receipts
-reference attachments, which are binary files on disk not captured by the JSON
-backup. Exporting receipt metadata alone would leave dangling `attachment_id`
-references after restore — worse than the current honest behavior (import clears
-them). Proper fix = include attachment binaries (base64/zip) + receipts together.
+**Resolved in P2.6 ✅:** receipts (`receipt_analyses` / `receipt_items`) and
+attachments (binary files on disk) are now included in the backup and restore
+with remapped FKs. Attachment binaries are inlined as base64 in the JSON so the
+backup stays a single self-contained file. See P2.6 below for details.
 
 ### P0.3 — Safe upgrades & schema/migration integrity ✅ (done)
 Fresh installs built only from Drizzle migrations now match `schema.ts`, and
@@ -363,15 +361,17 @@ never returned. Fixed the whole contract:
 
 Note: HACS polls `/status`; the backend `/sensors` endpoint is a convenience/alt shape kept correct but not consumed by the integration.
 
-### P2.6 — Include receipts & attachments in backup (deferred from P0.2)
+### P2.6 — Include receipts & attachments in backup (deferred from P0.2) ✅ (done)
 Attachments (binary files on disk) and receipts (`receipt_analyses` /
-`receipt_items`, which reference attachments) are not captured by the JSON
-backup, so a restore clears them. Fix requires bundling binary attachment files.
+`receipt_items`, which reference attachments) are now captured by the backup and
+survive a restore with fully remapped foreign keys.
 
-- [ ] Include attachment binaries in the backup (base64 inline, or a zip container alongside the JSON)
-- [ ] Export/import `receipt_analyses` + `receipt_items` with FK remapping (attachment_id, transaction_id) consistent with the P0.2 remap
-- [ ] Round-trip test covering an attachment + its receipt + linked transaction
-- [ ] Until done, document that restore does not preserve receipts/attachments
+- [x] Include attachment binaries in the backup — inlined as base64 in the single JSON (`data.attachments[].fileBase64`), keeping the existing single-file export/import format + frontend flow intact rather than introducing a zip container. Attachment volume for a personal finance app is modest, so base64 is the least-friction, self-contained choice.
+- [x] Export `attachments[]` (full row + `fileBase64` read from disk, `null` when the file is missing), `receiptAnalyses[]` (raw `SELECT * WHERE user_id`), `receiptItems[]` (scoped to the user's analyses via join). Receipt tables guarded by existence (raw-SQL `ensureTables`).
+- [x] Import re-inserts all three with FK remapping consistent with the P0.2 remap: added a `transferMap` (transfers now capture new ids since `attachments.transferId` references them); attachments remap `transactionId`/`transferId` and rewrite the base64 to disk under a fresh UUID filename + updated `path` (build `attMap`); `receipt_analyses` remap `attachment_id`→attMap (skip orphans; it's a NOT NULL UNIQUE FK) + `transaction_id`→txMap (build `analysisMap`); `receipt_items` remap `analysis_id`→analysisMap. Receipt inserts are column-aware (PRAGMA `table_info`) to tolerate schema drift, guarded by table existence.
+- [x] `validateBackup` (expected-array fields + defaults) and `previewImport` (`currentCounts`) extended for attachments/receiptAnalyses/receiptItems.
+- [x] Round-trip test: attachment + binary file on disk + receipt analysis + line item survive export → wipe → import, asserting remapped `transaction_id`, the rewritten file's bytes match, and the receipt/item FKs point at the fresh ids.
+- [x] Verified: backend typecheck 0/0, full suite **447 passing** (+1), backend build clean.
 
 ---
 
