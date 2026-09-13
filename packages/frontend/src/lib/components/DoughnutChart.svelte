@@ -102,13 +102,15 @@
 <div class="doughnut-wrap" style="height: {height}px" bind:this={wrap}>
   <div class="doughnut-canvas" style="height: {height}px; width: {height}px">
     <canvas bind:this={canvas}></canvas>
+    {#if centerText}
+      <!-- Centered relative to the square canvas box (not the full-width wrap),
+           so the label lands on the donut hole regardless of card width. -->
+      <div class="center-text">
+        <span class="center-amount">{centerText}</span>
+        <span class="center-label">Total</span>
+      </div>
+    {/if}
   </div>
-  {#if centerText}
-    <div class="center-text">
-      <span class="center-amount">{centerText}</span>
-      <span class="center-label">Total</span>
-    </div>
-  {/if}
 </div>
 
 <style>
