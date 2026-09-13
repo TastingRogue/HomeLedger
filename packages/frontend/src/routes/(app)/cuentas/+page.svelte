@@ -539,7 +539,11 @@
   .spinner { width: 18px; height: 18px; border: 2px solid var(--border-default); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 0.5rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .accounts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem; }
+  /* Equal-height rows so every card matches, regardless of variable content
+     (bank name, health badge, credit toggle). The actions row is then pinned to
+     the bottom of each card (margin-top:auto) so Edit/Deactivate always line up
+     across the grid (apple-design §16: spatial consistency). */
+  .accounts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem; grid-auto-rows: 1fr; }
 
   .account-card {
     background: var(--bg-card, #161e2a);
@@ -586,7 +590,7 @@
   .util-yellow { color: var(--accent-yellow); }
   .util-red { color: var(--accent-red); }
 
-  .card-actions { display: flex; gap: 0.3rem; border-top: 1px solid var(--border-subtle); padding-top: 0.35rem; margin-top: 0.25rem; }
+  .card-actions { display: flex; gap: 0.3rem; border-top: 1px solid var(--border-subtle); padding-top: 0.35rem; margin-top: auto; }
   .btn-action { background: none; border: none; font-size: 0.7rem; color: var(--text-secondary); cursor: pointer; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm); }
   .btn-action:hover { background: var(--bg-hover); color: var(--text-primary); }
   .btn-action.danger { color: var(--accent-red); }
