@@ -134,7 +134,7 @@ class HomeLedgerSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
             "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
-            "sw_version": "0.1.0",
+            "sw_version": "1.0.0",
         }
 
     @property
@@ -182,7 +182,7 @@ class HomeLedgerAccountSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEn
             "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
-            "sw_version": "0.1.0",
+            "sw_version": "1.0.0",
         }
 
     @property
@@ -225,7 +225,7 @@ class HomeLedgerCategorySensor(CoordinatorEntity[HomeLedgerCoordinator], SensorE
             "name": "HomeLedger",
             "manufacturer": MANUFACTURER,
             "model": "Personal Finance Manager",
-            "sw_version": "0.1.0",
+            "sw_version": "1.0.0",
         }
 
     @property

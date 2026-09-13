@@ -1,5 +1,5 @@
 ﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { BackupService, BackupError } from './backup.service.js';
+import { BackupService, BackupError, APP_VERSION } from './backup.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, categories, goals } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -367,7 +367,7 @@ describe('BackupService', () => {
     it('should export an empty backup with metadata for a user with no data', () => {
       const result = BackupService.export(userId);
 
-      expect(result.version).toBe('0.1.0');
+      expect(result.version).toBe(APP_VERSION);
       expect(result.userId).toBe(userId);
       expect(result.exportedAt).toBeTruthy();
       // Verify ISO 8601 format
@@ -496,7 +496,7 @@ describe('BackupService', () => {
 
       // Create a backup with new data
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: new Date().toISOString(),
         userId,
         data: {
@@ -708,7 +708,7 @@ describe('BackupService', () => {
 
       // Backup for OUR user reuses ids 500 and cross-references them.
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: now,
         userId,
         data: {
@@ -781,7 +781,7 @@ describe('BackupService', () => {
 
       // A fresh, unrelated backup for OUR user replaces our (empty) data.
       const backup = {
-        version: '0.1.0', exportedAt: now, userId,
+        version: APP_VERSION, exportedAt: now, userId,
         data: {
           categories: [{ id: 1, userId, name: 'MyCat', isSystem: false, createdAt: now, icon: null, color: null, type: 'Gasto' }],
           accounts: [{ id: 1, userId, name: 'MyAcc', type: 'Débito', initialBalance: 100, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now }],
@@ -849,9 +849,9 @@ describe('BackupService', () => {
     });
 
     it('should accept backup with same major version but different minor/patch', () => {
-      const backup = { version: '0.2.5', exportedAt: new Date().toISOString(), data: {} };
+      const backup = { version: '1.2.5', exportedAt: new Date().toISOString(), data: {} };
       const result = BackupService.validateBackup(backup);
-      expect(result.version).toBe('0.2.5');
+      expect(result.version).toBe('1.2.5');
     });
 
     it('should reject backup with invalid version format', () => {
@@ -861,7 +861,7 @@ describe('BackupService', () => {
 
     it('should reject data fields that are not arrays', () => {
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: new Date().toISOString(),
         data: { accounts: 'not-an-array' },
       };
@@ -870,12 +870,12 @@ describe('BackupService', () => {
 
     it('should accept valid backup with empty data', () => {
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: new Date().toISOString(),
         data: {},
       };
       const result = BackupService.validateBackup(backup);
-      expect(result.version).toBe('0.1.0');
+      expect(result.version).toBe(APP_VERSION);
       expect(result.data.accounts).toEqual([]);
     });
   });
@@ -904,7 +904,7 @@ describe('BackupService', () => {
       db.insert(accounts).values({ id: 100, userId, name: 'OldAcc', type: 'Débito', initialBalance: 1000, status: 'Activo', currency: 'MXN', createdAt: now, updatedAt: now }).run();
 
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: now,
         userId,
         data: {
@@ -928,7 +928,7 @@ describe('BackupService', () => {
       // …and current counts that would be replaced.
       expect(preview.currentCounts['accounts']).toBe(1);
       expect(preview.currentCounts['categories']).toBe(1);
-      expect(preview.version).toBe('0.1.0');
+      expect(preview.version).toBe(APP_VERSION);
 
       // Crucially: no writes happened — the existing data is untouched.
       expect(db.select().from(accounts).all()).toHaveLength(1);
@@ -938,7 +938,7 @@ describe('BackupService', () => {
     it('warns about rows that reference entities absent from the backup', () => {
       const now = new Date().toISOString();
       const backup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: now,
         userId,
         data: {
@@ -973,7 +973,7 @@ describe('BackupService', () => {
       // Backup that passes validation but fails mid-insert: a transaction with a
       // NOT NULL `amount` set to null violates the constraint during insert.
       const badBackup = {
-        version: '0.1.0',
+        version: APP_VERSION,
         exportedAt: now,
         userId,
         data: {

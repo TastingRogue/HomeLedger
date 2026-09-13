@@ -454,6 +454,13 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 | `/ha` | status, webhook, sensors |
 | `/health` · `/config` | liveness probe (+ `/health/scheduler`, admin) · public runtime config |
 
+> [!NOTE]
+> As of **v1.0.0**, the `/api/v1` surface and the backup file format are
+> **stable** under [Semantic Versioning](https://semver.org/): no breaking
+> changes within `1.x`. See **[docs/STABILITY.md](docs/STABILITY.md)** for
+> exactly what's covered, what counts as an additive (non-breaking) change, and
+> what would require a `2.0.0`.
+
 ## Scheduler Jobs
 
 | Job | Schedule | Description |

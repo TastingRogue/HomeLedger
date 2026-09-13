@@ -34,7 +34,7 @@ const DATA_DIR = process.env['DATA_DIR']
 const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
 
 /** Application version used in backup metadata */
-const APP_VERSION = '0.1.0';
+export const APP_VERSION = '1.0.0';
 
 /**
  * Error personalizado para operaciones de respaldo.
