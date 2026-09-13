@@ -16,6 +16,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
+  import Tooltip from '$lib/components/Tooltip.svelte';
 
   let accounts: AccountData[] = $state([]);
   let loading = $state(true);
@@ -381,13 +382,13 @@
           {#if validationErrors.name}<span class="field-err">{validationErrors.name}</span>{/if}
         </div>
         <div class="field">
-          <label for="f-balance">{$t('accounts.form_balance')}</label>
-          <input id="f-balance" type="number" step="0.01" bind:value={formInitialBalance} placeholder="0.00" class:invalid={!!validationErrors.initialBalance} title={$t('accounts.balance_tooltip')} />
+          <label for="f-balance" class="field-label-row">{$t('accounts.form_balance')} <Tooltip text={$t('accounts.balance_tooltip')} label={$t('accounts.form_balance')} /></label>
+          <input id="f-balance" type="number" step="0.01" bind:value={formInitialBalance} placeholder="0.00" class:invalid={!!validationErrors.initialBalance} />
           {#if validationErrors.initialBalance}<span class="field-err">{validationErrors.initialBalance}</span>{/if}
         </div>
         <div class="field">
-          <label for="f-type">{$t('accounts.form_type')}</label>
-          <select id="f-type" bind:value={formType} title={$t('accounts.type_tooltip')}>
+          <label for="f-type" class="field-label-row">{$t('accounts.form_type')} <Tooltip text={$t('accounts.type_tooltip')} label={$t('accounts.form_type')} /></label>
+          <select id="f-type" bind:value={formType}>
             {#each accountTypes as t}<option value={t}>{t}</option>{/each}
           </select>
         </div>
@@ -396,13 +397,13 @@
           <input id="f-bank" type="text" bind:value={formBank} maxlength={50} placeholder={formType === 'Efectivo' ? $t('accounts.form_location_placeholder') : $t('accounts.form_bank_placeholder')} title={formType === 'Efectivo' ? $t('accounts.location_tooltip') : $t('accounts.bank_tooltip')} />
         </div>
         <div class="field">
-          <label for="f-limit">{$t('accounts.form_balance_limit')}</label>
-          <input id="f-limit" type="number" step="0.01" bind:value={formBalanceLimit} placeholder={$t('accounts.form_balance_limit_placeholder')} title={$t('accounts.balance_limit_tooltip')} />
+          <label for="f-limit" class="field-label-row">{$t('accounts.form_balance_limit')} <Tooltip text={$t('accounts.balance_limit_tooltip')} label={$t('accounts.form_balance_limit')} /></label>
+          <input id="f-limit" type="number" step="0.01" bind:value={formBalanceLimit} placeholder={$t('accounts.form_balance_limit_placeholder')} />
         </div>
         {#if formType === 'Crédito'}
           <div class="field">
-            <label for="f-credit">{$t('accounts.form_credit_limit')}</label>
-            <input id="f-credit" type="number" step="0.01" bind:value={formCreditLimit} placeholder={$t('accounts.form_credit_limit_placeholder')} class:invalid={!!validationErrors.creditLimit} title={$t('accounts.credit_limit_tooltip')} />
+            <label for="f-credit" class="field-label-row">{$t('accounts.form_credit_limit')} <Tooltip text={$t('accounts.credit_limit_tooltip')} label={$t('accounts.form_credit_limit')} /></label>
+            <input id="f-credit" type="number" step="0.01" bind:value={formCreditLimit} placeholder={$t('accounts.form_credit_limit_placeholder')} class:invalid={!!validationErrors.creditLimit} />
             {#if validationErrors.creditLimit}<span class="field-err">{validationErrors.creditLimit}</span>{/if}
           </div>
         {/if}
@@ -608,6 +609,8 @@
   .form-alert { background: var(--tag-red-bg); color: var(--accent-red); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; margin-bottom: 0.75rem; }
   .field { margin-bottom: 0.6rem; }
   .field label { display: block; margin-bottom: 0.2rem; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
+  /* Label + inline help icon on one row. */
+  .field label.field-label-row { display: flex; align-items: center; gap: 0.3rem; }
   .field input, .field select { width: 100%; }
   .field input.invalid { border-color: var(--accent-red); }
   .field-err { display: block; margin-top: 0.15rem; font-size: 0.65rem; color: var(--accent-red); }

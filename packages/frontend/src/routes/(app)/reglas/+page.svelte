@@ -527,7 +527,7 @@
   .switch input:focus-visible + .switch-track { box-shadow: 0 0 0 2px var(--color-primary-glow); }
 
   /* Modal builder */
-  .modal-wide { max-width: 620px; }
+  .modal-wide { max-width: 680px; }
   .field-hint { font-size: 0.7rem; color: var(--text-muted); }
   .builder { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.65rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .builder-head { display: flex; align-items: center; justify-content: space-between; }
@@ -538,8 +538,12 @@
   }
   .btn-add:hover { background: var(--tag-blue-bg); }
   .builder-row { display: flex; gap: 0.4rem; align-items: center; }
-  .builder-row select, .builder-row input { min-width: 0; }
-  .builder-row .val { flex: 1; }
+  /* Give each control a fair, legible share of the row instead of letting the
+     selects size to their content and squeeze the value field to nothing.
+     min-width keeps every control wide enough to read the selection/typed text. */
+  .builder-row > select { flex: 1 1 0; min-width: 96px; }
+  .builder-row .val { flex: 1.2 1 0; min-width: 110px; }
+  .builder-row select, .builder-row input { width: 100%; }
   .btn-remove {
     background: none; border: none; color: var(--text-muted); font-size: 1.1rem; line-height: 1; cursor: pointer;
     padding: 0 0.3rem; border-radius: var(--radius-sm); transition: color var(--transition-fast);
