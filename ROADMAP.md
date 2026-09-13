@@ -648,3 +648,191 @@ Keep these in sync (all currently `0.1.0`):
 - **Raw-SQL tables:** `receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings` are created at runtime outside Drizzle (via `ensureTable` patterns). Formalizing them is a P0.3 item.
 - **arm64:** must be built on native arm64 runners; QEMU emulation hangs compiling `better-sqlite3`.
 - **Naming:** app is "HomeLedger"; internal package scope was renamed from `@smart-finance/*` to `@homeledger/*` (done — all package.json names, imports, and the lockfile updated; verified with typecheck + build + 410 tests).
+
+---
+
+## Post-1.0 — Personal Life & Finance OS (vision + phased plan)
+
+> Status: **planning** (not started). Direction agreed with the maintainer. Every
+> phase below is **additive** — it extends the stable `/api/v1` surface and the
+> versioned backup without breaking Finance, and keeps the product's principles:
+> local-first, self-hosted, **no AI required**, deterministic logic, privacy-first.
+
+### ⭐ Non-negotiable: Finance is the core; Home/Life are opt-in
+
+The maintainer's explicit position, and the hard constraint on every phase below:
+
+- **Finance is and stays the heart of HomeLedger.** Dashboard, accounts,
+  transactions, budgets, goals are the default experience. A user who only wants to
+  track money must never feel the app got heavier or more complicated.
+- **Home/Life are optional and non-intrusive.** They must not clutter the primary UI.
+  Follow **progressive disclosure** (UX §17): a user who never touches Assets/
+  Documents/Warranties should barely know they exist. Prefer surfacing them **inside
+  the object they belong to** (e.g. a "Warranty" tab on an asset, an "asset" link on
+  a transaction) over adding top-level noise. Any new top-level nav must be
+  hideable/collapsible, and ideally off or minimized by default.
+- **Every relationship is optional.** You can use transactions forever without ever
+  creating an asset. Nothing in Money depends on Home or Life.
+- **Simplicity outranks features** (`Privacy > Simplicity > Ownership > Reliability >
+  Features`). If a phase makes the finance experience feel busier, it's wrong —
+  redesign it or drop it.
+- **Ship incrementally and re-evaluate.** Treat P4+P5 as a candidate **1.1** and
+  test with real users whether the app still *feels* simple **before** doing P6+.
+  Stopping after net-worth-grade Assets (and never shipping full Life Admin) is a
+  legitimate, on-brand outcome. Documenting the vision is **not** a commitment to
+  build all of it.
+
+### The idea, in one line
+
+Evolve HomeLedger from a personal-finance tracker into a **Personal Life & Finance OS**:
+one private place for your **Money**, your **Home** (the things you own) and your
+**Life** (documents, renewals, maintenance, subscriptions). These are **not three
+separate apps** — they are **three views of one data graph whose central node is the
+Asset (the thing you own / the responsibility you have)**.
+
+The differentiator (no competitor does all three around the object): the same
+purchase can be a **transaction** (Money), an **asset** with a value (Home →
+net worth), and carry a **document/warranty/maintenance/renewal** (Life). Example
+— one car touches all three:
+
+```
+                        CAR  (Asset · Home)
+                          │
+   ┌──────────────┬───────┼────────┬──────────────┐
+ Purchase       Insurance  Registration Services   Current value
+ (Money:tx)    (Life:doc   (Life:        (Life:mant. (→ Net Worth)
+                +expiry)     reminder)     +cost→tx)
+```
+
+### Governing rules (from the design discussion — keep these in the spec)
+
+1. **Entities exist independently, relate optionally.** No module requires another
+   to function. A document/reminder/maintenance record MAY link to an Asset, but
+   doesn't have to (a passport expiry has no asset; a car insurance doc links to
+   the car). Every cross-link is a nullable FK.
+2. **"Upcoming / Vencimientos" is an aggregated *view*, not a stored entity.** It
+   unions everything that has a due date — warranty expirations, subscription
+   `nextPaymentDate`, reminders, document expiries, scheduled maintenance — sorted
+   by days-remaining. This is the visible glue between the three faces; it reuses
+   the existing alerts engine + scheduler, and stores no duplicate data.
+3. **Search-first is the "magic moment."** Global search ("Samsung", "car") returns
+   the asset + its receipt + warranty + transactions + maintenance. Without it the
+   relationships live only in the DB; with it the user *feels* the unification.
+   Implement with SQLite FTS5 over the user's own rows.
+4. **Documents don't require a file.** A document can be a pure record ("car
+   insurance, GNP, policy ABC123, expires 15/03/2027, file: not attached") and get
+   its PDF later. Life Admin is for *remembering*, not just *storing*.
+5. **Maintenance links a cost, never auto-doubles a spend.** A maintenance record
+   holds its own cost + provider; the user chooses **"Create transaction"** (or opts
+   into "record as expense automatically"). Default is *not* to auto-create, to
+   avoid duplicate expenses.
+6. **Subscriptions stay their own entity** (they carry finance-specific fields:
+   account, category, cycle, next charge). They *feed* the Upcoming view but are
+   not collapsed into generic reminders.
+
+### What we already have (the bricks — this is an extension, not a rewrite)
+
+- `assets` table exists but is **flat** (`name`, `value`, `type`, `notes`) — used
+  only for net worth. This is the seed to **extend** into a first-class Asset.
+- `attachments` (per-user file + optional `transactionId`/`transferId`) — the base
+  for **Documents**.
+- `receipt_analyses`/`receipt_items` + OCR — already link a document to a transaction.
+- `subscriptions` with `nextPaymentDate` + `SubscriptionService.calculateDaysRemaining`
+  — already "recurring + calendar + days-remaining"; feeds Upcoming as-is.
+- `alerts` (generic `type`/`severity`/`hash`/`data` JSON) + the scheduler (daily
+  net-worth snapshots, auto-charge processing) — the engine that powers Upcoming
+  reminders. New due-date alerts reuse this with new `type` values + a dedup `hash`.
+- `networthSnapshots` — net worth already computed; adding asset value to the total
+  is a small change once Assets carry a value.
+
+### Navigation (reflects the unification)
+
+```
+Dashboard   ← "Coming Up" (due items from all 3 faces) + net worth + financial health
+Money       ← accounts, transactions, budgets, goals, (later) investments   [EXISTS]
+Home        ← Assets (value → net worth), inventory by location, warranties
+Life        ← Documents, Reminders/Renewals, Maintenance, Subscriptions [EXISTS]
+Search      ← global: "Samsung" → asset + receipt + warranty + transaction
+Reports · Settings
+```
+
+The Asset lives under **Home** but links out to **Money** (its transactions) and
+**Life** (its documents/reminders/maintenance). Those tabs are windows onto one graph.
+
+**UI constraint (per the non-negotiable above):** Money must remain the default,
+uncluttered experience. **Home** and **Life** should be collapsible/hideable
+top-level sections (ideally hidden or minimized until the user opts in), and the
+richest relationships should be reachable *contextually* (a "Warranty"/"Documents"
+tab on an asset; an optional "link to asset" on a transaction) rather than forcing
+the user through new top-level areas. If any of this makes the finance UI feel
+heavier, that's the signal to redesign — not to push through.
+
+### Data model (landed on the real Drizzle schema)
+
+All new tables follow the existing conventions: `userId` FK `onDelete: cascade`,
+`user_id` index, ISO-string timestamps, per-user ownership. All cross-links nullable.
+
+- **Extend `assets`** (additive columns, guarded migration): `brand`, `model`,
+  `serialNumber`, `category` (appliance/vehicle/electronics/furniture/property/other),
+  `purchaseDate`, `purchasePrice`, `currentValue` (rename/keep `value`), `location`,
+  `status` (active/sold/disposed), `purchaseTransactionId` → `transactions` (set null),
+  `receiptAttachmentId` → `attachments` (set null). Net worth uses `currentValue`.
+- **`documents`**: `userId`, `type` (insurance/deed/contract/warranty/id/tax/other),
+  `name`, `provider`, `reference` (policy/RFC/folio), `issueDate`, `expiryDate` (nullable),
+  `attachmentId` → `attachments` (nullable — file optional), `assetId` → `assets`
+  (nullable), `notes`.
+- **`reminders`**: `userId`, `title`, `dueDate`, `recurrence` (once/monthly/yearly/
+  everyN), `leadDays` (e.g. 90/30/7 window), `assetId` (nullable), `documentId`
+  (nullable), `status` (open/done), `notes`. Drives Upcoming + emits an alert when
+  inside the lead window.
+- **`warranties`**: `userId`, `assetId` (nullable but usually set), `provider`,
+  `durationMonths` OR explicit `startDate`+`expiryDate` (compute expiry
+  deterministically), `serialNumber`, `documentId` (nullable), `status`
+  (active/expired/claimed), + a lightweight `warranty_claims` history (date, note,
+  cost, optional transaction link).
+- **`maintenance`**: `userId`, `assetId` (nullable), `title`, `date`, `cost` (nullable),
+  `provider`, `transactionId` → `transactions` (nullable — the "Create transaction"
+  link), `recurrence` (nullable, for scheduled), `nextDueDate` (nullable), `notes`.
+
+Backup: each phase adds its arrays to the export/import with FK remapping (same
+pattern as attachments/receipts), and bumps the backup minor version (importers
+tolerate unknown arrays; the major-version gate stays intact).
+
+### Phased roadmap (by value/effort; each phase ships independently)
+
+- [ ] **P4 — Assets as a first-class entity** (foundational). Extend `assets`;
+  migrate the current flat net-worth assets in place; UI to create/edit an asset
+  with brand/model/serial/purchase/value/location; optional link to a transaction
+  and a receipt/attachment; net worth uses `currentValue`. Inventory-by-location is
+  a *view* over assets, not a new module. **This is the backbone — do it first.**
+- [ ] **P5 — Warranty + the Upcoming view** (the differentiator, low effort — reuses
+  alerts + scheduler). Warranty = asset + purchase date + duration → expiry →
+  reminders (90/30/7, configurable) via the existing alerts engine. Build the
+  aggregated **Upcoming** view here (unions warranties + subscription next charges +
+  reminders + document expiries) — it's the visible payoff of the graph.
+- [ ] **P6 — Documents + Reminders (Life Admin core)**. Documents (file optional) with
+  expiry; generic reminders (renewals, important dates) with optional asset/document
+  link. Both feed Upcoming. Subscriptions stay as-is and simply appear in Upcoming.
+- [ ] **P7 — Maintenance**. Records with cost + provider + optional "Create
+  transaction"; optional recurrence → scheduled maintenance feeds Upcoming. Links to
+  an asset (car service) or a property (roof waterproofing).
+- [ ] **P8 — Global search (FTS5)**. Cross-entity search so "car" surfaces the asset,
+  its receipt, warranty, transactions and maintenance in one result set.
+
+### Explicitly deferred / out of scope (documented decisions)
+
+- **Rebranding** — HomeLedger just shipped 1.0.0 (GitHub Release, Docker Hub, HACS,
+  HA add-on, docs, STABILITY.md). Renaming now burns that SEO/links/image/package and
+  confuses early users; "HomeLedger" still fits money + home + things. Revisit only if
+  the product truly outgrows the name; the *tagline* can evolve without a rename.
+- **Multi-user / households / permissions** — large architectural change vs. the
+  strict per-user model (reinforced in backup). High risk, conflicts with simplicity.
+  Only if there's real demand.
+- **PostgreSQL** — the app is deeply tied to SQLite (better-sqlite3, PRAGMA, raw-SQL
+  receipt tables, planned FTS5). Supporting Postgres doubles the maintenance/test
+  surface for little gain in a single-user local-first app. Not planned near-term.
+- **Investments with market prices** — needs an external price source (breaks the
+  no-cloud-dependency principle). Defer; keep manual-value assets for now.
+- **Plugins / open ecosystem** — far off; over-engineering for the current stage.
+- **AI** — not required and not planned. Deterministic logic covers warranties,
+  reminders, maintenance. If ever added: optional, modular, local, never required.
