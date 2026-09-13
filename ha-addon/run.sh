@@ -13,6 +13,7 @@ echo "Iniciando HomeLedger para Home Assistant..."
 # Read configuration from HA options
 if [ -f "$CONFIG_PATH" ]; then
   export TZ=$(jq -r '.TZ // "America/Mexico_City"' "$CONFIG_PATH")
+  export DEFAULT_LOCALE=$(jq -r '.DEFAULT_LOCALE // "en"' "$CONFIG_PATH")
   export JWT_SECRET=$(jq -r '.JWT_SECRET // ""' "$CONFIG_PATH")
   export ADMIN_EMAIL=$(jq -r '.ADMIN_EMAIL // "admin@homeledger.local"' "$CONFIG_PATH")
   export ADMIN_PASSWORD=$(jq -r '.ADMIN_PASSWORD // ""' "$CONFIG_PATH")
@@ -20,6 +21,7 @@ if [ -f "$CONFIG_PATH" ]; then
 else
   echo "ADVERTENCIA: No se encontró archivo de opciones, usando valores por defecto"
   export TZ="${TZ:-America/Mexico_City}"
+  export DEFAULT_LOCALE="${DEFAULT_LOCALE:-en}"
 fi
 
 # Validate required configuration

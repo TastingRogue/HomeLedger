@@ -27,6 +27,7 @@ panel_title: "HomeLedger"
 # Options (user-configurable in HA UI)
 options:
   TZ: "America/Mexico_City"
+  DEFAULT_LOCALE: "en"
   JWT_SECRET: ""
   ADMIN_EMAIL: "admin@homeledger.local"
   ADMIN_PASSWORD: ""
@@ -34,6 +35,7 @@ options:
 # Schema validation for options
 schema:
   TZ: str
+  DEFAULT_LOCALE: "list(es|en)"
   JWT_SECRET: str
   ADMIN_EMAIL: email
   ADMIN_PASSWORD: password

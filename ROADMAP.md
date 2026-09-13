@@ -215,14 +215,11 @@ Spanish in `packages/frontend/src/lib/stores/preferences.ts` (`loadFromStorage`
 returns `{ locale: 'es' }`), and there is no host-level setting.
 
 - [x] Added a `DEFAULT_LOCALE` env var (backend) via `packages/backend/src/config/locale.ts` — `getDefaultLocale()` validates against supported locales, normalizes `en-US`→`en`, defaults to **English** when unset/invalid. Consumed by the category seed.
-- [x] Documented `DEFAULT_LOCALE` in `.env.example`.
-- [ ] Expose the configured default to the frontend (small public endpoint or value injected at page load) so SSR and first paint use it
-- [ ] Change the **frontend** preferences fallback chain to: **stored user choice → host `DEFAULT_LOCALE` → English (`en`)** (frontend `preferences.ts` `DEFAULT_LOCALE` is still `'es'`; needs to consume the host value)
-- [ ] Do the same for the theme/pre-paint path so the login screen renders in the configured language before any user preference exists
-- [ ] Document `DEFAULT_LOCALE` in the README env table, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
-- [ ] Verify: fresh install with no config → English; with `DEFAULT_LOCALE=es` → Spanish; a user's saved choice always wins
-
-Note: the **backend** half of P1.6 (seed language) is done here alongside P1.5. The remaining items are the **frontend** UI default-language wiring — a smaller, self-contained follow-up.
+- [x] Exposed the configured default to the frontend via a **public** `GET /api/v1/config` → `{ defaultLocale }` (added to `PUBLIC_ROUTES`). Verified: `DEFAULT_LOCALE=es` → `{"defaultLocale":"es"}`, unset → `{"defaultLocale":"en"}`.
+- [x] Frontend resolution chain is now **stored user choice → host `DEFAULT_LOCALE` → English**. Changed the registry ultimate fallback `'es'`→`'en'`; added `applyHostDefaultLocale()` in `preferences.ts` that, on a genuine first run only (tracked via `localeWasStored`, captured before the auto-save subscription), fetches `/api/v1/config` and adopts the host default. A user's saved choice always wins.
+- [x] Wired the bootstrap into the root `+layout.svelte` `onMount`. (Because `t` is a derived store, the first-run language applies reactively; the login screen may paint in English for one frame before swapping to the host default — acceptable, avoids SSR plumbing for this client-heavy local-first app.)
+- [x] Documented `DEFAULT_LOCALE` in `.env.example`, README env table, `Dockerfile`, `docker-compose.yml`, and the HA add-on (`config.yaml` options+schema `list(es|en)`, `run.sh`, `DOCS.md`, `translations/es.yaml`).
+- [x] Verified: backend+frontend typecheck 0/0, build clean, full suite 429/429; config endpoint returns es/en correctly; a user's saved choice is never overridden (`localeWasStored` guard).
 
 ### P1.7 — Health & observability
 - [ ] Deepen `/api/v1/health` to include a DB connectivity check

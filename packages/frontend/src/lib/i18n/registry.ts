@@ -36,10 +36,12 @@ export type SupportedLocale = keyof typeof locales;
 export const supportedLocales = Object.keys(locales) as SupportedLocale[];
 
 /**
- * Application default locale. Falls back to English when the requested locale
- * is unknown. P1.6 makes this host-configurable via a build-time env value.
+ * Ultimate fallback locale (English), used for translation fallback and as the
+ * last link in the locale resolution chain: stored user choice → host
+ * `DEFAULT_LOCALE` (from GET /api/v1/config) → this. The host default is applied
+ * at runtime by the locale bootstrap; see `preferences.ts` / `applyHostDefaultLocale`.
  */
-export const DEFAULT_LOCALE: SupportedLocale = 'es';
+export const DEFAULT_LOCALE: SupportedLocale = 'en';
 
 /** Type guard: is the given value one of the supported locale codes? */
 export function isSupportedLocale(value: unknown): value is SupportedLocale {

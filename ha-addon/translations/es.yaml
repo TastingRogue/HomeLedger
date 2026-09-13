@@ -5,6 +5,12 @@ configuration:
     description: >-
       Zona horaria utilizada para las tareas programadas y el formato de fechas.
       Ejemplo: America/Mexico_City
+  DEFAULT_LOCALE:
+    name: Idioma principal
+    description: >-
+      Idioma principal de la instalación: nombres de las categorías del sistema
+      e idioma por defecto de la interfaz (es o en). Cada usuario puede cambiar
+      su propio idioma después.
   JWT_SECRET:
     name: Clave secreta JWT
     description: >-

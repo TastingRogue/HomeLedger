@@ -9,6 +9,7 @@ const PUBLIC_ROUTES: string[] = [
   '/api/v1/auth/register',
   '/api/v1/auth/refresh',
   '/api/v1/health',
+  '/api/v1/config',
 ];
 
 /**

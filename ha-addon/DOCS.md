@@ -40,6 +40,7 @@ HomeLedger es una aplicación de gestión de finanzas personales auto-hospedada 
 | Opción | Descripción | Requerido | Valor por defecto |
 |--------|-------------|-----------|-------------------|
 | `TZ` | Zona horaria | No | `America/Mexico_City` |
+| `DEFAULT_LOCALE` | Idioma principal de la instalación (nombres de categorías del sistema e idioma por defecto de la interfaz): `es` o `en`. Cada usuario puede cambiar su propio idioma. | No | `en` |
 | `JWT_SECRET` | Clave secreta para tokens JWT (mínimo 32 caracteres) | **Sí** | — |
 | `ADMIN_EMAIL` | Correo del usuario administrador | No | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Contraseña del administrador | **Sí** | — |
@@ -48,6 +49,7 @@ HomeLedger es una aplicación de gestión de finanzas personales auto-hospedada 
 
 ```yaml
 TZ: "America/Mexico_City"
+DEFAULT_LOCALE: "es"
 JWT_SECRET: "tu-clave-secreta-muy-segura-de-al-menos-32-caracteres"
 ADMIN_EMAIL: "admin@homeledger.local"
 ADMIN_PASSWORD: "una-contraseña-segura"
