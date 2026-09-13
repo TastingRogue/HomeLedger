@@ -7,6 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "@sveltejs/adapter-node": "^5.2.0",
     "@sveltejs/kit": "^2.21.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "jsdom": "^25.0.1",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "typescript": "^5.8.3",
