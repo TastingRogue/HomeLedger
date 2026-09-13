@@ -71,11 +71,19 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     const transactionId = fields?.transactionId?.value ? parseInt(fields.transactionId.value, 10) : undefined;
     const transferId = fields?.transferId?.value ? parseInt(fields.transferId.value, 10) : undefined;
 
-    const attachment = AttachmentService.save(
-      user.userId,
-      { filename: data.filename, data: buffer, mimetype: data.mimetype },
-      { transactionId, transferId }
-    );
+    let attachment;
+    try {
+      attachment = AttachmentService.save(
+        user.userId,
+        { filename: data.filename, data: buffer, mimetype: data.mimetype },
+        { transactionId, transferId }
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message === 'LINK_TARGET_NOT_FOUND') {
+        return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'La transacción o transferencia a vincular no existe' } });
+      }
+      throw err;
+    }
 
     return reply.status(201).send({ success: true, data: attachment });
   });
@@ -143,7 +151,15 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     if (body?.transactionId) linkTo.transactionId = Number(body.transactionId);
     if (body?.transferId) linkTo.transferId = Number(body.transferId);
 
-    const result = AttachmentService.link(id, user.userId, linkTo);
+    let result;
+    try {
+      result = AttachmentService.link(id, user.userId, linkTo);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'LINK_TARGET_NOT_FOUND') {
+        return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'La transacción o transferencia a vincular no existe' } });
+      }
+      throw err;
+    }
     if (!result) return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Archivo no encontrado' } });
 
     return reply.status(200).send({ success: true, data: result });

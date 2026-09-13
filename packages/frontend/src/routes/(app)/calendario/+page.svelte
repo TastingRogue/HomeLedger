@@ -3,6 +3,7 @@
   import { apiGet } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
 
   interface CalendarPayment {
@@ -22,7 +23,7 @@
   let currentMonth = $state(new Date().getMonth());
   let currentYear = $state(new Date().getFullYear());
 
-  const localeTag = $derived($preferences.locale === 'en' ? 'en-US' : 'es-MX');
+  const localeTag = $derived(getIntlTag($preferences.locale));
   const months = $derived(Array.from({ length: 12 }, (_, m) => {
     const n = new Intl.DateTimeFormat(localeTag, { month: 'long' }).format(new Date(2000, m, 1));
     return n.charAt(0).toUpperCase() + n.slice(1);

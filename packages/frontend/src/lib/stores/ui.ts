@@ -21,7 +21,7 @@ function createUiStore() {
 		theme: getInitialTheme()
 	};
 
-	const { subscribe, set, update } = writable<UiState>(initialState);
+	const { subscribe, update } = writable<UiState>(initialState);
 
 	return {
 		subscribe,

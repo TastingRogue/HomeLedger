@@ -1,6 +1,7 @@
 import { startAutoChargeJob, stopAutoChargeJob } from './auto-charge.job.js';
 import { startAlertEvaluationJob, stopAlertEvaluationJob } from './alert-evaluation.job.js';
 import { startBudgetResetJob, stopBudgetResetJob } from './budget-reset.job.js';
+import { startBackupJob, stopBackupJob } from './backup.job.js';
 
 /**
  * Inicia todos los jobs programados del scheduler.
@@ -12,6 +13,7 @@ export function startScheduler(): void {
   startAutoChargeJob();
   startAlertEvaluationJob();
   startBudgetResetJob();
+  startBackupJob();
 
   console.log('[Scheduler] Todos los jobs iniciados correctamente');
 }
@@ -26,6 +28,7 @@ export function stopScheduler(): void {
   stopAutoChargeJob();
   stopAlertEvaluationJob();
   stopBudgetResetJob();
+  stopBackupJob();
 
   console.log('[Scheduler] Todos los jobs detenidos');
 }

@@ -105,7 +105,7 @@ function ocrDroppedDecimals(text: string): boolean {
 function parseDate(value: string | null): string | null {
   if (!value) return null;
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value); if (iso) return iso[0];
-  const local = /(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/.exec(value); if (!local) return value;
+  const local = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/.exec(value); if (!local) return value;
   const day = local[1]; const month = local[2]; const rawYear = local[3];
   if (!day || !month || !rawYear) return value;
   const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
@@ -142,7 +142,7 @@ function parsePlainText(text: string, sourceType: ReceiptSourceType): ParsedRece
   const totalText = firstMatch(text, [/(?:^|[^A-ZÁÉÍÓÚa-záéíóú])(?:TOTAL\s+A\s+PAGAR|IMPORTE\s+TOTAL|TOTAL)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im]);
   const subtotalText = firstMatch(text, [/SUBTOTAL[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
   const taxText = firstMatch(text, [/(?:IVA|I\.V\.A\.)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
-  const dateText = firstMatch(text, [/(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/, /(\d{4}-\d{2}-\d{2})/]);
+  const dateText = firstMatch(text, [/(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/, /(\d{4}-\d{2}-\d{2})/]);
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const merchant = lines.find(line => line.length >= 3 && line.length <= 80 && !/^(total|subtotal|iva|fecha|ticket|factura)/i.test(line)) ?? null;
   // OCR often drops the decimal point ("114.75" -> "11475"). When we detect that

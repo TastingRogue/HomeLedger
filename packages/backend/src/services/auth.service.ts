@@ -1,9 +1,10 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
-import { eq, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
+import { getRegistrationMode, getRegistrationAllowlist } from '../config/registration.js';
 import type { RegisterSchema, LoginSchema } from '../validators/auth.schema.js';
 
 const SALT_ROUNDS = 12;
@@ -67,13 +68,27 @@ export class AuthService {
       throw new AuthError('El correo electrónico ya está registrado', 'EMAIL_EXISTS');
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-
     // Determine role: first user = admin, subsequent = user
     const userCountResult = await db.select({ value: count() }).from(users);
     const userCount = userCountResult[0]?.value ?? 0;
     const role = userCount === 0 ? 'admin' : 'user';
+
+    // Enforce the registration policy. The very first user is ALWAYS allowed
+    // (bootstraps the admin); after that the admin-controlled policy applies.
+    if (userCount > 0) {
+      const mode = getRegistrationMode();
+      if (mode === 'closed' || mode === 'first_user_only') {
+        throw new AuthError('El registro está deshabilitado. Contacta al administrador.', 'REGISTRATION_CLOSED');
+      }
+      // mode === 'open': if an allowlist is configured, the email must be on it.
+      const allowlist = getRegistrationAllowlist();
+      if (allowlist.length > 0 && !allowlist.includes(input.email.trim().toLowerCase())) {
+        throw new AuthError('Este correo no está autorizado para registrarse.', 'EMAIL_NOT_ALLOWED');
+      }
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
     const now = new Date().toISOString();
 
@@ -137,6 +152,11 @@ export class AuthService {
     const isValid = await bcrypt.compare(input.password, foundUser.passwordHash);
     if (!isValid) {
       throw new AuthError('Credenciales inválidas', 'INVALID_CREDENTIALS');
+    }
+
+    // Disabled accounts cannot log in.
+    if (foundUser.disabled) {
+      throw new AuthError('La cuenta está deshabilitada. Contacta al administrador.', 'ACCOUNT_DISABLED');
     }
 
     // Generate tokens
@@ -275,9 +295,14 @@ export class AuthService {
   /**
    * Revoke (delete) an API key by its ID.
    */
-  static async revokeApiKey(keyId: number): Promise<void> {
+  static async revokeApiKey(keyId: number, userId: number): Promise<void> {
     const db = getDb();
-    const deleted = db.delete(apiKeys).where(eq(apiKeys.id, keyId)).returning().all();
+    // Scope to the caller's own keys so a user can never revoke another user's key.
+    const deleted = db
+      .delete(apiKeys)
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+      .returning()
+      .all();
 
     if (deleted.length === 0) {
       throw new AuthError('API key no encontrada', 'API_KEY_NOT_FOUND');

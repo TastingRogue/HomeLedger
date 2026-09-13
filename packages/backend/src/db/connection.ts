@@ -28,6 +28,14 @@ function getDatabasePath(): string {
 }
 
 /**
+ * Public accessor for the SQLite database file path (used by the backup/snapshot
+ * service). Resolves the same `DATA_DIR`-based path the connection uses.
+ */
+export function getDatabaseFilePath(): string {
+  return getDatabasePath();
+}
+
+/**
  * Returns the path to the migrations directory.
  */
 function getMigrationsPath(): string {
@@ -104,6 +112,9 @@ export function initializeDatabase(): void {
   }
   // Index declared in schema.ts but not present in migration 0000.
   sqlite.exec('CREATE INDEX IF NOT EXISTS attachments_transfer_id_idx ON attachments (transfer_id)');
+
+  // Note: `categories.key` is added by migration 0003_add_category_key (a clean
+  // new column, safe as a real migration since no prior install has it).
 }
 
 /**

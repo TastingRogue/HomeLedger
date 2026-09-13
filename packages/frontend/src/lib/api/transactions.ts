@@ -79,6 +79,6 @@ export function updateTransaction(id: number, input: Partial<CreateTransactionIn
 	return apiPut<Transaction>(`/transactions/${id}`, input);
 }
 
-export function deleteTransaction(id: number): Promise<void> {
-	return apiDelete<void>(`/transactions/${id}`);
+export async function deleteTransaction(id: number): Promise<void> {
+	await apiDelete(`/transactions/${id}`);
 }

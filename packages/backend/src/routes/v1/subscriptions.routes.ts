@@ -159,21 +159,17 @@ export async function subscriptionRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ success: false, error: { code: 'BAD_REQUEST', message: 'ID inválido' } });
     }
 
-    try {
-      const db = (await import('../../db/connection.js')).getDb();
-      const { subscriptions: subsTable } = await import('../../db/schema.js');
-      const { eq, and } = await import('drizzle-orm');
+    const db = (await import('../../db/connection.js')).getDb();
+    const { subscriptions: subsTable } = await import('../../db/schema.js');
+    const { eq, and } = await import('drizzle-orm');
 
-      const existing = db.select().from(subsTable).where(and(eq(subsTable.id, id), eq(subsTable.userId, user.userId))).get();
-      if (!existing) {
-        return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Suscripción no encontrada' } });
-      }
-
-      db.delete(subsTable).where(eq(subsTable.id, id)).run();
-      return reply.status(200).send({ success: true, data: { message: 'Suscripción eliminada' } });
-    } catch (error) {
-      throw error;
+    const existing = db.select().from(subsTable).where(and(eq(subsTable.id, id), eq(subsTable.userId, user.userId))).get();
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Suscripción no encontrada' } });
     }
+
+    db.delete(subsTable).where(eq(subsTable.id, id)).run();
+    return reply.status(200).send({ success: true, data: { message: 'Suscripción eliminada' } });
   });
 
   /**

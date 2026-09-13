@@ -140,7 +140,7 @@ describe('AccountService', () => {
         currency: 'MXN',
       });
 
-      await AccountService.deactivate(account.id);
+      await AccountService.deactivate(account.id, userId);
 
       const result = await AccountService.create(userId, {
         name: 'Vieja Cuenta',
@@ -182,7 +182,7 @@ describe('AccountService', () => {
         currency: 'MXN',
       });
 
-      const updated = await AccountService.update(account.id, {
+      const updated = await AccountService.update(account.id, userId, {
         name: 'Actualizada',
         initialBalance: 2000,
       });
@@ -209,7 +209,7 @@ describe('AccountService', () => {
       });
 
       await expect(
-        AccountService.update(cuentaB.id, { name: 'Cuenta A' })
+        AccountService.update(cuentaB.id, userId, { name: 'Cuenta A' })
       ).rejects.toThrow('Ya existe una cuenta activa con ese nombre');
     });
 
@@ -222,7 +222,7 @@ describe('AccountService', () => {
         currency: 'MXN',
       });
 
-      const updated = await AccountService.update(account.id, {
+      const updated = await AccountService.update(account.id, userId, {
         name: 'Mi Cuenta',
         initialBalance: 500,
       });
@@ -232,7 +232,7 @@ describe('AccountService', () => {
 
     it('debe lanzar error si la cuenta no existe', async () => {
       await expect(
-        AccountService.update(999, { name: 'Test' })
+        AccountService.update(999, 1, { name: 'Test' })
       ).rejects.toThrow('Cuenta no encontrada');
     });
   });
@@ -247,15 +247,15 @@ describe('AccountService', () => {
         currency: 'MXN',
       });
 
-      await AccountService.deactivate(account.id);
+      await AccountService.deactivate(account.id, userId);
 
-      const result = await AccountService.getById(account.id);
+      const result = await AccountService.getById(account.id, userId);
       expect(result!.status).toBe('Inactivo');
     });
 
     it('debe lanzar error si la cuenta no existe', async () => {
       await expect(
-        AccountService.deactivate(999)
+        AccountService.deactivate(999, 1)
       ).rejects.toThrow('Cuenta no encontrada');
     });
   });
@@ -285,7 +285,7 @@ describe('AccountService', () => {
         currency: 'MXN',
       });
 
-      await AccountService.deactivate(toDeactivate.id);
+      await AccountService.deactivate(toDeactivate.id, userId);
 
       const result = await AccountService.getActive(userId);
       expect(result).toHaveLength(2);
@@ -884,6 +884,37 @@ describe('AccountService', () => {
       await expect(
         AccountService.getLinkedSubscriptions(999)
       ).rejects.toThrow('Cuenta no encontrada');
+    });
+  });
+
+  describe('per-user isolation (P1.10)', () => {
+    it('user B cannot read, update, or deactivate user A\'s account', async () => {
+      const userA = seedTestUser(1);
+      const userB = seedTestUser(2);
+
+      const accA = await AccountService.create(userA, {
+        name: 'A private', initialBalance: 1000, type: AccountType.Debito, currency: 'MXN',
+      });
+
+      // getById scoped to B → not found
+      expect(await AccountService.getById(accA.id, userB)).toBeNull();
+      // getById scoped to A → found
+      expect((await AccountService.getById(accA.id, userA))!.id).toBe(accA.id);
+
+      // update as B → NOT_FOUND (cannot mutate A's account)
+      await expect(
+        AccountService.update(accA.id, userB, { name: 'hacked' })
+      ).rejects.toThrow('Cuenta no encontrada');
+
+      // deactivate as B → NOT_FOUND
+      await expect(
+        AccountService.deactivate(accA.id, userB)
+      ).rejects.toThrow('Cuenta no encontrada');
+
+      // A's account is untouched
+      const still = await AccountService.getById(accA.id, userA);
+      expect(still!.name).toBe('A private');
+      expect(still!.status).toBe('Activo');
     });
   });
 });

@@ -23,6 +23,7 @@ describe('RulesEngineService', () => {
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
+        disabled INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -47,6 +48,7 @@ describe('RulesEngineService', () => {
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        key TEXT,
         name TEXT NOT NULL,
         icon TEXT,
         color TEXT,
@@ -133,10 +135,10 @@ describe('RulesEngineService', () => {
       .get();
     categoryId = cat.id;
 
-    // Create default "Corrección" category
+    // Create default "uncategorized" system category (looked up by key)
     const defaultCat = db
       .insert(categories)
-      .values({ name: 'Corrección', userId: null, isSystem: true, createdAt: now })
+      .values({ key: 'uncategorized', name: 'Sin categoría', userId: null, isSystem: true, createdAt: now })
       .returning()
       .get();
     defaultCategoryId = defaultCat.id;

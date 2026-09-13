@@ -4,6 +4,8 @@ import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, categories, transactions, transactionSplits, transfers } from '../db/schema.js';
 import { TransactionType } from '@homeledger/shared';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Set test environment variables
 process.env['DATA_DIR'] = './data/test-transaction';
@@ -26,6 +28,7 @@ describe('TransactionService', () => {
         password_hash TEXT NOT NULL,
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
+        disabled INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -49,6 +52,7 @@ describe('TransactionService', () => {
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        key TEXT,
         name TEXT NOT NULL,
         icon TEXT,
         color TEXT,
@@ -151,8 +155,6 @@ describe('TransactionService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const fs = require('fs');
-    const path = require('path');
     const dbPath = path.resolve('./data/test-transaction/smart-finance.db');
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const walPath = dbPath + '-wal';

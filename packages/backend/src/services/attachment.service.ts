@@ -1,6 +1,6 @@
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { attachments } from '../db/schema.js';
+import { attachments, transactions, transfers } from '../db/schema.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -39,6 +39,35 @@ export interface AttachmentRecord {
 
 export class AttachmentService {
   /**
+   * Verifies that any transaction/transfer being linked belongs to the user.
+   * Prevents linking an attachment to another user's transaction/transfer (IDOR).
+   * @throws Error('LINK_TARGET_NOT_FOUND') if a referenced target isn't the user's.
+   */
+  private static assertLinkTargetsOwned(
+    userId: number,
+    linkTo?: { transactionId?: number; transferId?: number }
+  ): void {
+    if (!linkTo) return;
+    const db = getDb();
+    if (linkTo.transactionId != null) {
+      const tx = db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(and(eq(transactions.id, linkTo.transactionId), eq(transactions.userId, userId)))
+        .get();
+      if (!tx) throw new Error('LINK_TARGET_NOT_FOUND');
+    }
+    if (linkTo.transferId != null) {
+      const tr = db
+        .select({ id: transfers.id })
+        .from(transfers)
+        .where(and(eq(transfers.id, linkTo.transferId), eq(transfers.userId, userId)))
+        .get();
+      if (!tr) throw new Error('LINK_TARGET_NOT_FOUND');
+    }
+  }
+
+  /**
    * Upload and save an attachment file.
    */
   static save(
@@ -46,6 +75,8 @@ export class AttachmentService {
     file: { filename: string; data: Buffer; mimetype: string },
     linkTo?: { transactionId?: number; transferId?: number }
   ): AttachmentRecord {
+    // Reject links to another user's transaction/transfer before writing anything.
+    AttachmentService.assertLinkTargetsOwned(userId, linkTo);
     const db = getDb();
     const ext = path.extname(file.filename) || '.bin';
     const storedName = `${crypto.randomUUID()}${ext}`;
@@ -147,6 +178,7 @@ export class AttachmentService {
    * Link an existing attachment to a transaction or transfer.
    */
   static link(id: number, userId: number, linkTo: { transactionId?: number; transferId?: number }): AttachmentRecord | null {
+    AttachmentService.assertLinkTargetsOwned(userId, linkTo);
     const db = getDb();
     const record = db
       .update(attachments)

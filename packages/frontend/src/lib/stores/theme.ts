@@ -10,7 +10,9 @@ function loadFromStorage(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'light' || stored === 'dark') return stored;
-  } catch {}
+  } catch {
+    /* localStorage unavailable — fall back to default */
+  }
   return 'dark';
 }
 
@@ -38,7 +40,9 @@ theme.subscribe((value) => {
   if (!browser) return;
   try {
     localStorage.setItem(STORAGE_KEY, value);
-  } catch {}
+  } catch {
+    /* localStorage unavailable — ignore persistence */
+  }
   applyTheme(value);
 });
 

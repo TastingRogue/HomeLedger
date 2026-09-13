@@ -70,7 +70,7 @@
 </script>
 
 <svelte:head>
-  <title>Iniciar Sesión - HomeLedger</title>
+  <title>{$t('page_title.login')} - HomeLedger</title>
 </svelte:head>
 
 <div class="login-container">

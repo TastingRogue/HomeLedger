@@ -57,7 +57,7 @@
 </script>
 
 <svelte:head>
-  <title>Crear Cuenta - HomeLedger</title>
+  <title>{$t('page_title.register')} - HomeLedger</title>
 </svelte:head>
 
 <div class="register-container">
@@ -91,7 +91,7 @@
 
       <div class="form-group">
         <label for="confirmPassword">{$t('auth.confirm_password_label')}</label>
-        <input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Repite tu contraseña" autocomplete="new-password" disabled={loading} class:input-error={confirmPasswordError} aria-describedby={confirmPasswordError ? 'confirm-error' : undefined} aria-invalid={confirmPasswordError ? 'true' : undefined} />
+        <input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder={$t('auth.confirm_password_placeholder')} autocomplete="new-password" disabled={loading} class:input-error={confirmPasswordError} aria-describedby={confirmPasswordError ? 'confirm-error' : undefined} aria-invalid={confirmPasswordError ? 'true' : undefined} />
         {#if confirmPasswordError}<span id="confirm-error" class="field-error" role="alert">{confirmPasswordError}</span>{/if}
       </div>
 

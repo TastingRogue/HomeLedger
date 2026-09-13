@@ -11,7 +11,6 @@ url: "https://github.com/TastingRogue/HomeLedger"
 arch:
   - amd64
   - aarch64
-  - armv7
 
 # Container configuration
 ports:
@@ -28,6 +27,11 @@ panel_title: "HomeLedger"
 # Options (user-configurable in HA UI)
 options:
   TZ: "America/Mexico_City"
+  DEFAULT_LOCALE: "en"
+  DISPLAY_CURRENCY: "MXN"
+  BACKUP_ENABLED: true
+  BACKUP_RETENTION: 7
+  REGISTRATION_MODE: "first_user_only"
   JWT_SECRET: ""
   ADMIN_EMAIL: "admin@homeledger.local"
   ADMIN_PASSWORD: ""
@@ -35,6 +39,11 @@ options:
 # Schema validation for options
 schema:
   TZ: str
+  DEFAULT_LOCALE: "list(es|en)"
+  DISPLAY_CURRENCY: "list(MXN|USD|EUR|COP|ARS|CLP|PEN|BRL)"
+  BACKUP_ENABLED: bool
+  BACKUP_RETENTION: "int(1,)"
+  REGISTRATION_MODE: "list(first_user_only|open|closed)"
   JWT_SECRET: str
   ADMIN_EMAIL: email
   ADMIN_PASSWORD: password

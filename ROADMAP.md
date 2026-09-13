@@ -43,10 +43,10 @@ Implications for the feature list:
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **429 passing, 0 failing** ✅
-- **ALL P0 BLOCKERS DONE** (P0.1–P0.5) on branch `p0-stability-blockers`
-- Last audit: codebase-wide inventory completed (see phases below)
-- Next: P1 (release quality) — arm64, lint/CI, i18n, backups, multi-user, etc.
+- Test suite: **429 passing, 0 failing** ✅ · lint 0 errors · CI gates in place
+- **ALL P0 BLOCKERS DONE** (P0.1–P0.5), merged to `main`
+- P1 in progress on branch `p1-release-quality`: **P1.2 (lint + CI) done**
+- Next P1: P1.1 arm64, P1.3/P1.4 i18n, P1.8 backups, P1.10 multi-user, etc.
 
 ---
 
@@ -129,22 +129,30 @@ amounts are validated to 2 decimals).
 
 ## Phase P1 — Release quality (strongly recommended for 1.0.0)
 
-### P1.1 — arm64 / multi-arch (real)
-The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
+### P1.1 — arm64 / multi-arch (real) ✅ (done)
+Rewrote `docker-build.yml` to build each arch natively and merge into a
+multi-arch manifest — no QEMU (which hung on `better-sqlite3`).
 
-- [ ] Build arm64 natively via GitHub arm64 runners (matrix), not QEMU (which hangs on `better-sqlite3`)
-- [ ] Merge per-arch builds into a multi-arch manifest on Docker Hub
-- [ ] Verify the image actually runs on a Raspberry Pi / arm64 host
-- [ ] Update CHANGELOG/README to state real arch support
+- [x] Matrix build on native runners: `linux/amd64` on `ubuntu-latest`, `linux/arm64` on `ubuntu-24.04-arm` (official Docker pattern, confirmed against docs)
+- [x] Each arch builds and pushes **by digest** (`push-by-digest=true,name-canonical=true`), with per-platform GHA cache scopes; PRs build-only (no push)
+- [x] `merge` job combines the digests via `docker buildx imagetools create` with the semver/latest/branch tags, inspects the result, and updates the Docker Hub description (main only)
+- [x] Removed `armv7` from `ha-addon/config.yaml` and the README (we build arm64/aarch64, not 32-bit armv7 — declaring it would fail on HA); README already says "multi-arch"
+- [x] Both workflow YAMLs validated
+- [ ] (Verify on real hardware) Confirm the arm64 image actually runs on a Raspberry Pi / arm64 host once the workflow publishes — can't test arm64 execution from this dev machine
 
-### P1.2 — Lint clean
-- [ ] Resolve or intentionally scope the ~378 pre-existing ESLint problems
-- [ ] Extend lint to `.svelte` files
-- [ ] Add lint (and tests) to CI so regressions are caught
+### P1.2 — Lint clean + CI gates ✅ (done)
+- [x] Added a real CI workflow (`.github/workflows/ci.yml`): on push/PR to main/develop runs `npm ci` → build shared → typecheck (backend+frontend) → lint → test → build. This protects `main` (the Docker workflow only built the image; it never ran tests).
+- [x] Calibrated `eslint.config.js` to the project's conventions instead of blindly "fixing" 398 problems: `no-extraneous-class` off (services are intentional static-method classes), `no-non-null-assertion` → warn (off in tests), `no-explicit-any` → warn; tests relax `!`/`any`; `app.d.ts` empty ambient interfaces allowed (SvelteKit convention)
+- [x] Fixed the 32 real bugs the calibrated config surfaced: unused vars, empty catches (added intent comments), `no-useless-catch` wrapper, `require()`→ESM imports in tests, useless regex escapes, `no-case-declarations` (braced `addTag` case), and `void` generic args in frontend API clients (`apiDelete<void>` → `await apiDelete(...)`)
+- [x] `npm run lint` → **0 errors** (85 `any` warnings remain as tracked, non-blocking debt); typecheck 0/0; **429 tests passing**
+- [ ] (Follow-up) Extend lint to `.svelte` files — needs `eslint-plugin-svelte` + parser; deferred to avoid pulling a new dep + a fresh batch of findings mid-phase. `.ts` across backend + frontend (api/stores/utils) is linted and gated.
+- [ ] (Follow-up) Chip away at the 85 `no-explicit-any` warnings over time
 
-### P1.3 — i18n completeness
-- [ ] Byte-level parity check between `es.ts` and `en.ts`
-- [ ] Fix stray hardcoded strings (e.g. `recibos/+page.svelte` `<title>`, `register/+page.svelte` password placeholder)
+### P1.3 — i18n completeness ✅ (done)
+- [x] Key-level parity verified between `es.ts` and `en.ts` — 819 keys each, zero keys missing on either side, no duplicates
+- [x] Fixed the untranslated **visible** strings: 5 hardcoded `<title>` tags (login, register, backup/respaldo, quick-register, receipts) now use a new `page_title.*` namespace; register's confirm-password placeholder now uses `auth.confirm_password_placeholder`. Numeric `placeholder="0.00"` left as-is (language-neutral).
+- [x] typecheck 0/0, build clean, parity re-confirmed (813 → 819 keys, both dicts)
+- [ ] (Follow-up → P3 accessibility) Many hardcoded Spanish `aria-label`s remain (Cerrar, Volver, view/list labels, etc.). These are accessibility strings, not directly visible; batch-translating them fits the P3 accessibility pass rather than expanding this item.
 
 ### P1.4 — Standardize i18n so new languages are easy to add
 Adding a language today means editing several hardcoded spots. Refactor to a
@@ -159,14 +167,16 @@ Current friction (all must be removed):
 - Locale options hardcoded in the Settings dropdown; calendar/currency locale tags mapped ad-hoc
 
 Tasks:
-- [ ] Create a language registry (e.g. `i18n/languages.ts`) where each language declares `{ code, label, dictionary, dateLocale }`
-- [ ] Derive `SupportedLocale` from the registry keys (no hand-maintained union)
-- [ ] Build the `dictionaries` map and the Settings dropdown options from the registry (no hardcoded lists)
-- [ ] Make the base/reference dictionary (English) the single source of truth; type the other dictionaries so **missing keys are a compile error** (enforced parity)
-- [ ] Replace hardcoded `es` fallbacks with the configured default → English chain (ties into P1.6)
-- [ ] Derive the calendar/`Intl` locale tag from the registry instead of the ad-hoc `es === 'en' ? 'en-US' : 'es-MX'` logic in `DatePicker.svelte`
-- [ ] Document "how to add a language" in the README/CONTRIBUTING (one file + one registry line)
-- [ ] Verify: adding a throwaway 3rd language works end to end with only a dictionary + registry entry
+- [x] Created language registry `packages/frontend/src/lib/i18n/registry.ts` — each language declares `{ dictionary, label, intlTag }` in one `locales` map
+- [x] `SupportedLocale` now derived from registry keys (`keyof typeof locales`); removed the hand-maintained `'es' | 'en'` union in `preferences.ts`
+- [x] `dictionaries` map, `supportedLocales`, and the Settings dropdown `localeOptions` are all built from the registry (no hardcoded lists)
+- [x] **Compile-time key parity:** `es` is the canonical dictionary (`export type TranslationKey = keyof typeof es`); `en` is typed `Record<TranslationKey, string>`, so a missing/extra key is a compile error. Verified: typecheck 0/0 and script parity 819/819.
+- [x] Fallback now uses `DEFAULT_LOCALE` (registry) instead of hardcoded `dictionaries.es`; `loadFromStorage` validates the stored locale via `isSupportedLocale` (corrupt/removed locale → default)
+- [x] Added `getIntlTag(locale)` helper; replaced the 4 ad-hoc `locale === 'en' ? 'en-US' : 'es-MX'` ternaries (dashboard, calendario, reportes, DatePicker). `reportes` also stopped reading `localStorage` directly / hardcoded month arrays — now uses the `preferences` store + `Intl` reactively.
+- [ ] (Deferred) Document "how to add a language" in README/CONTRIBUTING — the JSDoc in `registry.ts` already spells out the 2-step process; a README section can follow with the docs pass.
+- [ ] (Deferred) Manual end-to-end test with a throwaway 3rd language — the compile-time parity type already guarantees a new dict must cover every key; a full runtime smoke test can pair with P1.6.
+
+Note: `DEFAULT_LOCALE` is currently `'es'`; **P1.6** makes it host-configurable with an English fallback chain.
 
 ### P1.5 — Better-defined, localized system categories
 Today `packages/backend/src/db/seed.ts` seeds a fixed set of **Spanish-only**,
@@ -178,19 +188,25 @@ Problems: English users see Spanish names; the list contains personal/legacy
 junk (`MX-5`); and the rules engine depends on the magic name `Corrección` for
 uncategorized transactions.
 
-**Goal:** a clean, sensible default category set that appears in the user's
-language, chosen when the app/user is first set up, and English when nothing
-else applies.
+**Goal:** a clean, sensible default category set that appears in the host's
+primary language, seeded once at launch, with English when nothing else applies.
 
-- [ ] Define a curated default category set (name + type Gasto/Ingreso/Ambos + suggested icon/color), with **English and Spanish** names; drop legacy junk like `MX-5`
-- [ ] Decide the mechanism (record the choice here):
-  - **Option A** — store a stable language-independent *key* per system category and translate the display name via `$t()` (works per-user, cleanest)
-  - **Option B** — on first setup / user registration, seed a **per-user** copy of the defaults in that user's chosen language
-- [ ] Replace the magic-string dependency on `Corrección` in the rules engine with a stable key/flag so it survives translation
-- [ ] Ensure the seed is idempotent and doesn't duplicate categories across languages
-- [ ] Migration/backfill plan for existing installs that already have the old Spanish global categories
-- [ ] i18n keys for all default category names (es/en parity)
-- [ ] Verify: first launch in English → English categories; in Spanish → Spanish; switching language behaves per the chosen option
+**Decision (user-confirmed):** The admin/host picks ONE primary language at
+launch (`DEFAULT_LOCALE`). System categories are seeded **once, globally, in that
+language** — they are shared, fixed text. If an individual user switches their
+own UI language, category names do **not** change. Users can delete the system
+categories and create their own. This means we did **not** need Option A's
+per-category i18n display layer — the category name is just real text in the
+host language. We added one stable `key` per system category purely so backend
+logic (default/"uncategorized" lookup) is language-independent.
+
+- [x] Curated default set of **16** categories with es/en names + correct `type`: 1 Ingreso (`income`), 10 Gasto (housing, groceries, dining, transportation, utilities, health, entertainment, shopping, personal, education), 5 Ambos (`savings`, `debt`, `gifts`, `other`, `uncategorized`). Dropped legacy junk (`MX-5`, `ISP`, `Vales`, `Limpieza`, `Comida`); folded `Luz`/`ISP`/`Telefonía` → Utilities, `Gasolina` → Transportation, `Nómina`/`Dividendos` → Income, `Renta` → Housing, `Préstamo` → Debt. Default set researched against mainstream budgeting guidance (Ramsey/SoFi/WalletHub/Monarch).
+- [x] Added a stable `key` column to `categories` (schema.ts) via **migration `0003_add_category_key.sql`** (+ `categories_key_idx`); null for user categories. Chose a real migration (not the connection.ts reconcile pattern) since `key` is brand-new and no install has it yet — this also fixes the migration-only test setups.
+- [x] Replaced BOTH magic-string `Corrección` lookups with `key = 'uncategorized'`: `ImportService.getDefaultCategoryId()` and `RulesEngineService.applyToUncategorized()`. `UNCATEGORIZED_KEY` exported from seed.ts.
+- [x] Seed is idempotent by `key` (skips keys already present); one-time legacy backfill adopts a pre-existing `Corrección` row as `key='uncategorized'` so upgrades don't lose the default and don't duplicate. Existing user data preserved (FKs are `restrict`).
+- [x] Seed reads `DEFAULT_LOCALE` (see P1.6) and inserts the name for that language.
+- [x] Updated all 9 backend test suites (7 inline `CREATE TABLE` + 2 `Corrección` fixtures) for the new column/key.
+- [x] Verified: full suite **429/429**; end-to-end seed run with `DEFAULT_LOCALE=en` → 16 cats, `Uncategorized`/`Income`; with `=es` → `Sin categoría`/`Ingresos`; `key` column present; all 16 keys seeded.
 
 ### P1.6 — Host-configurable default language
 Let the person deploying the app choose the default UI language; fall back to
@@ -198,36 +214,45 @@ Let the person deploying the app choose the default UI language; fall back to
 Spanish in `packages/frontend/src/lib/stores/preferences.ts` (`loadFromStorage`
 returns `{ locale: 'es' }`), and there is no host-level setting.
 
-- [ ] Add a `DEFAULT_LOCALE` env var (backend), validated against `SupportedLocale`; default to `en` when unset/invalid
-- [ ] Expose the configured default to the frontend (e.g. small public endpoint or value injected at page load) so SSR and first paint use it
-- [ ] Change the preferences fallback chain to: **stored user choice → host `DEFAULT_LOCALE` → English (`en`)** (replace the hardcoded `'es'` default)
-- [ ] Do the same for the theme/pre-paint path so the login screen renders in the configured language before any user preference exists
-- [ ] Document `DEFAULT_LOCALE` in the README env table, `.env.example`, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
-- [ ] Verify: fresh install with no config → English; with `DEFAULT_LOCALE=es` → Spanish; a user's saved choice always wins
+- [x] Added a `DEFAULT_LOCALE` env var (backend) via `packages/backend/src/config/locale.ts` — `getDefaultLocale()` validates against supported locales, normalizes `en-US`→`en`, defaults to **English** when unset/invalid. Consumed by the category seed.
+- [x] Exposed the configured default to the frontend via a **public** `GET /api/v1/config` → `{ defaultLocale }` (added to `PUBLIC_ROUTES`). Verified: `DEFAULT_LOCALE=es` → `{"defaultLocale":"es"}`, unset → `{"defaultLocale":"en"}`.
+- [x] Frontend resolution chain is now **stored user choice → host `DEFAULT_LOCALE` → English**. Changed the registry ultimate fallback `'es'`→`'en'`; added `applyHostDefaultLocale()` in `preferences.ts` that, on a genuine first run only (tracked via `localeWasStored`, captured before the auto-save subscription), fetches `/api/v1/config` and adopts the host default. A user's saved choice always wins.
+- [x] Wired the bootstrap into the root `+layout.svelte` `onMount`. (Because `t` is a derived store, the first-run language applies reactively; the login screen may paint in English for one frame before swapping to the host default — acceptable, avoids SSR plumbing for this client-heavy local-first app.)
+- [x] Documented `DEFAULT_LOCALE` in `.env.example`, README env table, `Dockerfile`, `docker-compose.yml`, and the HA add-on (`config.yaml` options+schema `list(es|en)`, `run.sh`, `DOCS.md`, `translations/es.yaml`).
+- [x] Verified: backend+frontend typecheck 0/0, build clean, full suite 429/429; config endpoint returns es/en correctly; a user's saved choice is never overridden (`localeWasStored` guard).
 
 ### P1.7 — Health & observability
-- [ ] Deepen `/api/v1/health` to include a DB connectivity check
-- [ ] Confirm consistent structured error responses across routes
-- [ ] Surface scheduler job status (auto-charge, alert evaluation, budget reset) so a silently-failed cron job is visible to the user/admin
-- [ ] Consistent, configurable structured logging levels
+- [x] Deepened `GET /api/v1/health` with a real DB probe (`SELECT 1`): returns `{ status, db, version, timestamp }` and **HTTP 503** when the DB is unreachable so Docker/HA healthchecks detect it (was a static `ok`).
+- [x] Confirmed consistent structured error responses: `middleware/error-handler.ts` already returns `{ success:false, error:{ code, message[, details] } }` for Zod (422), Auth (401/403), rate-limit (429), client (4xx), and the generic 500 fallback. No change needed.
+- [x] Surfaced scheduler job status via an in-memory registry (`scheduler/status.ts`): each of the 3 jobs (auto-charge, alert-evaluation, budget-reset) reports `lastRunAt / lastStatus / lastDurationMs / lastMessage` (including their startup catch-up runs). Exposed at **admin-only** `GET /api/v1/health/scheduler` (`requireRole(['admin'])`) → `{ startedAt, healthy, jobs[] }`. A silently-failed cron run is now visible. (This is the first live use of `requireRole` — leads into P1.10.)
+- [x] Configurable logging: `LOG_LEVEL` (pino) is honored in `server.ts`; now documented in `.env.example` + README env table. Jobs keep `console.*` (they run outside request context) but also report structured status to the registry.
+- [x] Verified: backend typecheck 0/0, full suite 429/429, build clean; `app.inject` smoke test → `/health` 200 `db:ok`, `/health/scheduler` 401 without auth (guard wired), registry records job runs correctly.
+
+Note: intentionally did **not** add a metrics/Prometheus stack — out of scope for a local-first v1. In-memory status resets on restart, which is the right scope for single-process operational telemetry.
 
 ### P1.8 — Automated backups with retention
 Manual JSON export exists, but a finance app needs scheduled backups so a DB
 corruption isn't catastrophic. Keep storage bounded — a fixed number of backups,
 rotating out the oldest.
 
-- [ ] Scheduled automatic backups (cron job; interval configurable, e.g. daily)
-- [ ] **Retention/rotation:** keep a fixed maximum number of backups (configurable, e.g. keep last 7); when a new one is created, delete the oldest so backups never pile up
-- [ ] Store backups under `DATA_DIR` (e.g. `/data/backups`) so they persist with the volume
-- [ ] Restore from an automatic backup via the UI
-- [ ] Verify: backups rotate correctly at the limit; restore works
+**Decision (user-confirmed):** minimize disk use → **gzip-compressed whole-DB snapshots** (SQLite files compress ~70–90%, beating both raw `.db` copies and uncompressed per-user JSON, while capturing everything in one consistent file). The per-user JSON export/import stays as the user-facing "export my data" feature; these snapshots are the separate disaster-recovery mechanism.
+
+- [x] Scheduled automatic backups: new `scheduler/backup.job.ts` (4th cron job, reports into the P1.7 status registry). Schedule via `BACKUP_CRON` (default daily 03:00), toggle via `BACKUP_ENABLED`.
+- [x] **Retention/rotation:** `SnapshotService.applyRetention()` keeps the newest `BACKUP_RETENTION` (env, default 7, min 1) and deletes the oldest after each run. Verified: with retention=2, creating 3 snapshots rotates out exactly 1, oldest deleted.
+- [x] Snapshots stored under `DATA_DIR/backups` (persists with the volume). `SnapshotService.createSnapshot()` uses better-sqlite3's online backup API (WAL-safe, consistent) → gzip → `homeledger-<ISO-ts>.db.gz`. Verified gzip magic bytes.
+- [x] Backend restore API (admin-only, `requireRole(['admin'])`): `GET /api/v1/backup/snapshots` (list), `POST /api/v1/backup/snapshots` (create now), `POST /api/v1/backup/snapshots/:name/restore` (requires `confirmed:true`). Restore validates the SQLite header, writes a `.pre-restore` safety copy of the current DB, clears stale WAL/SHM sidecars, swaps the file, and reopens the connection. Verified: full restore round-trip; path-traversal/invalid names rejected; `.pre-restore` written.
+- [x] Env + docs: `BACKUP_ENABLED`/`BACKUP_RETENTION`/`BACKUP_CRON` in `.env.example`, README, Dockerfile, docker-compose.yml, and the HA add-on (config.yaml options+schema, run.sh, DOCS.md, translations). `data/` (incl. `data/backups`) is gitignored.
+- [x] Verified: backend typecheck 0/0, full suite 429/429, frontend build clean; real snapshot→rotate→restore cycle + safety/validation paths.
+- [ ] (Follow-up) Frontend UI for snapshots: an admin panel to list snapshots and trigger restore. The backend API is done; this is a thin UI layer that can pair with the P1.10 admin views.
 
 ### P1.9 — Restore safety (dry-run / validation)
 Import currently wipes all data on confirm. Make it safer.
 
-- [ ] Validate and preview a backup **before** it replaces current data (a dry-run that reports counts and any problems)
-- [ ] Confirm the atomic transaction rolls back cleanly on any failure mid-import (no half-restored state)
-- [ ] Clear warning + explicit confirm before destructive replace (already partially present — verify)
+- [x] Dry-run preview: `BackupService.previewImport(userId, backup)` validates the backup (reusing `validateBackup`) then returns a **non-destructive** summary — `backupCounts` per entity, `currentCounts` per entity (what would be replaced), and `warnings[]` for rows the import would silently skip (orphaned FKs: transactions/subscriptions referencing an account/category absent from the backup). Zero writes. Exposed at `POST /api/v1/backup/preview` (auth'd, per-user, read-only).
+- [x] Verified atomic rollback with a test: a validation-passing backup that fails mid-insert (NOT NULL `amount`) leaves the user's original data **fully intact** — no half-restore (the delete+insert are wrapped in one `sqlite.transaction`).
+- [x] Destructive-replace guard confirmed: `import` without `confirmed:true` throws `CONFIRMATION_REQUIRED` (409 at the route), covered by an existing test.
+- [x] Verified: backend typecheck 0/0, full suite **433/433** (added 4 tests: preview reports+no-writes, orphan warnings, invalid-backup throw, atomicity rollback), frontend build clean.
+- [ ] (Follow-up) Frontend: show the preview (counts + warnings) in the import UI before the user confirms the replace — pairs with the P1.8 snapshot admin UI.
 
 ### P1.10 — Multi-user hardening (decide the model)
 The app supports multiple users (first registrant becomes admin, rest become
@@ -235,35 +260,52 @@ The app supports multiple users (first registrant becomes admin, rest become
 locked down. Decide explicitly whether HomeLedger is single-user or multi-user
 and enforce it.
 
-- [ ] Decide: single-user, or fully-supported multi-user? Document the decision
-- [ ] Audit every data route to confirm strict per-user isolation (no cross-user reads/writes) — the backup bug proved multi-user paths exist
-- [ ] Wire `requireRole` where admin-only actions live (user management, etc.) — it exists but may be unused
-- [ ] If multi-user: a basic admin user-management view (list/disable/delete users, reset a user's password)
+**Decision (user-confirmed): multi-user, admin-controlled.** HomeLedger is a
+self-hosted **household** app. The first registrant is the admin and controls the
+instance (default language, registration, backups, user management). Additional
+users can be allowed in; each user's financial data is strictly isolated from the
+others. This matches the existing first-user-admin code and the local-first
+principle (it's your household's server, not public SaaS).
+
+- [x] Decision documented (above): multi-user, admin-controlled.
+- [x] Full per-user isolation audit (delegated deep audit of every route/service). Result: **no currently-exploitable cross-user IDOR** — every user-supplied `:id` mutation is guarded either in-service (`AND userId = ?`) or at the route layer. Fixed the latent defense-in-depth gaps it found:
+  - **`AccountService`** was the main gap — `update/deactivate/getById/...` filtered only by `id`, relying entirely on route guards. Threaded `userId` into these and filter `AND userId = ?` in-query (route guards kept as defense-in-depth).
+  - **`AuthService.revokeApiKey`** was unscoped by user (landmine if ever routed) — now scoped to the caller's own keys.
+  - **FK ownership on create** — `categoryId` in transactions/subscriptions/budgets was existence-only; now must be a system category or owned by the user (a user can't reference another user's private category).
+  - **`AttachmentService` link** — `transactionId`/`transferId` are now verified to belong to the user before linking.
+- [x] Wired `requireRole` for admin actions: system-category edit/delete is now **admin-only** (users manage their own categories; only the admin curates the shared system set); plus the P1.7 scheduler status and P1.8 snapshot routes.
+- [x] Admin user-management **backend** (all `requireRole(['admin'])`): list users, enable/disable, delete, reset a user's password (`users.routes.ts` + `UserService`). First-admin safety: can't disable/delete/demote the last admin or yourself into lockout.
+- [ ] (Follow-up) Frontend admin user-management view — pairs with the deferred P1.8/P1.9 admin UI.
 
 ### P1.11 — Registration control (admin-managed + allowlist)
 Registration is currently fully open (anyone can register; confirmed in
 `AuthService.register`). On an exposed instance, randoms can create accounts.
 
-- [ ] Registration is controlled by the **admin** (not a hardcoded "first user only" rule): admin can open or close public registration
-- [ ] Optional **email allowlist**: when set, only listed emails may register, even if registration is otherwise open
-- [ ] Default posture on a fresh install should be safe (closed or first-user-only), with the admin able to open it as needed
-- [ ] Surface these controls in an admin settings area, and/or via env for headless setups
-- [ ] Verify: with registration closed, the register endpoint refuses; with an allowlist, only allowed emails succeed
+- [x] Admin-controlled registration via a persisted `registration_mode` (in a new idempotent `app_settings` table + `SettingsService`): `first_user_only` (safe default), `open`, or `closed`. Admin can change it live; the very first user is always allowed (bootstraps the admin).
+- [x] Optional **email allowlist** (`registration_allowlist`): when set and mode is `open`, only listed emails may register (case-insensitive). Enforced in `AuthService.register`.
+- [x] **Safe default on fresh install:** `first_user_only` — an exposed instance can't be registered on by randoms out of the box. New error codes `REGISTRATION_CLOSED` / `EMAIL_NOT_ALLOWED` (403).
+- [x] Controls surfaced both ways: **env bootstrap** `REGISTRATION_MODE` / `REGISTRATION_ALLOWLIST` seeds settings on first run (never overrides a later admin change), and **admin API** `GET/PUT /api/v1/users/registration` (`requireRole(['admin'])`) to read/update at runtime. Documented across `.env.example`/README/Dockerfile/compose/HA.
+- [x] Verified: 4 policy tests (first-user allowed + second blocked under `first_user_only`; `closed` blocks; `open`+allowlist enforces listed-only, case-insensitive; `open` w/o allowlist allows any). Full suite 438/438, typecheck 0/0, build clean.
+- [ ] (Follow-up) Frontend admin settings UI for registration — pairs with the deferred admin UI.
 
 ### P1.12 — Password reset / account recovery
 Login and register exist, but there's no way to recover a forgotten password.
 
-- [ ] At minimum: an **admin CLI / script** to reset a user's password (works headless, no email needed)
-- [ ] Optional: email-based reset flow (requires SMTP config — document it as optional)
-- [ ] Verify a locked-out admin can regain access without wiping the DB
+- [x] Admin recovery **CLI** (`packages/backend/src/cli/admin.ts`, `npm run admin -w packages/backend -- <cmd>`; Docker: `docker exec ... node dist/cli/admin.js <cmd>`). Runs migrations first, respects `DATA_DIR`, works headless. Commands: `list-users`, `reset-password <email> [password]` (generates + prints a strong password once if omitted), `create-admin`, `promote`, `enable`. Never prints stored hashes.
+- [x] (Complements the CLI) Admin API `POST /api/v1/users/:id/reset-password` (from P1.10) for when an admin *can* log in.
+- [ ] Email-based reset: **explicitly deferred as optional** — HomeLedger is local-first with no SMTP dependency; the CLI is the supported recovery path. Documented as such in the README. Can be added later behind optional SMTP config.
+- [x] Verified end-to-end: created an admin, reset its password via the CLI, and confirmed `AuthService.login` succeeds with the new password — a locked-out admin regains access without wiping the DB. Full suite 438/438, typecheck 0/0, build compiles the CLI to `dist/cli/admin.js`.
 
 ### P1.13 — Multi-currency correctness
 Users can pick from 8 currencies, but it's unclear how accounts in *different*
 currencies are handled in aggregates.
 
-- [ ] Determine current behavior: are consolidated balance / net worth / reports summing across different-currency accounts as if they were the same number? (That would be wrong.)
-- [ ] Decide the model: single currency per install, per-account currency with conversion, or clearly separate per-currency totals
-- [ ] Apply and document the chosen model; avoid presenting a meaningless mixed-currency total
+- [x] Investigated (deep audit): confirmed there was **no** currency model — all totals (dashboard consolidated balance, monthly summary, net worth, cashflow, trends, category analysis, budgets) sum amounts directly with no currency dimension; `accounts.currency` was never set by the UI and never read by any calculation; no FX/conversion anywhere; assets/liabilities have no currency. So mixing currencies would have produced silently-wrong totals.
+- [x] **Decision (user-confirmed): Option A — single currency per install.** Matches how the app already behaves, fits local-first (no outbound FX calls), and closes the silent-mixing bug.
+- [x] Applied: instance currency stored in `app_settings` (`config/currency.ts`), seeded from `DISPLAY_CURRENCY` env (default MXN, validated against the 8 supported), admin-editable (`GET/PUT /api/v1/users/currency`), exposed via `GET /api/v1/config`. `AccountService.create/update` now **reject a mismatched currency** (`CURRENCY_MISMATCH` → 400) and default to the instance currency, so totals can never mix currencies. Frontend applies the instance currency from `/config` (authoritative); the Settings currency picker is now a read-only display (currency is instance-wide, not per-user). Documented as single-currency in README + `.env.example`/Docker/compose/HA.
+- [x] Verified: backend+frontend typecheck 0/0, full suite passing, build clean.
+
+> **Real multi-currency (per-currency totals and/or FX conversion) is explicitly a post-1.0 feature** — see the FUTURE/v2 section. It requires a currency dimension on every aggregation plus assets/liabilities, and (for conversion) exchange-rate sourcing, which conflicts with local-first defaults.
 
 ---
 
@@ -312,7 +354,7 @@ backup, so a restore clears them. Fix requires bundling binary attachment files.
 
 - [ ] Frontend test suite (currently ZERO tests) — at least smoke/e2e on critical flows (login, create tx, dashboard, backup)
 - [ ] Receipt OCR accuracy review (currently regex/heuristic best-effort)
-- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav)
+- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3)
 - [ ] Performance check with a large dataset (thousands of transactions)
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
 - [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)
@@ -404,8 +446,9 @@ Several reports exist 🟡. Extend and allow user-defined reports (rendered loca
 - [ ] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
-- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency
-- [ ] Optional, user-enabled FX auto-fetch only (off by default) — ties to P1.13
+- [ ] Builds on P1.13 (v1 shipped single-currency-per-install). Add a currency dimension to every aggregation (dashboard/net worth/reports/budgets) **and** to assets/liabilities.
+- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency, and/or per-currency separate totals
+- [ ] Optional, user-enabled FX auto-fetch only (off by default) — keeps local-first default
 
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.

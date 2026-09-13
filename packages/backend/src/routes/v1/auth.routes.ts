@@ -36,7 +36,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       });
     } catch (error) {
       if (error instanceof AuthError) {
-        const statusCode = error.code === 'EMAIL_EXISTS' ? 409 : 400;
+        let statusCode = 400;
+        if (error.code === 'EMAIL_EXISTS') statusCode = 409;
+        else if (error.code === 'REGISTRATION_CLOSED' || error.code === 'EMAIL_NOT_ALLOWED') statusCode = 403;
         return reply.status(statusCode).send({
           success: false,
           error: {

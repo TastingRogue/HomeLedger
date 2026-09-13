@@ -13,7 +13,7 @@
 
 HomeLedger is a **self-hosted personal finance app** and **expense tracker** for people who want to own their financial data instead of trusting it to a cloud service. It's a privacy-friendly, open-source alternative to apps like Mint, YNAB or Monarch: track multiple bank accounts, log income and expenses, set category budgets, plan savings goals, manage recurring subscriptions and monitor your net worth — all from a single self-hosted web app.
 
-It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS custom integration, so your finances can drive dashboards and automations. Bilingual interface (English / Spanish) and multi-currency support are built in.
+It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS custom integration, so your finances can drive dashboards and automations. Bilingual interface (English / Spanish) and a configurable install currency are built in.
 
 ## Screenshots
 
@@ -101,7 +101,7 @@ plus full JSON backup import/export with preview and validation.
 - **Attachments**: Upload receipts/invoices (images, PDFs) and link to transactions/transfers
 - **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
 - **Receipts**: Analyze uploaded receipts/attachments to extract transaction details
-- **Multi-currency**: MXN, USD, EUR, COP, ARS, CLP, PEN, BRL — switchable from settings
+- **Currency**: single currency per install (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL), set by the admin
 - **Language**: Spanish + English with full interface translation
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
 - **Home Assistant**: Addon + Custom Integration with sensors and services
@@ -229,14 +229,54 @@ Override these in production.
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
 | `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
+| `DEFAULT_LOCALE` | Primary language for the install (system category names on first run, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language. | `en` (falls back to English if unset/invalid) |
+| `DISPLAY_CURRENCY` | The install's single currency (`MXN`, `USD`, `EUR`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). All amounts use it — HomeLedger v1 is single-currency (no conversion). Admin can change it in-app. | `MXN` |
+| `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
 | `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |
+| `BACKUP_ENABLED` | Enable the scheduled backup job (gzip whole-DB snapshots under `$DATA_DIR/backups`) | `true` |
+| `BACKUP_RETENTION` | How many snapshots to keep; older ones are rotated out | `7` |
+| `BACKUP_CRON` | Cron schedule for automated backups (server timezone) | `0 3 * * *` (daily 03:00) |
+| `REGISTRATION_MODE` | Who may register: `first_user_only` (safe default — first user bootstraps admin, then closed), `open`, or `closed`. Admin can change it in-app; env only seeds the initial value. | `first_user_only` |
+| `REGISTRATION_ALLOWLIST` | Optional comma-separated email allowlist; when set and mode is `open`, only these emails may register | unset (no allowlist) |
 
 > :floppy_disk: **Data persistence.** Everything under `DATA_DIR` — the database
 > and receipt/invoice attachments — lives on the `homeledger-data` volume, so it
 > survives `docker compose up --build --force-recreate` and container rebuilds.
 > Deleting the volume (`docker compose down -v`) is what wipes your data.
+
+## Account Recovery (locked out?)
+
+If you forget the admin password, disable the only admin, or somehow end up with
+no admin, use the built-in **admin recovery CLI**. It runs directly against the
+database (no email needed) and works headless, so you can always regain access
+**without wiping your data**.
+
+```bash
+# Docker (against a running container):
+docker exec -it homeledger node dist/cli/admin.js list-users
+docker exec -it homeledger node dist/cli/admin.js reset-password admin@homeledger.local
+# ^ prints a new strong password once. Or pass your own:
+docker exec -it homeledger node dist/cli/admin.js reset-password admin@homeledger.local 'MyNewPassw0rd'
+
+# Local (from the repo root):
+npm run admin -w packages/backend -- list-users
+npm run admin -w packages/backend -- reset-password admin@homeledger.local
+```
+
+Commands: `list-users`, `reset-password <email> [password]`,
+`create-admin <email> [password] [name]`, `promote <email>` (make a user admin),
+`enable <email>` (re-enable a disabled account). If you omit the password, a
+strong one is generated and printed once — copy it, then change it in-app.
+
+> An admin who **can** log in can also reset another user's password from the
+> app (admin user-management). The CLI is the fallback for when nobody can log in.
+>
+> :email: **Email-based reset (optional, not built in):** HomeLedger is
+> local-first and ships no SMTP dependency, so there is no "email me a reset
+> link" flow by default. The CLI above is the supported recovery path. An
+> optional SMTP flow could be added later for setups that want it.
 
 ## Upgrading
 
@@ -404,11 +444,15 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 
 ## Multi-currency & i18n
 
-- **Currency**: Configurable per user (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL)
-- **Language**: Spanish / English — switchable from Settings, persisted in localStorage
+- **Currency**: **Single currency per install** (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL), chosen by the admin via `DISPLAY_CURRENCY` (or the admin API). All amounts and totals use this one currency.
+- **Language**: Spanish / English — switchable per user from Settings
 - **Timezone**: America/Mexico_City (configurable in server environment)
 
-Currency and language preferences are stored client-side and apply immediately without page reload.
+> :information_source: **On currencies (v1):** HomeLedger v1 is **single-currency
+> per install** — it does not convert between currencies, so mixing currencies is
+> intentionally not supported (accounts must use the instance currency). Choosing
+> a currency sets the symbol and unit for the whole install. **Multi-currency with
+> conversion is planned post-1.0** (see the roadmap). Language is per-user.
 
 ## Custom Components
 
@@ -446,7 +490,8 @@ Requires Home Assistant OS or Supervised (the Supervisor must be available).
      ```
    - Click **Add**, then close the dialog.
 2. **Install** — find **HomeLedger** in the store and click **Install** (the
-   image is multi-arch: `amd64`, `aarch64`, `armv7`).
+   image is multi-arch: `amd64` and `aarch64`/arm64, so it runs on x86 servers
+   and 64-bit Raspberry Pi).
 3. **Configure** — open the add-on's **Configuration** tab and set at least:
 
    | Option | Required | Notes |

@@ -9,6 +9,7 @@ const PUBLIC_ROUTES: string[] = [
   '/api/v1/auth/register',
   '/api/v1/auth/refresh',
   '/api/v1/health',
+  '/api/v1/config',
 ];
 
 /**
@@ -111,7 +112,7 @@ export function registerAuthMiddleware(app: FastifyInstance): void {
             message: 'API key inválida',
           },
         });
-      } catch (_error) {
+      } catch {
         return reply.status(401).send({
           success: false,
           error: {

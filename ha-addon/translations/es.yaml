@@ -5,6 +5,33 @@ configuration:
     description: >-
       Zona horaria utilizada para las tareas programadas y el formato de fechas.
       Ejemplo: America/Mexico_City
+  DEFAULT_LOCALE:
+    name: Idioma principal
+    description: >-
+      Idioma principal de la instalación: nombres de las categorías del sistema
+      e idioma por defecto de la interfaz (es o en). Cada usuario puede cambiar
+      su propio idioma después.
+  DISPLAY_CURRENCY:
+    name: Moneda de la instalación
+    description: >-
+      Moneda única usada en toda la instalación (MXN, USD, EUR, COP, ARS, CLP,
+      PEN, BRL). HomeLedger v1 usa una sola moneda, sin conversión entre monedas.
+  BACKUP_ENABLED:
+    name: Respaldos automáticos
+    description: >-
+      Activa los respaldos automáticos programados. Guarda snapshots
+      comprimidos de toda la base de datos en /data/backups.
+  BACKUP_RETENTION:
+    name: Respaldos a conservar
+    description: >-
+      Número de respaldos automáticos a conservar. Los más antiguos se
+      eliminan automáticamente cuando se supera este número.
+  REGISTRATION_MODE:
+    name: Política de registro
+    description: >-
+      Quién puede crear una cuenta: first_user_only (seguro: solo el primer
+      usuario que será el administrador, luego se cierra), open (cualquiera) o
+      closed (nadie). El administrador puede cambiarlo dentro de la aplicación.
   JWT_SECRET:
     name: Clave secreta JWT
     description: >-

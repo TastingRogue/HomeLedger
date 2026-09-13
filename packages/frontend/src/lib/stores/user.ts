@@ -21,5 +21,7 @@ export async function loadUserProfile() {
     const body = await res.json();
     const data = body.data ?? body;
     userProfile.set({ id: data.id, name: data.name, email: data.email, role: data.role });
-  } catch {}
+  } catch {
+    /* profile fetch failed — leave profile unset */
+  }
 }

@@ -3,6 +3,7 @@ import { getDb } from '../db/connection.js';
 import { accounts, transactions, transfers, creditSubscriptions, subscriptions } from '../db/schema.js';
 import type { CreateAccountSchema, UpdateAccountSchema } from '../validators/account.schema.js';
 import { roundMoney } from '../utils/money.js';
+import { getInstanceCurrency } from '../config/currency.js';
 
 /**
  * Tipo de estado de salud crediticia.
@@ -29,6 +30,25 @@ export class AccountError extends Error {
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7
  */
 export class AccountService {
+  /**
+   * Resolves the account currency for the single-currency-per-install model.
+   * If a currency is provided it MUST equal the instance currency (mixing
+   * currencies is unsupported and would make totals wrong); when omitted it
+   * defaults to the instance currency.
+   *
+   * @throws AccountError CURRENCY_MISMATCH if a different currency is requested
+   */
+  private static resolveCurrency(requested?: string | null): string {
+    const instance = getInstanceCurrency();
+    if (requested && requested.toUpperCase() !== instance) {
+      throw new AccountError(
+        `Esta instancia usa una sola moneda (${instance}). No se admiten cuentas en otra moneda.`,
+        'CURRENCY_MISMATCH',
+      );
+    }
+    return instance;
+  }
+
   /**
    * Crea una nueva cuenta financiera para un usuario.
    * Valida que el nombre sea único entre cuentas activas del mismo usuario.
@@ -60,7 +80,7 @@ export class AccountService {
         balanceLimit: input.balanceLimit ?? null,
         creditLimit: input.creditLimit ?? null,
         status: 'Activo',
-        currency: input.currency ?? 'MXN',
+        currency: AccountService.resolveCurrency(input.currency),
         createdAt: now,
         updatedAt: now,
       })
@@ -76,14 +96,14 @@ export class AccountService {
    *
    * @throws AccountError si la cuenta no existe o el nombre ya está en uso
    */
-  static async update(id: number, input: UpdateAccountSchema) {
+  static async update(id: number, userId: number, input: UpdateAccountSchema) {
     const db = getDb();
 
-    // Verificar que la cuenta existe
+    // Verificar que la cuenta existe y pertenece al usuario (aislamiento por usuario)
     const existing = db
       .select()
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     if (!existing) {
@@ -116,10 +136,10 @@ export class AccountService {
         ...(input.initialBalance !== undefined && { initialBalance: input.initialBalance }),
         ...(input.balanceLimit !== undefined && { balanceLimit: input.balanceLimit ?? null }),
         ...(input.creditLimit !== undefined && { creditLimit: input.creditLimit ?? null }),
-        ...(input.currency !== undefined && { currency: input.currency }),
+        ...(input.currency !== undefined && { currency: AccountService.resolveCurrency(input.currency) }),
         updatedAt: now,
       })
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .returning()
       .get();
 
@@ -130,15 +150,15 @@ export class AccountService {
    * Desactiva una cuenta cambiando su estado a "Inactivo".
    * Las cuentas inactivas se excluyen del panel principal.
    *
-   * @throws AccountError si la cuenta no existe
+   * @throws AccountError si la cuenta no existe o no pertenece al usuario
    */
-  static async deactivate(id: number) {
+  static async deactivate(id: number, userId: number) {
     const db = getDb();
 
     const existing = db
       .select({ id: accounts.id })
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     if (!existing) {
@@ -149,7 +169,7 @@ export class AccountService {
 
     db.update(accounts)
       .set({ status: 'Inactivo', updatedAt: now })
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .run();
   }
 
@@ -177,13 +197,13 @@ export class AccountService {
    * Obtiene una cuenta por su ID.
    * Retorna null si no existe.
    */
-  static async getById(id: number) {
+  static async getById(id: number, userId: number) {
     const db = getDb();
 
     const result = db
       .select()
       .from(accounts)
-      .where(eq(accounts.id, id))
+      .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
       .get();
 
     return result ?? null;
