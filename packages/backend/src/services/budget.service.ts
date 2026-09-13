@@ -2,9 +2,10 @@ import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
-import { BudgetPeriod, AlertType, AlertSeverity } from '@smart-finance/shared';
-import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@smart-finance/shared';
+import { BudgetPeriod, AlertType, AlertSeverity } from '@homeledger/shared';
+import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@homeledger/shared';
 import crypto from 'node:crypto';
+import { roundMoney } from '../utils/money.js';
 
 // ============================================
 // Types
@@ -223,8 +224,8 @@ export class BudgetService {
           )
           .get();
 
-        const spent = Number(spentResult?.total ?? 0);
-        const remaining = (bc.allocated + bc.rollover) - spent;
+        const spent = roundMoney(Number(spentResult?.total ?? 0));
+        const remaining = roundMoney((bc.allocated + bc.rollover) - spent);
 
         return {
           id: bc.id,
@@ -237,8 +238,8 @@ export class BudgetService {
         };
       });
 
-      const totalAllocated = categoriesWithSpent.reduce((s, c) => s + c.allocated, 0);
-      const totalSpent = categoriesWithSpent.reduce((s, c) => s + c.spent, 0);
+      const totalAllocated = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.allocated, 0));
+      const totalSpent = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.spent, 0));
       const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
       return {
@@ -329,7 +330,9 @@ export class BudgetService {
       }
     }
 
-    const totalRemaining = totalAllocated - totalSpent;
+    totalAllocated = roundMoney(totalAllocated);
+    totalSpent = roundMoney(totalSpent);
+    const totalRemaining = roundMoney(totalAllocated - totalSpent);
     const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
     return {
@@ -405,8 +408,8 @@ export class BudgetService {
           )
           .get();
 
-        const spent = Number(spentResult?.total ?? 0);
-        const unused = (bc.allocated + bc.rollover) - spent;
+        const spent = roundMoney(Number(spentResult?.total ?? 0));
+        const unused = roundMoney((bc.allocated + bc.rollover) - spent);
 
         // Only carry over positive amounts (unused budget)
         if (unused > 0) {

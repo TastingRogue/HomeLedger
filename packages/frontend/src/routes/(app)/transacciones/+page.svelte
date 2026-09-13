@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
-  import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@smart-finance/shared';
+  import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';

@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { subscriptions, transactions, accounts, categories } from '../db/schema.js';
-import { SubscriptionCycle, TransactionType } from '@smart-finance/shared';
+import { SubscriptionCycle, TransactionType } from '@homeledger/shared';
 import type { CreateSubscriptionSchema, UpdateSubscriptionSchema } from '../validators/subscription.schema.js';
 
 // ============================================

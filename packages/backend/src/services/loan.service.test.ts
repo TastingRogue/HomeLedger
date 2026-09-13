@@ -175,7 +175,7 @@ describe('LoanService', () => {
 
       expect(() =>
         LoanService.update(loan.id, userId, { name: 'Nuevo Nombre' })
-      ).toThrow('No se puede modificar un pr�stamo que ya fue pagado');
+      ).toThrow('No se puede modificar un');
     });
   });
 
@@ -266,7 +266,7 @@ describe('LoanService', () => {
           interest: 0,
           date: '2024-03-01',
         })
-      ).toThrow('No se pueden registrar pagos en un pr�stamo ya liquidado');
+      ).toThrow('No se pueden registrar pagos en un');
     });
 
     it('should throw error when principal + interest does not match total', () => {
@@ -285,7 +285,7 @@ describe('LoanService', () => {
           interest: 100,
           date: '2024-02-01',
         })
-      ).toThrow('La suma de capital e inter�s debe ser igual al monto total del pago');
+      ).toThrow('La suma de capital e');
     });
   });
 

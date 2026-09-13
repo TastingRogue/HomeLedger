@@ -4,7 +4,7 @@
   import { apiGet, apiPost, ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
-  import type { Account, Category } from '@smart-finance/shared';
+  import type { Account, Category } from '@homeledger/shared';
 
   // --- Constants ---
   const RECENT_ACCOUNTS_KEY = 'sf_recent_accounts';

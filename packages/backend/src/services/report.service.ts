@@ -6,6 +6,7 @@ import { SubscriptionService } from './subscription.service.js';
 import { GoalService } from './goal.service.js';
 import { BudgetService } from './budget.service.js';
 import { CategoryService } from './category.service.js';
+import { roundMoney } from '../utils/money.js';
 
 // ============================================
 // Types
@@ -125,7 +126,7 @@ export class ReportService {
 
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      consolidatedBalance += balance;
+      consolidatedBalance = roundMoney(consolidatedBalance + balance);
 
       // Determine health status based on balanceLimit
       let status: 'correcto' | 'bajo' | 'sin_limite' = 'sin_limite';
@@ -270,17 +271,17 @@ export class ReportService {
         period,
         income: data.income,
         expenses: data.expenses,
-        net: data.income - data.expenses,
+        net: roundMoney(data.income - data.expenses),
       }));
 
-    const totalIncome = entries.reduce((sum, e) => sum + e.income, 0);
-    const totalExpenses = entries.reduce((sum, e) => sum + e.expenses, 0);
+    const totalIncome = roundMoney(entries.reduce((sum, e) => sum + e.income, 0));
+    const totalExpenses = roundMoney(entries.reduce((sum, e) => sum + e.expenses, 0));
 
     return {
       entries,
       totalIncome,
       totalExpenses,
-      netCashFlow: totalIncome - totalExpenses,
+      netCashFlow: roundMoney(totalIncome - totalExpenses),
     };
   }
 
@@ -347,7 +348,7 @@ export class ReportService {
         month,
         income: data.income,
         expenses: data.expenses,
-        net: data.income - data.expenses,
+        net: roundMoney(data.income - data.expenses),
       }));
 
     return { entries };
@@ -364,7 +365,7 @@ export class ReportService {
   ): Promise<CategoryReport> {
     const items = await CategoryService.getAnalysis(userId, dateRange);
 
-    const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+    const grandTotal = roundMoney(items.reduce((sum, item) => sum + item.total, 0));
 
     return {
       items,
@@ -395,9 +396,9 @@ export class ReportService {
           .get();
 
         const categoryName = categoryRow?.name ?? 'Desconocida';
-        const allocated = cat.allocated + cat.rollover;
+        const allocated = roundMoney(cat.allocated + cat.rollover);
         const actual = cat.spent;
-        const difference = allocated - actual;
+        const difference = roundMoney(allocated - actual);
         const percentUsed = allocated > 0 ? (actual / allocated) * 100 : 0;
 
         entries.push({
@@ -411,14 +412,14 @@ export class ReportService {
       }
     }
 
-    const totalAllocated = entries.reduce((sum, e) => sum + e.allocated, 0);
-    const totalActual = entries.reduce((sum, e) => sum + e.actual, 0);
+    const totalAllocated = roundMoney(entries.reduce((sum, e) => sum + e.allocated, 0));
+    const totalActual = roundMoney(entries.reduce((sum, e) => sum + e.actual, 0));
 
     return {
       entries,
       totalAllocated,
       totalActual,
-      totalDifference: totalAllocated - totalActual,
+      totalDifference: roundMoney(totalAllocated - totalActual),
     };
   }
 }

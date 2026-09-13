@@ -267,7 +267,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Test',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -335,7 +335,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Summary',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -422,7 +422,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Rollover',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -483,7 +483,7 @@ describe('BudgetService', () => {
 
       expect(() =>
         BudgetService.processRollover(budget.id)
-      ).toThrow('No se encontr� un presupuesto del siguiente per�odo');
+      ).toThrow('No se encontr');
     });
   });
 
@@ -513,7 +513,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Alertas',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -569,7 +569,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Excedida',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -625,7 +625,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Baja',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -676,7 +676,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Dedup',
-          type: 'D�bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',

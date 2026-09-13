@@ -6,7 +6,7 @@ import {
   quickTransactionSchema,
 } from '../../validators/transaction.schema.js';
 import type { TokenPayload } from '../../services/auth.service.js';
-import { TransactionType } from '@smart-finance/shared';
+import { TransactionType } from '@homeledger/shared';
 import { z } from 'zod';
 
 /**

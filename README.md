@@ -227,6 +227,8 @@ Override these in production.
 | `CORS_ORIGIN` | Comma-separated allowed origins; unset reflects the request origin | unset (reflect origin) |
 | `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
+| `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
+| `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
 | `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |
@@ -235,6 +237,35 @@ Override these in production.
 > and receipt/invoice attachments — lives on the `homeledger-data` volume, so it
 > survives `docker compose up --build --force-recreate` and container rebuilds.
 > Deleting the volume (`docker compose down -v`) is what wipes your data.
+
+## Upgrading
+
+Upgrades are designed to be safe: your data lives on the `homeledger-data`
+volume (see above), and the app brings the database schema up to date
+automatically on startup.
+
+```bash
+# Prebuilt image
+docker pull irving1flores/homeledger:latest
+docker stop homeledger && docker rm homeledger
+docker run -d -p 3000:3000 -v homeledger-data:/data \
+  -e JWT_SECRET="..." --name homeledger irving1flores/homeledger:latest
+
+# Docker Compose (from source)
+git pull
+docker compose up -d --build --force-recreate
+```
+
+On boot the backend runs any pending Drizzle migrations and reconciles a couple
+of columns that are managed idempotently (`attachments.transfer_id` /
+`original_name` and their index). Running an old database against a newer image
+is safe — schema changes are additive and applied automatically; no manual
+migration step is required.
+
+> :bulb: **Always keep a backup before upgrading.** Use **Settings → Data &
+> Backup → Export** (or the `/api/v1/backup/export` endpoint) so you can restore
+> if something goes wrong. Backup import remaps ids safely, so a restore never
+> collides with existing data.
 
 ## Project Structure
 

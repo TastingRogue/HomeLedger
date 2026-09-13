@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { goals } from '../db/schema.js';
 import type { CreateGoalSchema, UpdateGoalSchema, FundGoalSchema } from '../validators/goal.schema.js';
+import { roundMoney } from '../utils/money.js';
 
 /**
  * Error personalizado para operaciones de metas de ahorro.
@@ -164,10 +165,10 @@ export class GoalService {
     }
 
     // Calcular monto efectivo: min(requestedAmount, targetAmount - savedAmount)
-    const remaining = existing.targetAmount - existing.savedAmount;
-    const effectiveAmount = Math.min(input.amount, remaining);
+    const remaining = roundMoney(existing.targetAmount - existing.savedAmount);
+    const effectiveAmount = roundMoney(Math.min(input.amount, remaining));
 
-    const newSavedAmount = existing.savedAmount + effectiveAmount;
+    const newSavedAmount = roundMoney(existing.savedAmount + effectiveAmount);
     const progress = GoalService.calculateProgress(newSavedAmount, existing.targetAmount);
 
     // Si el progreso llega a 100%, marcar como Completada
@@ -216,9 +217,9 @@ export class GoalService {
     }
 
     // Calcular monto efectivo: min(requestedAmount, savedAmount)
-    const effectiveAmount = Math.min(input.amount, existing.savedAmount);
+    const effectiveAmount = roundMoney(Math.min(input.amount, existing.savedAmount));
 
-    const newSavedAmount = existing.savedAmount - effectiveAmount;
+    const newSavedAmount = roundMoney(existing.savedAmount - effectiveAmount);
     const progress = GoalService.calculateProgress(newSavedAmount, existing.targetAmount);
 
     // Si se retiran fondos de una meta completada, vuelve a Activa

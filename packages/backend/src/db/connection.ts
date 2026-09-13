@@ -86,7 +86,13 @@ export function initializeDatabase(): void {
 
   migrate(db, { migrationsFolder });
 
-  // Add columns to attachments table if missing (safe migration)
+  // Reconcile the `attachments` table with schema.ts. The base migration (0000)
+  // created it without `transfer_id` / `original_name` and without the
+  // transfer_id index. These are applied here (idempotently) rather than as an
+  // ADD COLUMN migration on purpose: existing installs may already have the
+  // columns from a previous run of this patch, and a plain ADD COLUMN migration
+  // would then fail. Guarding by table_info keeps it safe for every DB state —
+  // fresh installs and upgrades alike.
   const sqlite = getSqlite();
   const cols = sqlite.pragma('table_info(attachments)') as { name: string }[];
   const colNames = cols.map(c => c.name);
@@ -96,6 +102,8 @@ export function initializeDatabase(): void {
   if (!colNames.includes('original_name')) {
     sqlite.exec('ALTER TABLE attachments ADD COLUMN original_name text');
   }
+  // Index declared in schema.ts but not present in migration 0000.
+  sqlite.exec('CREATE INDEX IF NOT EXISTS attachments_transfer_id_idx ON attachments (transfer_id)');
 }
 
 /**

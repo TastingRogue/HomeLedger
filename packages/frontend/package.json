@@ -1,5 +1,5 @@
 {
-  "name": "@smart-finance/frontend",
+  "name": "@homeledger/frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@smart-finance/shared": "*",
+    "@homeledger/shared": "*",
     "chart.js": "^4.5.1"
   },
   "devDependencies": {

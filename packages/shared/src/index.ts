@@ -1,4 +1,4 @@
-// @smart-finance/shared - Shared TypeScript types and interfaces
+// @homeledger/shared - Shared TypeScript types and interfaces
 // This package contains all shared types used across backend and frontend
 
 // Cuentas

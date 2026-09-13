@@ -274,7 +274,13 @@ export class CategoryService {
       );
     }
 
-    // Any category can be deleted if it has no transactions
+    // System categories are shared and cannot be deleted
+    if (category.isSystem) {
+      throw new CategoryError(
+        'No se puede eliminar una categoría del sistema',
+        'CATEGORY_IS_SYSTEM'
+      );
+    }
 
     // Verificar si existen transacciones asociadas
     const transactionCount = db

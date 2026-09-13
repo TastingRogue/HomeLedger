@@ -2,6 +2,7 @@ import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { accounts, assets, liabilities, networthSnapshots } from '../db/schema.js';
 import { AccountService } from './account.service.js';
+import { roundMoney } from '../utils/money.js';
 
 /**
  * Error personalizado para operaciones de patrimonio neto.
@@ -86,7 +87,7 @@ export class NetWorthService {
     let totalAccountBalances = 0;
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      totalAccountBalances += balance;
+      totalAccountBalances = roundMoney(totalAccountBalances + balance);
     }
 
     // Sumar valores de todos los activos del usuario
@@ -105,11 +106,11 @@ export class NetWorthService {
       .where(eq(liabilities.userId, userId))
       .get();
 
-    const totalLiabilityBalances = liabilitySumResult?.total ?? 0;
+    const totalLiabilityBalances = roundMoney(liabilitySumResult?.total ?? 0);
 
     // Patrimonio neto = cuentas activas + activos - pasivos
-    const totalAssets = totalAccountBalances + totalAssetValues;
-    const netWorth = totalAssets - totalLiabilityBalances;
+    const totalAssets = roundMoney(totalAccountBalances + totalAssetValues);
+    const netWorth = roundMoney(totalAssets - totalLiabilityBalances);
 
     // Obtener lista de activos y pasivos para el resumen
     const userAssets = db

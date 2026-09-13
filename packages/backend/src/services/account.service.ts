@@ -2,6 +2,7 @@ import { eq, and, ne, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { accounts, transactions, transfers, creditSubscriptions, subscriptions } from '../db/schema.js';
 import type { CreateAccountSchema, UpdateAccountSchema } from '../validators/account.schema.js';
+import { roundMoney } from '../utils/money.js';
 
 /**
  * Tipo de estado de salud crediticia.
@@ -261,10 +262,10 @@ export class AccountService {
     if (isCredit) {
       // Para cuentas de crédito: recibir una transferencia (pago) reduce la deuda,
       // enviar una transferencia (disposición de crédito) aumenta la deuda.
-      return account.initialBalance + incomes - expenses - transfersIn + transfersOut;
+      return roundMoney(account.initialBalance + incomes - expenses - transfersIn + transfersOut);
     }
 
-    return account.initialBalance + incomes - expenses + transfersIn - transfersOut;
+    return roundMoney(account.initialBalance + incomes - expenses + transfersIn - transfersOut);
   }
 
   /**

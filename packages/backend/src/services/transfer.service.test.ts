@@ -118,7 +118,7 @@ describe('TransferService', () => {
       .values({
         userId,
         name: 'Cuenta Origen',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -135,7 +135,7 @@ describe('TransferService', () => {
       .values({
         userId,
         name: 'Cuenta Destino',
-        type: 'D�bito',
+        type: 'Débito',
         initialBalance: 5000,
         status: 'Activo',
         currency: 'MXN',

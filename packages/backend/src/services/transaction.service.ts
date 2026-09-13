@@ -2,8 +2,8 @@ import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { transactions, transactionSplits, accounts, categories } from '../db/schema.js';
 import type { CreateTransactionSchema, UpdateTransactionSchema, QuickTransactionInput } from '../validators/transaction.schema.js';
-import type { TransactionFilters, PaginatedResult } from '@smart-finance/shared';
-import { TransactionType } from '@smart-finance/shared';
+import type { TransactionFilters, PaginatedResult } from '@homeledger/shared';
+import { TransactionType } from '@homeledger/shared';
 
 // ============================================
 // Types

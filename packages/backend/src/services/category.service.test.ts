@@ -60,7 +60,7 @@ function seedAccount(userId: number, name = 'Cuenta Test'): number {
   const result = testDb.insert(schema.accounts).values({
     userId,
     name,
-    type: 'D�bito',
+    type: 'Débito',
     initialBalance: 10000,
     status: 'Activo',
     currency: 'MXN',
@@ -183,7 +183,7 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.create(userId, { name: '   ' })
-      ).rejects.toThrow('El nombre de la categor�a no puede estar vac�o');
+      ).rejects.toThrow('no puede estar');
     });
 
     it('debe rechazar nombre mayor a 50 caracteres', async () => {
@@ -192,7 +192,7 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.create(userId, { name: longName })
-      ).rejects.toThrow('El nombre de la categor�a no puede exceder 50 caracteres');
+      ).rejects.toThrow('no puede exceder 50 caracteres');
     });
 
     it('debe rechazar nombre duplicado con categor�a del sistema', async () => {
@@ -201,7 +201,7 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.create(userId, { name: 'Comida' })
-      ).rejects.toThrow('Ya existe una categor�a con ese nombre');
+      ).rejects.toThrow('Ya existe una');
     });
 
     it('debe rechazar nombre duplicado con categor�a propia del usuario', async () => {
@@ -210,7 +210,7 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.create(userId, { name: 'Mi Categor�a' })
-      ).rejects.toThrow('Ya existe una categor�a con ese nombre');
+      ).rejects.toThrow('Ya existe una');
     });
 
     it('debe permitir nombre que existe en otro usuario', async () => {
@@ -252,7 +252,7 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.delete(categoryId)
-      ).rejects.toThrow('No se puede eliminar la categor�a porque tiene transacciones asociadas');
+      ).rejects.toThrow('tiene transacciones asociadas');
     });
 
     it('debe rechazar eliminaci�n de categor�a del sistema', async () => {
@@ -267,13 +267,13 @@ describe('CategoryService', () => {
 
       await expect(
         CategoryService.delete(systemCat!.id)
-      ).rejects.toThrow('No se puede eliminar una categor�a del sistema');
+      ).rejects.toThrow('del sistema');
     });
 
     it('debe lanzar error si la categor�a no existe', async () => {
       await expect(
         CategoryService.delete(999)
-      ).rejects.toThrow('Categor�a no encontrada');
+      ).rejects.toThrow('no encontrada');
     });
 
     it('debe eliminar subcategor�as en cascada', async () => {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SubscriptionCycle } from '@smart-finance/shared';
+import { SubscriptionCycle } from '@homeledger/shared';
 
 /**
  * Schema de validación para creación de suscripciones.
