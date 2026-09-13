@@ -16,7 +16,7 @@ export interface ReceiptAnalysis {
   filename: string | null; mimeType: string; transactionName: string | null; transactionAmount: number | null;
   createdAt: string; updatedAt: string; items: ReceiptItem[];
 }
-interface ParsedReceipt extends Omit<ReceiptAnalysis, 'id' | 'attachmentId' | 'userId' | 'transactionId' | 'status' | 'error' | 'filename' | 'mimeType' | 'transactionName' | 'transactionAmount' | 'createdAt' | 'updatedAt' | 'items'> { items: Omit<ReceiptItem, 'id' | 'analysisId'>[]; }
+export interface ParsedReceipt extends Omit<ReceiptAnalysis, 'id' | 'attachmentId' | 'userId' | 'transactionId' | 'status' | 'error' | 'filename' | 'mimeType' | 'transactionName' | 'transactionAmount' | 'createdAt' | 'updatedAt' | 'items'> { items: Omit<ReceiptItem, 'id' | 'analysisId'>[]; }
 
 function ensureTables(): void {
   getSqlite().exec(`
@@ -42,7 +42,7 @@ function ensureTables(): void {
   if (!columns.includes('error')) getSqlite().exec('ALTER TABLE receipt_analyses ADD COLUMN error TEXT');
 }
 
-function numberValue(value: string | null | undefined): number | null {
+export function numberValue(value: string | null | undefined): number | null {
   if (!value) return null;
   // Strip currency symbols and spaces, keep digits and separators.
   let cleaned = value.replace(/[^\d.,]/g, '');
@@ -80,7 +80,7 @@ function firstMatch(text: string, patterns: RegExp[]): string | null {
  * dropped decimal separators, e.g. "11475" instead of "114.75"), a separator-less
  * integer with 3+ digits is treated as having its last 2 digits as cents.
  */
-function moneyValue(value: string | null | undefined, assumeCents: boolean): number | null {
+export function moneyValue(value: string | null | undefined, assumeCents: boolean): number | null {
   if (!value) return null;
   const hasSeparator = /[.,]/.test(value);
   const base = numberValue(value);
@@ -95,14 +95,14 @@ function moneyValue(value: string | null | undefined, assumeCents: boolean): num
  * Detects whether the OCR text lost decimal separators in its amounts. If none of
  * the money-looking tokens carry a decimal separator, we assume last-2-digits cents.
  */
-function ocrDroppedDecimals(text: string): boolean {
+export function ocrDroppedDecimals(text: string): boolean {
   const amountTokens = text.match(/\d[\d.,]*\d|\d/g) ?? [];
   const moneyish = amountTokens.filter(t => /\d{3,}/.test(t.replace(/[.,]/g, '')));
   if (moneyish.length === 0) return false;
   // If none of the sizable numbers has a decimal separator, decimals were likely lost.
   return moneyish.every(t => !/[.,]\d{1,2}$/.test(t));
 }
-function parseDate(value: string | null): string | null {
+export function parseDate(value: string | null): string | null {
   if (!value) return null;
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value); if (iso) return iso[0];
   const local = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/.exec(value); if (!local) return value;
@@ -113,7 +113,7 @@ function parseDate(value: string | null): string | null {
 }
 function decodeXml(value: string): string { return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>'); }
 
-function parseCfdi(xml: string): ParsedReceipt {
+export function parseCfdi(xml: string): ParsedReceipt {
   const comprobante = /<cfdi:Comprobante\b([^>]*)>/i.exec(xml)?.[1] ?? '';
   const emisor = /<cfdi:Emisor\b([^>]*)>/i.exec(xml)?.[1] ?? '';
   const total = firstMatch(comprobante, [/\bTotal="([^"]+)"/i]);
@@ -136,10 +136,17 @@ function parseCfdi(xml: string): ParsedReceipt {
   return { merchant: issuerName ? decodeXml(issuerName) : null, receiptDate: parseDate(date), subtotal: numberValue(subtotal), tax: null, total: numberValue(total), currency: decodeXml(currency), documentType: 'cfdi', sourceType: 'cfdi_xml', confidence: 1, rawText: xml, uuid, issuerRfc, issuerName: issuerName ? decodeXml(issuerName) : null, items };
 }
 
-function parsePlainText(text: string, sourceType: ReceiptSourceType): ParsedReceipt {
-  // Match TOTAL but not the "TOTAL" inside "SUBTOTAL": require a non-letter
-  // (or start of line) right before TOTAL. Prefer "TOTAL A PAGAR"/"IMPORTE TOTAL".
-  const totalText = firstMatch(text, [/(?:^|[^A-ZÁÉÍÓÚa-záéíóú])(?:TOTAL\s+A\s+PAGAR|IMPORTE\s+TOTAL|TOTAL)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im]);
+export function parsePlainText(text: string, sourceType: ReceiptSourceType): ParsedReceipt {
+  // Match TOTAL but not:
+  //  - the "TOTAL" inside "SUBTOTAL" (require a non-letter or line start before it), or
+  //  - item-count lines like "TOTAL ARTICULOS: 3" / "TOTAL DE PIEZAS 5" (a plain
+  //    "TOTAL" must NOT be followed by a count noun before the number).
+  // Prefer the explicit money forms ("TOTAL A PAGAR" / "IMPORTE TOTAL") first,
+  // falling back to a plain "TOTAL" that isn't an item count.
+  const totalText = firstMatch(text, [
+    /(?:^|[^A-ZÁÉÍÓÚa-záéíóú])(?:TOTAL\s+A\s+PAGAR|IMPORTE\s+TOTAL|GRAN\s+TOTAL)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im,
+    /(?:^|[^A-ZÁÉÍÓÚa-záéíóú])TOTAL(?!\s*(?:ART[IÍ]CULOS|ITEMS|PIEZAS|PRODUCTOS|DE\s+ART[IÍ]CULOS|DE\s+PIEZAS))[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im,
+  ]);
   const subtotalText = firstMatch(text, [/SUBTOTAL[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
   const taxText = firstMatch(text, [/(?:IVA|I\.V\.A\.)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
   const dateText = firstMatch(text, [/(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/, /(\d{4}-\d{2}-\d{2})/]);
