@@ -10,6 +10,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
   import { theme, setTheme } from '$lib/stores/theme';
   import { userProfile } from '$lib/stores/user';
@@ -17,7 +18,7 @@
   // Localized short month names for chart labels/date ranges (follows app language).
   const shortMonths = $derived(
     Array.from({ length: 12 }, (_, m) => {
-      const tag = $preferences.locale === 'en' ? 'en-US' : 'es-MX';
+      const tag = getIntlTag($preferences.locale);
       const n = new Intl.DateTimeFormat(tag, { month: 'short' }).format(new Date(2000, m, 1)).replace('.', '');
       return n.charAt(0).toUpperCase() + n.slice(1);
     })

@@ -167,14 +167,16 @@ Current friction (all must be removed):
 - Locale options hardcoded in the Settings dropdown; calendar/currency locale tags mapped ad-hoc
 
 Tasks:
-- [ ] Create a language registry (e.g. `i18n/languages.ts`) where each language declares `{ code, label, dictionary, dateLocale }`
-- [ ] Derive `SupportedLocale` from the registry keys (no hand-maintained union)
-- [ ] Build the `dictionaries` map and the Settings dropdown options from the registry (no hardcoded lists)
-- [ ] Make the base/reference dictionary (English) the single source of truth; type the other dictionaries so **missing keys are a compile error** (enforced parity)
-- [ ] Replace hardcoded `es` fallbacks with the configured default → English chain (ties into P1.6)
-- [ ] Derive the calendar/`Intl` locale tag from the registry instead of the ad-hoc `es === 'en' ? 'en-US' : 'es-MX'` logic in `DatePicker.svelte`
-- [ ] Document "how to add a language" in the README/CONTRIBUTING (one file + one registry line)
-- [ ] Verify: adding a throwaway 3rd language works end to end with only a dictionary + registry entry
+- [x] Created language registry `packages/frontend/src/lib/i18n/registry.ts` — each language declares `{ dictionary, label, intlTag }` in one `locales` map
+- [x] `SupportedLocale` now derived from registry keys (`keyof typeof locales`); removed the hand-maintained `'es' | 'en'` union in `preferences.ts`
+- [x] `dictionaries` map, `supportedLocales`, and the Settings dropdown `localeOptions` are all built from the registry (no hardcoded lists)
+- [x] **Compile-time key parity:** `es` is the canonical dictionary (`export type TranslationKey = keyof typeof es`); `en` is typed `Record<TranslationKey, string>`, so a missing/extra key is a compile error. Verified: typecheck 0/0 and script parity 819/819.
+- [x] Fallback now uses `DEFAULT_LOCALE` (registry) instead of hardcoded `dictionaries.es`; `loadFromStorage` validates the stored locale via `isSupportedLocale` (corrupt/removed locale → default)
+- [x] Added `getIntlTag(locale)` helper; replaced the 4 ad-hoc `locale === 'en' ? 'en-US' : 'es-MX'` ternaries (dashboard, calendario, reportes, DatePicker). `reportes` also stopped reading `localStorage` directly / hardcoded month arrays — now uses the `preferences` store + `Intl` reactively.
+- [ ] (Deferred) Document "how to add a language" in README/CONTRIBUTING — the JSDoc in `registry.ts` already spells out the 2-step process; a README section can follow with the docs pass.
+- [ ] (Deferred) Manual end-to-end test with a throwaway 3rd language — the compile-time parity type already guarantees a new dict must cover every key; a full runtime smoke test can pair with P1.6.
+
+Note: `DEFAULT_LOCALE` is currently `'es'`; **P1.6** makes it host-configurable with an English fallback chain.
 
 ### P1.5 — Better-defined, localized system categories
 Today `packages/backend/src/db/seed.ts` seeds a fixed set of **Spanish-only**,

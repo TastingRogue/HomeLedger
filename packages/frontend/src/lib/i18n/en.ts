@@ -1,4 +1,8 @@
-export const en: Record<string, string> = {
+import type { TranslationKey } from './es';
+
+// Typed against TranslationKey: if a key is missing or misspelled relative to the
+// canonical `es` dictionary, this fails to compile — that's the parity guarantee.
+export const en: Record<TranslationKey, string> = {
   // Navigation
   'nav.dashboard': 'Dashboard',
   'nav.accounts': 'Accounts',

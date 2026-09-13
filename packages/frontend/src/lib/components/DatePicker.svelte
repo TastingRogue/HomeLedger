@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
 
   let { value = $bindable(), showTime = false }: { value: string; showTime?: boolean } = $props();
@@ -12,7 +13,7 @@
 
   // Localized month and weekday names derived from the active locale, so the
   // calendar follows the app language (es/en) without hardcoded arrays.
-  const localeTag = $derived($preferences.locale === 'en' ? 'en-US' : 'es-MX');
+  const localeTag = $derived(getIntlTag($preferences.locale));
   const monthNames = $derived(
     Array.from({ length: 12 }, (_, m) => {
       const name = new Intl.DateTimeFormat(localeTag, { month: 'long' }).format(new Date(2000, m, 1));

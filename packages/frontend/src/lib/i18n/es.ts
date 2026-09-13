@@ -1,4 +1,7 @@
-export const es: Record<string, string> = {
+// `es` is the canonical dictionary: its keys define the TranslationKey union.
+// Do NOT annotate as Record<string, string> — that would erase the literal keys
+// and defeat the compile-time key-parity check other dictionaries rely on.
+export const es = {
   // Navigation
   'nav.dashboard': 'Panel Principal',
   'nav.accounts': 'Cuentas',
@@ -863,4 +866,8 @@ export const es: Record<string, string> = {
 
   // Footer
   'footer.rights': '© 2026 HomeLedger. Todos los derechos reservados.',
-};
+} satisfies Record<string, string>;
+
+// The set of translation keys, derived from the canonical Spanish dictionary.
+// Every other dictionary must implement exactly these keys (enforced at compile time).
+export type TranslationKey = keyof typeof es;

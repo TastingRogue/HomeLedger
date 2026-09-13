@@ -6,6 +6,8 @@
   import DoughnutChart from '$lib/components/DoughnutChart.svelte';
   import LineChart from '$lib/components/LineChart.svelte';
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '$lib/stores/preferences';
 
   interface DashboardData {
     consolidatedBalance: number;
@@ -26,13 +28,19 @@
   let savings = $derived(income - expenses);
   let savingsRate = $derived(income > 0 ? ((income - expenses) / income * 100) : 0);
 
-  let trendLabels = $derived(trends.map(t => {
-    const [, m] = t.month.split('-');
-    const monthsEs = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    const monthsEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const prefs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('sf_preferences') ?? '{}') : {};
-    const months = prefs.locale === 'en' ? monthsEn : monthsEs;
-    return months[parseInt(m!, 10) - 1] ?? t.month;
+  // Localized short month names, derived from the active locale (follows the
+  // app language reactively instead of reading localStorage directly).
+  const shortMonths = $derived(
+    Array.from({ length: 12 }, (_, m) => {
+      const n = new Intl.DateTimeFormat(getIntlTag($preferences.locale), { month: 'short' })
+        .format(new Date(2000, m, 1))
+        .replace('.', '');
+      return n.charAt(0).toUpperCase() + n.slice(1);
+    }),
+  );
+  let trendLabels = $derived(trends.map(tr => {
+    const [, m] = tr.month.split('-');
+    return shortMonths[parseInt(m!, 10) - 1] ?? tr.month;
   }));
 
   async function loadData() {

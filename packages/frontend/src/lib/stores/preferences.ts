@@ -1,7 +1,8 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from '../i18n/registry';
 
-export type SupportedLocale = 'es' | 'en';
+export type { SupportedLocale };
 export type SupportedCurrency = 'MXN' | 'USD' | 'EUR' | 'COP' | 'ARS' | 'CLP' | 'PEN' | 'BRL';
 
 export interface UserPreferences {
@@ -11,15 +12,23 @@ export interface UserPreferences {
 
 const STORAGE_KEY = 'sf_preferences';
 
+const DEFAULTS: UserPreferences = { locale: DEFAULT_LOCALE, currency: 'MXN' };
+
 function loadFromStorage(): UserPreferences {
-  if (!browser) return { locale: 'es', currency: 'MXN' };
+  if (!browser) return { ...DEFAULTS };
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<UserPreferences>;
+      // Validate the stored locale against the registry so a removed/renamed
+      // language (or corrupted storage) can never leave the app in a bad state.
+      const locale = isSupportedLocale(parsed.locale) ? parsed.locale : DEFAULT_LOCALE;
+      return { ...DEFAULTS, ...parsed, locale };
+    }
   } catch {
-    /* localStorage unavailable — fall back to defaults */
+    /* localStorage unavailable or corrupt — fall back to defaults */
   }
-  return { locale: 'es', currency: 'MXN' };
+  return { ...DEFAULTS };
 }
 
 function saveToStorage(prefs: UserPreferences) {
