@@ -1415,7 +1415,8 @@
   .cat-dot { width: 12px; height: 12px; border-radius: 50%; }
   .cat-name { font-size: 0.78rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cat-pct { font-size: 0.7rem; color: var(--text-muted); text-align: right; }
-  .cat-amount { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); text-align: right; white-space: nowrap; }
+  /* A touch more air between the % and the amount so they don't read as one token. */
+  .cat-amount { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); text-align: right; white-space: nowrap; padding-left: 0.5rem; }
 
   /* ACCOUNTS */
   .accounts-scroll { display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.25rem; }

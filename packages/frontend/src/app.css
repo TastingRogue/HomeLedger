@@ -82,14 +82,6 @@
   --spacing-xl: 1.5rem;
   --spacing-2xl: 2rem;
 
-  /* ─── Layout ─── */
-  /* Shared cap for a page's content column. Wide enough to use large screens
-     (a 1920px display minus the 235px sidebar + padding leaves ~1640px), but
-     capped so text/lists don't stretch to uncomfortable line lengths on
-     ultrawide monitors. Pages set `max-width: var(--content-max)` on their
-     top-level wrapper instead of hardcoding a per-page value. */
-  --content-max: 1600px;
-
   /* ─── Typography ─── */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -730,7 +722,7 @@ a.nav-link {
    ═══════════════════════════════════════════════════════════════════════ */
 .sc-value, .stat-value, .stat-value-lg,
 .amount, .cell-amount, .up-amount, .month-total, .item-amount,
-.a-value, .cat-amount, .sb-value, .confirm-value,
+.a-value, .cat-amount, .cat-pct, .sb-value, .confirm-value,
 .amount-saved, .amount-target, .progress-amounts,
 .card-balance, .num, .balance {
   font-variant-numeric: tabular-nums;
