@@ -349,9 +349,19 @@ service, route, scheduler, or UI — pure dead schema — and subscriptions with
 - [x] Removed every reference from `backup.service.ts` (import, `BackupData` field, export select, delete-in-import, import re-insert loop, `validateBackup` expected fields + defaults, `previewImport` count) and `backup.service.test.ts` (inline table, cleanup, fixtures). Old backups that still contain a `recurringTransactions` key are simply ignored on import (extra keys aren't rejected) — no error.
 - [x] Verified: backend typecheck 0/0, full suite **446/446** (backup round-trip unaffected), build clean.
 
-### P2.5 — HA webhook processing
-- [ ] `POST /api/v1/ha/webhook` is a stub (only logs) — implement automation trigger processing, or document as intentionally minimal
-- [ ] Make HA sensors currency-aware (currently hardcoded `MXN`) and fix hardcoded `sensor.smart_finance_*` entity ids → `homeledger`
+### P2.5 — HA integration ✅ (done)
+Auditing this uncovered a bigger issue than the note implied: the HACS integration's
+sensors were effectively **broken** — the coordinator returned the raw `{ success, data }`
+envelope but `sensor.py` read keys off the top level, and it expected keys `/status`
+never returned. Fixed the whole contract:
+- [x] **Webhook decision: documented as intentionally minimal.** `POST /api/v1/ha/webhook` acknowledges + logs but does no automation processing (no concrete use case; local-first — building speculative event→action handling would be unused surface). To drive HomeLedger from HA, the integration's `create_transaction`/`create_quick_expense` services use the normal endpoints. Made the intent explicit in code + response (`processed: false`).
+- [x] **Fixed `/api/v1/ha/status` contract** so sensors actually work: added `currency` (from `getInstanceCurrency()`), `monthly_savings`, `net_worth` (NetWorthService), `total_balance`, `credit_card_utilization`, `remaining_budget` (BudgetService summary, null when no budget), `accounts[]` (id/name/balance), `top_categories[]` (top 5 for the month), and an `alerts{}` object (over_budget / high_credit_utilization / payment_due_soon / low_balance) for the binary sensors. Kept all original keys for back-compat.
+- [x] **Fixed the coordinator** to unwrap `{ data }` so `sensor.py`/`binary_sensor.py` read the right shape (this was the core "sensors show nothing" bug).
+- [x] **Currency-aware sensors:** Python monetary sensors (main + per-account + per-category) now take their unit from the payload `currency` (fallback MXN) instead of hardcoded `MXN`. Backend `/sensors` unit is `getInstanceCurrency()`.
+- [x] **Renamed** `sensor.smart_finance_*` → `sensor.homeledger_*` in the backend `/sensors` endpoint. (The Python integration derives its own entity ids, so no rename needed there; the folder/domain was already `homeledger`.)
+- [x] Verified: backend typecheck 0/0, full suite 446/446, build clean; `app.inject` on `/status` (authed) returns 200 with `currency`, all new keys, the `alerts` object, and per-account balances.
+
+Note: HACS polls `/status`; the backend `/sensors` endpoint is a convenience/alt shape kept correct but not consumed by the integration.
 
 ### P2.6 — Include receipts & attachments in backup (deferred from P0.2)
 Attachments (binary files on disk) and receipts (`receipt_analyses` /

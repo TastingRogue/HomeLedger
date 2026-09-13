@@ -50,8 +50,12 @@ class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         raise UpdateFailed(
                             f"Error communicating with API: HTTP {response.status}"
                         )
-                    data = await response.json()
-                    return data
+                    payload = await response.json()
+                    # The API wraps responses as { success, data }. Unwrap so
+                    # sensors read the fields directly (monthly_expenses, etc.).
+                    if isinstance(payload, dict) and "data" in payload:
+                        return payload["data"]
+                    return payload
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
         except TimeoutError as err:
