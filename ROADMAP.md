@@ -321,12 +321,13 @@ These have backend support but no frontend UI, or are incomplete.
 - [x] i18n es/en: `nav.rules`, `page_title.rules`, full `rules.*` namespace (fields/operators/action-types included). Parity verified: **874 keys each**, 0 mismatches.
 - [x] Verified: frontend typecheck 0 errors / 0 warnings, build clean, full suite still 438/438.
 
-### P2.2 — Loans UI + delete
-- [ ] Add missing DELETE route + `LoanService.delete()`
-- [ ] Add GET single loan
-- [ ] Add frontend API client `lib/api/loans.ts`
-- [ ] Add `prestamos` route + UI (loans, payments, schedule)
-- [ ] i18n es/en
+### P2.2 — Loans UI + delete ✅ (done)
+- [x] Backend: added `LoanService.delete(id, userId)` (ownership-checked; `loan_payments` cascade via FK) + 2 tests (delete cascades payments; throws for non-existent). Exposed missing routes: `GET /loans/:id`, `GET /loans/:id/payments`, `DELETE /loans/:id` (getById/listPayments already existed in the service).
+- [x] Frontend API client `lib/api/loans.ts` (list/get/create/update/delete/recordPayment/getSchedule/getPayments + `Loan`/`LoanPayment`/`AmortizationRow` types).
+- [x] `/prestamos` route + UI: loan cards (name, rate, term, remaining vs principal, progress bar, active/paid status), create/edit modal (principal locked after creation), **record-payment** modal (principal/interest auto-sum to total, validated), **amortization schedule + payment-history** detail modal, delete confirm. Escape-close, press feedback + `prefers-reduced-motion` guard.
+- [x] Nav entry under Planning (`credit-card` icon).
+- [x] i18n es/en: `nav.loans`, `page_title.loans`, full `loans.*` namespace. Parity **917 keys each**, 0 mismatches.
+- [x] Verified: backend + frontend typecheck 0/0, full suite **440/440** (added 2 loan-delete tests), build clean.
 
 ### P2.3 — Subcategories & splits in the UI
 - [ ] Subcategory management UI (currently schema-only, indirect)

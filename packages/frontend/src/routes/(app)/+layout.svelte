@@ -53,6 +53,7 @@
       items: [
         { href: '/metas', label: $t('nav.goals'), icon: 'target' },
         { href: '/presupuestos', label: $t('nav.budgets'), icon: 'clipboard' },
+        { href: '/prestamos', label: $t('nav.loans'), icon: 'credit-card' },
       ],
     },
     {

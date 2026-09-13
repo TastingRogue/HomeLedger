@@ -87,6 +87,25 @@ export async function loanRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * GET /api/v1/loans/:id
+   * Get a single loan by id.
+   */
+  app.get('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID del préstamo debe ser un número válido' } });
+    }
+    try {
+      const loan = LoanService.getById(id, user.userId);
+      return reply.status(200).send({ success: true, data: loan });
+    } catch (error) {
+      if (error instanceof LoanError) return handleLoanError(error, reply);
+      throw error;
+    }
+  });
+
+  /**
    * PUT /api/v1/loans/:id
    * Edit an existing loan.
    * Cannot edit a loan with status 'paid'.
@@ -189,6 +208,44 @@ export async function loanRoutes(app: FastifyInstance): Promise<void> {
       if (error instanceof LoanError) {
         return handleLoanError(error, reply);
       }
+      throw error;
+    }
+  });
+
+  /**
+   * GET /api/v1/loans/:id/payments
+   * List the recorded payments for a loan.
+   */
+  app.get('/:id/payments', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID del préstamo debe ser un número válido' } });
+    }
+    try {
+      const payments = LoanService.listPayments(id, user.userId);
+      return reply.status(200).send({ success: true, data: payments });
+    } catch (error) {
+      if (error instanceof LoanError) return handleLoanError(error, reply);
+      throw error;
+    }
+  });
+
+  /**
+   * DELETE /api/v1/loans/:id
+   * Delete a loan (payments cascade).
+   */
+  app.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID del préstamo debe ser un número válido' } });
+    }
+    try {
+      LoanService.delete(id, user.userId);
+      return reply.status(200).send({ success: true, data: { message: 'Préstamo eliminado exitosamente' } });
+    } catch (error) {
+      if (error instanceof LoanError) return handleLoanError(error, reply);
       throw error;
     }
   });
