@@ -446,7 +446,8 @@ Requires Home Assistant OS or Supervised (the Supervisor must be available).
      ```
    - Click **Add**, then close the dialog.
 2. **Install** — find **HomeLedger** in the store and click **Install** (the
-   image is multi-arch: `amd64`, `aarch64`, `armv7`).
+   image is multi-arch: `amd64` and `aarch64`/arm64, so it runs on x86 servers
+   and 64-bit Raspberry Pi).
 3. **Configure** — open the add-on's **Configuration** tab and set at least:
 
    | Option | Required | Notes |

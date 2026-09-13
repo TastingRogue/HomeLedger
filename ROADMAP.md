@@ -129,13 +129,16 @@ amounts are validated to 2 decimals).
 
 ## Phase P1 — Release quality (strongly recommended for 1.0.0)
 
-### P1.1 — arm64 / multi-arch (real)
-The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
+### P1.1 — arm64 / multi-arch (real) ✅ (done)
+Rewrote `docker-build.yml` to build each arch natively and merge into a
+multi-arch manifest — no QEMU (which hung on `better-sqlite3`).
 
-- [ ] Build arm64 natively via GitHub arm64 runners (matrix), not QEMU (which hangs on `better-sqlite3`)
-- [ ] Merge per-arch builds into a multi-arch manifest on Docker Hub
-- [ ] Verify the image actually runs on a Raspberry Pi / arm64 host
-- [ ] Update CHANGELOG/README to state real arch support
+- [x] Matrix build on native runners: `linux/amd64` on `ubuntu-latest`, `linux/arm64` on `ubuntu-24.04-arm` (official Docker pattern, confirmed against docs)
+- [x] Each arch builds and pushes **by digest** (`push-by-digest=true,name-canonical=true`), with per-platform GHA cache scopes; PRs build-only (no push)
+- [x] `merge` job combines the digests via `docker buildx imagetools create` with the semver/latest/branch tags, inspects the result, and updates the Docker Hub description (main only)
+- [x] Removed `armv7` from `ha-addon/config.yaml` and the README (we build arm64/aarch64, not 32-bit armv7 — declaring it would fail on HA); README already says "multi-arch"
+- [x] Both workflow YAMLs validated
+- [ ] (Verify on real hardware) Confirm the arm64 image actually runs on a Raspberry Pi / arm64 host once the workflow publishes — can't test arm64 execution from this dev machine
 
 ### P1.2 — Lint clean + CI gates ✅ (done)
 - [x] Added a real CI workflow (`.github/workflows/ci.yml`): on push/PR to main/develop runs `npm ci` → build shared → typecheck (backend+frontend) → lint → test → build. This protects `main` (the Docker workflow only built the image; it never ran tests).
