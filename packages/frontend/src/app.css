@@ -583,3 +583,54 @@ button:disabled {
     border: 1px solid var(--border-default);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRESS FEEDBACK (P3.C, apple-design §1)
+   Feedback must appear the instant an element is pressed, not on release. A
+   small scale-down on :active reads as a physical "push". Because the global
+   `button` reset already declares `transition: all var(--transition-fast)`,
+   the scale eases in/out at 0.1s, which reads as instant while still being
+   smooth on release.
+
+   Scope: real interactive elements only. Buttons are consistently <button>
+   across the app, so `button` is the reliable hook. Clickable cards/nav are
+   enumerated because they are <a>/<article onclick>/<div onclick> with no
+   shared role marker. Deliberately NOT targeted: <tr> rows (scaling breaks
+   table layout), <input>/<select>/<textarea> (caret/value + custom select
+   arrow distort), toggle switches (their knob uses translateX — a scale would
+   fight it), and the centered toast (uses translateX for positioning).
+
+   Disabled elements are excluded via :not(:disabled). Reduced-motion is
+   already handled globally by the P3.A block above (`*:active { transform:
+   none !important }`), which wins via !important — no extra guard needed here.
+   Per-page rules with an intentionally different feel (.icon-btn scale 0.9,
+   .key scale 0.96) are Svelte-scoped and override this baseline. */
+
+button:active:not(:disabled),
+a.nav-link:active,
+.account-card:active,
+.upcoming-item:active {
+  transform: scale(0.97);
+}
+
+/* Give the nav anchor a transform transition (its base rule only transitions
+   color) so the press eases like buttons do rather than snapping. */
+a.nav-link {
+  transition: color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+/* Clickable cards get the same fast transform transition + a grab cursor. */
+.account-card,
+.upcoming-item {
+  transition: transform var(--transition-fast);
+}
+
+/* Safety: never let the press-scale touch toggle switches even if one is ever
+   wrapped in / rendered as one of the targeted elements. Their knob animates
+   via translateX and a scale would distort the track. */
+.switch:active,
+.switch-track:active,
+.toggle-switch:active,
+.toggle-input:active {
+  transform: none;
+}
