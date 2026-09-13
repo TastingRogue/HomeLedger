@@ -305,7 +305,7 @@
 </div>
 
 <style>
-  .page { max-width: 800px; margin: 0 auto; padding: 0 var(--spacing-md); }
+  .page { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--spacing-md); }
 
   .page-header { margin-bottom: 1.25rem; }
   .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
