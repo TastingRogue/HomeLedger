@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "exportedAt": "2026-09-01T22:55:36.159Z",
+  "version": "1.0.0",
+  "exportedAt": "2026-09-13T21:38:39.876Z",
   "userId": 1,
   "data": {
     "accounts": [
@@ -14,8 +14,8 @@
         "creditLimit": null,
         "status": "Activo",
         "currency": "MXN",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900002,
@@ -27,8 +27,8 @@
         "creditLimit": 45000,
         "status": "Activo",
         "currency": "MXN",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900003,
@@ -40,8 +40,8 @@
         "creditLimit": null,
         "status": "Activo",
         "currency": "MXN",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900004,
@@ -53,8 +53,8 @@
         "creditLimit": null,
         "status": "Activo",
         "currency": "MXN",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "transactions": [
@@ -829,11 +829,11 @@
         "amount": 219,
         "cycle": "Mensual",
         "startDate": "2026-04-01T06:00:00.000Z",
-        "nextPaymentDate": "2026-09-07T15:00:00.000Z",
+        "nextPaymentDate": "2026-09-19T15:00:00.000Z",
         "autoCharge": true,
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900002,
@@ -843,11 +843,11 @@
         "amount": 129,
         "cycle": "Mensual",
         "startDate": "2026-04-01T06:00:00.000Z",
-        "nextPaymentDate": "2026-09-12T15:00:00.000Z",
+        "nextPaymentDate": "2026-09-24T15:00:00.000Z",
         "autoCharge": true,
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900003,
@@ -857,11 +857,11 @@
         "amount": 599,
         "cycle": "Mensual",
         "startDate": "2026-04-01T06:00:00.000Z",
-        "nextPaymentDate": "2026-09-04T15:00:00.000Z",
+        "nextPaymentDate": "2026-09-16T15:00:00.000Z",
         "autoCharge": false,
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900004,
@@ -871,11 +871,11 @@
         "amount": 650,
         "cycle": "Mensual",
         "startDate": "2026-04-01T06:00:00.000Z",
-        "nextPaymentDate": "2026-09-19T15:00:00.000Z",
+        "nextPaymentDate": "2026-10-01T15:00:00.000Z",
         "autoCharge": true,
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "goals": [
@@ -887,8 +887,8 @@
         "type": "ListaDeseos",
         "deadline": "2027-02-01T05:59:59.000Z",
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900002,
@@ -898,8 +898,8 @@
         "type": "ListaDeseos",
         "deadline": "2027-06-01T05:59:59.000Z",
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900003,
@@ -909,8 +909,8 @@
         "type": "ListaDeseos",
         "deadline": "2026-09-01T05:59:59.000Z",
         "status": "Completada",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900004,
@@ -920,8 +920,8 @@
         "type": "Deuda",
         "deadline": "2027-01-01T05:59:59.000Z",
         "status": "Activa",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "budgets": [
@@ -931,8 +931,8 @@
         "period": "monthly",
         "startDate": "2026-09-01",
         "endDate": "2026-10-01",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "budgetCategories": [
@@ -980,7 +980,7 @@
         "color": "#22c55e",
         "type": "Ingreso",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909002,
@@ -989,7 +989,7 @@
         "color": "#06b6d4",
         "type": "Ingreso",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909003,
@@ -998,7 +998,7 @@
         "color": "#f59e0b",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909004,
@@ -1007,7 +1007,7 @@
         "color": "#ef4444",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909005,
@@ -1016,7 +1016,7 @@
         "color": "#3b82f6",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909006,
@@ -1025,7 +1025,7 @@
         "color": "#8b5cf6",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909007,
@@ -1034,7 +1034,7 @@
         "color": "#ec4899",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909008,
@@ -1043,7 +1043,7 @@
         "color": "#14b8a6",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909009,
@@ -1052,7 +1052,7 @@
         "color": "#eab308",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 909010,
@@ -1061,7 +1061,7 @@
         "color": "#a78bfa",
         "type": "Gasto",
         "isSystem": false,
-        "createdAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "subcategories": [],
@@ -1074,8 +1074,8 @@
         "value": 1850000,
         "type": "Propiedad",
         "notes": "Depto 2 recámaras",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900002,
@@ -1083,8 +1083,8 @@
         "value": 265000,
         "type": "Vehículo",
         "notes": "Sedán 2021",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900003,
@@ -1092,8 +1092,8 @@
         "value": 62000,
         "type": "Inversión",
         "notes": null,
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "liabilities": [
@@ -1103,8 +1103,8 @@
         "balance": 920000,
         "type": "Hipoteca",
         "notes": "Plazo 20 años",
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       },
       {
         "id": 900002,
@@ -1112,8 +1112,8 @@
         "balance": 84000,
         "type": "Préstamo",
         "notes": null,
-        "createdAt": "2026-05-04T16:00:00.000Z",
-        "updatedAt": "2026-05-04T16:00:00.000Z"
+        "createdAt": "2026-05-16T16:00:00.000Z",
+        "updatedAt": "2026-05-16T16:00:00.000Z"
       }
     ],
     "loans": [],

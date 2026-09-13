@@ -3,7 +3,7 @@
 // Output: homeledger-demo-backup.json at the repo root.
 //
 // Import it via the app: Settings -> Data & Backup -> Import (confirm replace).
-// It matches the BackupService format (version 0.1.0, data.* arrays). IDs are
+// It matches the BackupService format (version 1.0.0, data.* arrays). IDs are
 // preserved on import and userId is overwritten with the importing user's id.
 
 import { writeFileSync } from 'node:fs';
@@ -222,7 +222,7 @@ for (const l of liabilities) l.id = off(l.id);
 
 // ─── Assemble backup file ───
 const backup = {
-  version: '0.1.0',
+  version: '1.0.0',
   exportedAt: iso(now),
   userId: 1,
   data: {
