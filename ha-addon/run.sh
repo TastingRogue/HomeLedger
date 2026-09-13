@@ -16,6 +16,7 @@ if [ -f "$CONFIG_PATH" ]; then
   export DEFAULT_LOCALE=$(jq -r '.DEFAULT_LOCALE // "en"' "$CONFIG_PATH")
   export BACKUP_ENABLED=$(jq -r '.BACKUP_ENABLED // true' "$CONFIG_PATH")
   export BACKUP_RETENTION=$(jq -r '.BACKUP_RETENTION // 7' "$CONFIG_PATH")
+  export REGISTRATION_MODE=$(jq -r '.REGISTRATION_MODE // "first_user_only"' "$CONFIG_PATH")
   export JWT_SECRET=$(jq -r '.JWT_SECRET // ""' "$CONFIG_PATH")
   export ADMIN_EMAIL=$(jq -r '.ADMIN_EMAIL // "admin@homeledger.local"' "$CONFIG_PATH")
   export ADMIN_PASSWORD=$(jq -r '.ADMIN_PASSWORD // ""' "$CONFIG_PATH")
@@ -26,6 +27,7 @@ else
   export DEFAULT_LOCALE="${DEFAULT_LOCALE:-en}"
   export BACKUP_ENABLED="${BACKUP_ENABLED:-true}"
   export BACKUP_RETENTION="${BACKUP_RETENTION:-7}"
+  export REGISTRATION_MODE="${REGISTRATION_MODE:-first_user_only}"
 fi
 
 # Validate required configuration

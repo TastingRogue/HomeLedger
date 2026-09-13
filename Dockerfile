@@ -60,6 +60,9 @@ ENV DEFAULT_LOCALE=en
 ENV BACKUP_ENABLED=true
 ENV BACKUP_RETENTION=7
 ENV BACKUP_CRON="0 3 * * *"
+# Registration policy (seeds on first run; admin can change in-app). Safe default:
+# only the first user (admin) can register, then registration is closed.
+ENV REGISTRATION_MODE=first_user_only
 
 # Default runtime config so the image runs out of the box (e.g. Docker Desktop
 # "Run" with no extra settings): it boots, creates an admin user and lets you

@@ -1,5 +1,6 @@
 ﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { AuthService, AuthError } from './auth.service.js';
+import { setRegistrationMode, setRegistrationAllowlist } from '../config/registration.js';
 import { getDb, closeDatabase } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import jwt from 'jsonwebtoken';
@@ -56,6 +57,10 @@ describe('AuthService', () => {
     db.delete(apiKeys).run();
     db.delete(refreshTokens).run();
     db.delete(users).run();
+    // Default registration to 'open' for the pre-existing auth tests (they
+    // register multiple users). P1.11-specific tests set their own mode.
+    setRegistrationMode('open');
+    setRegistrationAllowlist([]);
   });
 
   afterAll(() => {
@@ -139,6 +144,46 @@ describe('AuthService', () => {
       expect(decoded['userId']).toBe(result.user.id);
       expect(decoded['email']).toBe('admin@test.com');
       expect(decoded['role']).toBe('admin');
+    });
+  });
+
+  describe('registration policy (P1.11)', () => {
+    const first = { email: 'admin@test.com', password: 'password123', name: 'Admin' };
+    const second = { email: 'user2@test.com', password: 'password123', name: 'User2' };
+
+    it('first_user_only: first user allowed, second blocked', async () => {
+      setRegistrationMode('first_user_only');
+      const admin = await AuthService.register(first);
+      expect(admin.user.role).toBe('admin');
+
+      await expect(AuthService.register(second)).rejects.toThrow('registro está deshabilitado');
+      await expect(AuthService.register(second)).rejects.toMatchObject({ code: 'REGISTRATION_CLOSED' });
+    });
+
+    it('closed: even the first user is blocked once one exists', async () => {
+      setRegistrationMode('open');
+      await AuthService.register(first); // bootstrap an admin while open
+      setRegistrationMode('closed');
+      await expect(AuthService.register(second)).rejects.toMatchObject({ code: 'REGISTRATION_CLOSED' });
+    });
+
+    it('open with allowlist: only listed emails may register', async () => {
+      setRegistrationMode('open');
+      await AuthService.register(first); // first user always allowed
+      setRegistrationAllowlist(['allowed@test.com']);
+
+      await expect(AuthService.register(second)).rejects.toMatchObject({ code: 'EMAIL_NOT_ALLOWED' });
+
+      const ok = await AuthService.register({ email: 'ALLOWED@test.com', password: 'password123', name: 'Allowed' });
+      expect(ok.user.email).toBe('ALLOWED@test.com'); // case-insensitive match on allowlist
+    });
+
+    it('open without allowlist: anyone may register', async () => {
+      setRegistrationMode('open');
+      setRegistrationAllowlist([]);
+      await AuthService.register(first);
+      const ok = await AuthService.register(second);
+      expect(ok.user.role).toBe('user');
     });
   });
 

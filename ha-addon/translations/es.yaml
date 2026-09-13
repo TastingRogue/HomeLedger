@@ -21,6 +21,12 @@ configuration:
     description: >-
       Número de respaldos automáticos a conservar. Los más antiguos se
       eliminan automáticamente cuando se supera este número.
+  REGISTRATION_MODE:
+    name: Política de registro
+    description: >-
+      Quién puede crear una cuenta: first_user_only (seguro: solo el primer
+      usuario que será el administrador, luego se cierra), open (cualquiera) o
+      closed (nadie). El administrador puede cambiarlo dentro de la aplicación.
   JWT_SECRET:
     name: Clave secreta JWT
     description: >-

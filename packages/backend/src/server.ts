@@ -4,6 +4,7 @@ import { initializeDatabase, closeDatabase, getSqlite } from './db/connection.js
 import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
 import { getDefaultLocale } from './config/locale.js';
+import { seedRegistrationSettingsFromEnv } from './config/registration.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
 import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
@@ -160,6 +161,12 @@ async function start(): Promise<void> {
     app.log.info('Database seeding complete.');
   } catch (error) {
     app.log.error(error, 'Database seeding failed.');
+  }
+  // Seed registration policy from env on first run (safe default otherwise).
+  try {
+    seedRegistrationSettingsFromEnv();
+  } catch (error) {
+    app.log.warn({ error }, 'Could not seed registration settings.');
   }
   startScheduler();
   const shutdown = async (signal: string) => {

@@ -32,6 +32,10 @@ services:
       BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
       BACKUP_RETENTION: ${BACKUP_RETENTION:-7}
       BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
+      # Registration policy (seeds on first run; admin can change in-app).
+      # first_user_only (safe default) | open | closed
+      REGISTRATION_MODE: ${REGISTRATION_MODE:-first_user_only}
+      REGISTRATION_ALLOWLIST: ${REGISTRATION_ALLOWLIST:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
       interval: 15s

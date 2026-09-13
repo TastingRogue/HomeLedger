@@ -30,6 +30,7 @@ options:
   DEFAULT_LOCALE: "en"
   BACKUP_ENABLED: true
   BACKUP_RETENTION: 7
+  REGISTRATION_MODE: "first_user_only"
   JWT_SECRET: ""
   ADMIN_EMAIL: "admin@homeledger.local"
   ADMIN_PASSWORD: ""
@@ -40,6 +41,7 @@ schema:
   DEFAULT_LOCALE: "list(es|en)"
   BACKUP_ENABLED: bool
   BACKUP_RETENTION: "int(1,)"
+  REGISTRATION_MODE: "list(first_user_only|open|closed)"
   JWT_SECRET: str
   ADMIN_EMAIL: email
   ADMIN_PASSWORD: password

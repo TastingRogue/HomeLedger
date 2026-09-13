@@ -2,6 +2,14 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { UserService, UserError } from '../../services/user.service.js';
 import { requireRole } from '../../middleware/auth.middleware.js';
 import type { TokenPayload } from '../../services/auth.service.js';
+import {
+  REGISTRATION_MODES,
+  type RegistrationMode,
+  getRegistrationMode,
+  getRegistrationAllowlist,
+  setRegistrationMode,
+  setRegistrationAllowlist,
+} from '../../config/registration.js';
 
 /**
  * Admin user-management API. All routes require the admin role.
@@ -26,6 +34,35 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
   /** GET /api/v1/users — list all users. */
   app.get('/', async (_request, reply) => {
     return reply.status(200).send({ success: true, data: UserService.list() });
+  });
+
+  /** GET /api/v1/users/registration — current registration policy. */
+  app.get('/registration', async (_request, reply) => {
+    return reply.status(200).send({
+      success: true,
+      data: { mode: getRegistrationMode(), allowlist: getRegistrationAllowlist(), modes: REGISTRATION_MODES },
+    });
+  });
+
+  /** PUT /api/v1/users/registration — update the registration policy. Body: { mode?, allowlist? }. */
+  app.put<{ Body: { mode?: string; allowlist?: string[] | string } }>('/registration', async (request, reply) => {
+    const body = request.body ?? {};
+    if (body.mode !== undefined) {
+      if (!(REGISTRATION_MODES as readonly string[]).includes(body.mode)) {
+        return reply.status(400).send({ success: false, error: { code: 'INVALID_MODE', message: `mode debe ser uno de: ${REGISTRATION_MODES.join(', ')}` } });
+      }
+      setRegistrationMode(body.mode as RegistrationMode);
+    }
+    if (body.allowlist !== undefined) {
+      const list = Array.isArray(body.allowlist)
+        ? body.allowlist.map(String)
+        : String(body.allowlist).split(',');
+      setRegistrationAllowlist(list);
+    }
+    return reply.status(200).send({
+      success: true,
+      data: { mode: getRegistrationMode(), allowlist: getRegistrationAllowlist() },
+    });
   });
 
   /** PATCH /api/v1/users/:id/disabled — enable/disable a user. Body: { disabled: boolean }. */

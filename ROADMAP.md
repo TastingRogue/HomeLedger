@@ -281,11 +281,12 @@ principle (it's your household's server, not public SaaS).
 Registration is currently fully open (anyone can register; confirmed in
 `AuthService.register`). On an exposed instance, randoms can create accounts.
 
-- [ ] Registration is controlled by the **admin** (not a hardcoded "first user only" rule): admin can open or close public registration
-- [ ] Optional **email allowlist**: when set, only listed emails may register, even if registration is otherwise open
-- [ ] Default posture on a fresh install should be safe (closed or first-user-only), with the admin able to open it as needed
-- [ ] Surface these controls in an admin settings area, and/or via env for headless setups
-- [ ] Verify: with registration closed, the register endpoint refuses; with an allowlist, only allowed emails succeed
+- [x] Admin-controlled registration via a persisted `registration_mode` (in a new idempotent `app_settings` table + `SettingsService`): `first_user_only` (safe default), `open`, or `closed`. Admin can change it live; the very first user is always allowed (bootstraps the admin).
+- [x] Optional **email allowlist** (`registration_allowlist`): when set and mode is `open`, only listed emails may register (case-insensitive). Enforced in `AuthService.register`.
+- [x] **Safe default on fresh install:** `first_user_only` — an exposed instance can't be registered on by randoms out of the box. New error codes `REGISTRATION_CLOSED` / `EMAIL_NOT_ALLOWED` (403).
+- [x] Controls surfaced both ways: **env bootstrap** `REGISTRATION_MODE` / `REGISTRATION_ALLOWLIST` seeds settings on first run (never overrides a later admin change), and **admin API** `GET/PUT /api/v1/users/registration` (`requireRole(['admin'])`) to read/update at runtime. Documented across `.env.example`/README/Dockerfile/compose/HA.
+- [x] Verified: 4 policy tests (first-user allowed + second blocked under `first_user_only`; `closed` blocks; `open`+allowlist enforces listed-only, case-insensitive; `open` w/o allowlist allows any). Full suite 438/438, typecheck 0/0, build clean.
+- [ ] (Follow-up) Frontend admin settings UI for registration — pairs with the deferred admin UI.
 
 ### P1.12 — Password reset / account recovery
 Login and register exist, but there's no way to recover a forgotten password.

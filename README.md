@@ -237,6 +237,8 @@ Override these in production.
 | `BACKUP_ENABLED` | Enable the scheduled backup job (gzip whole-DB snapshots under `$DATA_DIR/backups`) | `true` |
 | `BACKUP_RETENTION` | How many snapshots to keep; older ones are rotated out | `7` |
 | `BACKUP_CRON` | Cron schedule for automated backups (server timezone) | `0 3 * * *` (daily 03:00) |
+| `REGISTRATION_MODE` | Who may register: `first_user_only` (safe default — first user bootstraps admin, then closed), `open`, or `closed`. Admin can change it in-app; env only seeds the initial value. | `first_user_only` |
+| `REGISTRATION_ALLOWLIST` | Optional comma-separated email allowlist; when set and mode is `open`, only these emails may register | unset (no allowlist) |
 
 > :floppy_disk: **Data persistence.** Everything under `DATA_DIR` — the database
 > and receipt/invoice attachments — lives on the `homeledger-data` volume, so it
