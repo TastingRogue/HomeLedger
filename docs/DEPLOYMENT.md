@@ -153,7 +153,7 @@ transactions, budgets, goals, categories, rules, attachments inlined as base64,
 receipts, etc.). **Who:** any user, for their own data.
 
 - **Export:** **Settings → Data & Backup → Export** (or `POST /api/v1/backup/export`).
-  Downloads `smart-finance-backup-<date>.json`.
+  Downloads `homeledger-backup-<date>.json`.
 - **Import:** **Settings → Data & Backup → Import**. Selecting a file first shows
   a **non-destructive preview** — a per-entity table of what's in the backup vs.
   what you currently have (and will be replaced), plus warnings for anything that

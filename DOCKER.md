@@ -203,9 +203,10 @@ docker compose restart homeledger
 ```
 
 ### Permission denied errors
-Ensure the volume has proper ownership:
+The container runs as root, so it normally owns `/data`. If you bind-mount a host
+directory with restrictive ownership, fix it so the container can write:
 ```bash
-docker compose exec homeledger chown -R smartfinance:smartfinance /data
+docker compose exec homeledger chown -R root:root /data
 ```
 
 ### Port already in use

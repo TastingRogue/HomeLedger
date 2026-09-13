@@ -8,8 +8,8 @@ import { build, files, version } from '$service-worker';
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
 // Cache names
-const CACHE_NAME = `smart-finance-cache-${version}`;
-const API_CACHE_NAME = `smart-finance-api-${version}`;
+const CACHE_NAME = `homeledger-cache-${version}`;
+const API_CACHE_NAME = `homeledger-api-${version}`;
 
 // Assets to cache (app shell)
 const APP_SHELL = [

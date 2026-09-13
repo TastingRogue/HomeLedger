@@ -6,13 +6,13 @@ Your HomeLedger project is now fully containerized with production-ready Docker 
 
 ### Files Created/Updated
 
-1. **Dockerfile** (updated)
-   - Multi-stage build: dependencies → build → production
+1. **Dockerfile**
    - Node 22-Alpine base image
-   - Non-root user (`smartfinance`) for security
-   - Tini init system for proper signal handling
-   - Health checks with curl
-   - Layer caching optimizations
+   - Builds all workspaces (shared → frontend → backend) so the single image
+     serves the SvelteKit frontend and the Fastify API on one port
+   - Tini init system (PID 1) for proper signal handling
+   - Health checks with wget
+   - Layer caching via early manifest copy
 
 2. **docker-compose.yml** (updated)
    - Named volume for persistent SQLite database

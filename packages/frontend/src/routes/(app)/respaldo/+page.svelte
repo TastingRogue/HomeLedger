@@ -84,7 +84,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `smart-finance-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `homeledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -305,7 +305,7 @@
 </div>
 
 <style>
-  .page { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--spacing-md); }
+  .page { width: 100%; margin: 0; }
 
   .page-header { margin-bottom: 1.25rem; }
   .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
