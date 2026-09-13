@@ -118,6 +118,9 @@ export const transactions = sqliteTable('transactions', {
   index('transactions_date_idx').on(table.date),
   index('transactions_user_id_date_idx').on(table.userId, table.date),
   index('transactions_user_id_type_idx').on(table.userId, table.type),
+  // Composite for AccountService.calculateBalance's per-account income/expense
+  // SUMs (filter account_id AND type). Added in migration 0006.
+  index('transactions_account_id_type_idx').on(table.accountId, table.type),
 ]);
 
 export const transactionSplits = sqliteTable('transaction_splits', {
