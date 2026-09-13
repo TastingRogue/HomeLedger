@@ -354,13 +354,36 @@ backup, so a restore clears them. Fix requires bundling binary attachment files.
 
 - [ ] Frontend test suite (currently ZERO tests) — at least smoke/e2e on critical flows (login, create tx, dashboard, backup)
 - [ ] Receipt OCR accuracy review (currently regex/heuristic best-effort)
-- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3)
+- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3). **Reduced-motion / transparency / contrast is broken out as P3.A below.**
 - [ ] Performance check with a large dataset (thousands of transactions)
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
 - [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)
 - [ ] `CONTRIBUTING.md` + issue/PR templates (supports community growth)
 - [ ] CSV export of transactions (spreadsheet-friendly, separate from the JSON backup)
 - [ ] (Optional) Real dashboard customization — the non-functional "Customize" button was removed; only revisit if it becomes a wanted feature
+
+### Design craft (from the `apple-design` skill)
+
+A UI audit against the vendored `apple-design` skill (`.kiro/skills/apple-design/`)
+found the app is functionally solid with a real token system, but motion is
+fixed-duration CSS (no springs, nothing interruptible), there's **no**
+reduced-motion/transparency/contrast handling, press feedback is inconsistent,
+surfaces are opaque (no translucent materials), modals just pop (no origin,
+no materialize, no symmetric enter/exit), and typography tracking is
+size-agnostic. Stack: **SvelteKit + Svelte 5** — use `svelte/motion`
+(`Spring`/`Tween`) + `svelte/transition` + CSS; no new heavy dependency needed.
+House spring style: critically damped `damping 1.0, response 0.3–0.4` by default;
+add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
+
+- [ ] **P3.A — Reduced-motion / transparency / contrast foundations (do first; a real 1.0 a11y gap).** Add global `@media (prefers-reduced-motion: reduce)` (cross-fade instead of slide/spring, drop overshoot), `prefers-reduced-transparency: reduce` (frostier/solid surfaces, drop blur), and `prefers-contrast: more` (near-solid backgrounds + defined borders). Currently **none** exist in the codebase. Fold in the deferred aria-label i18n here.
+- [ ] **P3.B — Spring-based motion primitives.** Add `svelte/motion`-based spring helpers + a house-style token set; convert modal enter/exit and the toggle switches from fixed CSS transitions to interruptible springs (animate from the current value, never lock input).
+- [ ] **P3.C — Consistent press feedback.** Shared instant `:active` highlight + `transform: scale(0.97)` on ALL interactive elements (buttons, cards, nav items, list rows), not just the quick-register keypad. Feedback on pointer-down, not release; respect reduced-motion.
+- [ ] **P3.D — Translucent materials & depth.** Convert sidebar / page headers / modals to `backdrop-filter` layers with content scrolling under; replace hard `border-bottom` dividers on sticky chrome with a scroll-edge blur/gradient fade; modal "materialize" (blur + scale together) on enter; size-aware shadows (bigger surface = deeper shadow). Guard everything behind `prefers-reduced-transparency`.
+- [ ] **P3.E — Modal/sheet spatial consistency.** Anchor modals/popovers to their trigger (`transform-origin`), enter and exit along the same path (mirror the easing), and add a reusable bottom-sheet (drag-to-dismiss with momentum projection + rubber-band) for mobile — reused by the deferred admin panels (P1.8/P1.9/P1.10/P1.11) and detail modals.
+- [ ] **P3.F — Typography scale (size-specific tracking/leading).** Add tracking/leading tokens: negative letter-spacing on display/large numbers, near-`0` on body, slightly positive on the uppercase micro-labels; tight leading on headings, looser on body. Verify layout scales with text (spacing already mostly in `rem`).
+- [ ] (Optional / post-1.0) **P3.G — Gesture layer.** Swipe-to-dismiss mobile sidebar, swipe actions on transaction/list rows, calendar swipe — 1:1 pointer tracking + velocity handoff + rubber-banding. Pure "feel" polish; explicitly a nice-to-have, not a 1.0 blocker.
+
+> Priority: **P3.A is 1.0-worthy** (reduced-motion is a genuine accessibility gap). P3.B–P3.F are 1.0-if-time / 1.1 craft. P3.G is post-1.0. All are additive polish on an already-functional UI.
 
 ---
 
