@@ -876,15 +876,27 @@
      dropdown component defaults to a small inline chip, so it's normalized
      here to match the date-picker trigger. */
   .filters-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
-  .filter-item { display: flex; flex-direction: column; gap: 0.2rem; width: 150px; }
+  /* Fixed-width so every control is identical regardless of the label/value
+     length (e.g. "Seleccionar fecha" in ES is longer than "Select date" in EN);
+     box-sizing + no grow/shrink keeps them from stretching to fit their text. */
+  .filter-item { display: flex; flex-direction: column; gap: 0.2rem; flex: 0 0 150px; width: 150px; box-sizing: border-box; min-width: 0; }
   .filter-item :global(.datepicker) { width: 100%; }
-  /* Make the Dropdown fill its filter-item and match the date-picker size. */
+  /* Truncate a long trigger label instead of letting it widen the control. */
+  .filter-item :global(.dp-trigger) { width: 100%; box-sizing: border-box; }
+  .filter-item :global(.dp-text) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Make the Dropdown fill its filter-item and match the date-picker size.
+     Chained :global() raises specificity above Dropdown.svelte's scoped rule so
+     the padding/size actually apply (otherwise the component's smaller default wins). */
   .filter-item :global(.dropdown) { display: block; width: 100%; }
-  .filter-item :global(.dropdown-trigger) {
+  .filter-item :global(.dropdown) :global(.dropdown-trigger) {
     width: 100%;
+    box-sizing: border-box;
     justify-content: space-between;
     padding: 0.45rem 0.65rem;
     font-size: 0.8rem;
+  }
+  .filter-item :global(.dropdown) :global(.dropdown-trigger) :global(span) {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .filter-label { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
   /* Buttons match the control height (same vertical padding as the triggers). */
