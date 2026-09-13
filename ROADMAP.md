@@ -340,9 +340,14 @@ Backend seams that were missing are now added:
 - [x] i18n es/en (parity **932 keys**), press feedback + `prefers-reduced-motion`, Escape-close.
 - [x] Verified: backend + frontend typecheck 0/0, full suite **446/446** (added 6 tests: subcategory persist/reject/clear ×2 + clearSplits ×2), shared rebuilt, build clean.
 
-### P2.4 — Recurring transactions (decide: implement or remove)
-- [ ] Table exists but there's NO service/route/scheduler — either build it (service + route + scheduler consumer + UI) or remove the schema to avoid dead surface
-- [ ] Note: subscriptions with `autoCharge` already cover most "recurring" needs
+### P2.4 — Recurring transactions ✅ (done — removed)
+**Decision (user-confirmed): removed.** The `recurring_transactions` table had no
+service, route, scheduler, or UI — pure dead schema — and subscriptions with
+`autoCharge` already cover recurring needs. Keeping it would be confusing unused surface.
+- [x] Migration `0005_drop_recurring_transactions.sql` (`DROP TABLE IF EXISTS`) + journal entry; verified end-to-end that a fresh DB ends with no `recurring_transactions` table after all migrations.
+- [x] Removed the table from `schema.ts` (and the "& RECURRING TRANSACTIONS" section header).
+- [x] Removed every reference from `backup.service.ts` (import, `BackupData` field, export select, delete-in-import, import re-insert loop, `validateBackup` expected fields + defaults, `previewImport` count) and `backup.service.test.ts` (inline table, cleanup, fixtures). Old backups that still contain a `recurringTransactions` key are simply ignored on import (extra keys aren't rejected) — no error.
+- [x] Verified: backend typecheck 0/0, full suite **446/446** (backup round-trip unaffected), build clean.
 
 ### P2.5 — HA webhook processing
 - [ ] `POST /api/v1/ha/webhook` is a stub (only logs) — implement automation trigger processing, or document as intentionally minimal

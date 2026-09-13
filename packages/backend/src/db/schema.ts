@@ -181,7 +181,7 @@ export const budgetCategories = sqliteTable('budget_categories', {
 ]);
 
 // ============================================
-// SUBSCRIPTIONS & RECURRING TRANSACTIONS
+// SUBSCRIPTIONS
 // ============================================
 
 export const subscriptions = sqliteTable('subscriptions', {
@@ -202,23 +202,6 @@ export const subscriptions = sqliteTable('subscriptions', {
   index('subscriptions_user_id_idx').on(table.userId),
   index('subscriptions_user_id_status_idx').on(table.userId, table.status),
   index('subscriptions_next_payment_date_idx').on(table.nextPaymentDate),
-]);
-
-export const recurringTransactions = sqliteTable('recurring_transactions', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  accountId: integer('account_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
-  categoryId: integer('category_id').notNull().references(() => categories.id, { onDelete: 'restrict' }),
-  name: text('name').notNull(),
-  amount: real('amount').notNull(),
-  type: text('type', { enum: ['Ingreso', 'Gasto'] }).notNull(),
-  frequency: text('frequency').notNull(),
-  nextDate: text('next_date').notNull(),
-  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
-  createdAt: text('created_at').notNull(),
-}, (table) => [
-  index('recurring_transactions_user_id_idx').on(table.userId),
-  index('recurring_transactions_next_date_idx').on(table.nextDate),
 ]);
 
 // ============================================

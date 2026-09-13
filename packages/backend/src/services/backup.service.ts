@@ -19,7 +19,6 @@ import {
   loanPayments,
   networthSnapshots,
   creditSubscriptions,
-  recurringTransactions,
 } from '../db/schema.js';
 
 /** Application version used in backup metadata */
@@ -61,7 +60,6 @@ export interface BackupData {
   loanPayments: unknown[];
   networthSnapshots: unknown[];
   creditSubscriptions: unknown[];
-  recurringTransactions: unknown[];
 }
 
 /**
@@ -180,11 +178,6 @@ export class BackupService {
         .from(creditSubscriptions)
         .innerJoin(accounts, eq(creditSubscriptions.accountId, accounts.id))
         .where(eq(accounts.userId, userId))
-        .all(),
-      recurringTransactions: db
-        .select()
-        .from(recurringTransactions)
-        .where(eq(recurringTransactions.userId, userId))
         .all(),
     };
 
@@ -312,7 +305,6 @@ export class BackupService {
       db.delete(transactions).where(eq(transactions.userId, userId)).run();
       db.delete(transfers).where(eq(transfers.userId, userId)).run();
       db.delete(subscriptions).where(eq(subscriptions.userId, userId)).run();
-      db.delete(recurringTransactions).where(eq(recurringTransactions.userId, userId)).run();
       db.delete(goals).where(eq(goals.userId, userId)).run();
       db.delete(budgets).where(eq(budgets.userId, userId)).run();
       db.delete(rules).where(eq(rules.userId, userId)).run();
@@ -463,21 +455,6 @@ export class BackupService {
         }).returning({ id: subscriptions.id }).get();
         const prev = oldId(rec);
         if (prev != null) subMap.set(prev, inserted.id);
-      }
-
-      // Recurring transactions (accountId, categoryId remapped)
-      for (const rec2 of backupData.recurringTransactions ?? []) {
-        const rec = rec2 as Record<string, unknown>;
-        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
-        if (newAccountId == null || newCategoryId == null) continue;
-        const { id: _drop, accountId: _a, categoryId: _c, ...rest } = rec;
-        db.insert(recurringTransactions).values({
-          ...(rest as Omit<typeof recurringTransactions.$inferInsert, 'accountId' | 'categoryId'>),
-          userId,
-          accountId: newAccountId,
-          categoryId: newCategoryId,
-        }).run();
       }
 
       // Goals (no cross-FK; drop id)
@@ -682,7 +659,7 @@ export class BackupService {
       'subscriptions', 'goals', 'budgets', 'budgetCategories',
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
-      'networthSnapshots', 'creditSubscriptions', 'recurringTransactions',
+      'networthSnapshots', 'creditSubscriptions',
     ];
 
     for (const field of expectedArrayFields) {
@@ -717,7 +694,6 @@ export class BackupService {
         loanPayments: Array.isArray(data['loanPayments']) ? data['loanPayments'] : [],
         networthSnapshots: Array.isArray(data['networthSnapshots']) ? data['networthSnapshots'] : [],
         creditSubscriptions: Array.isArray(data['creditSubscriptions']) ? data['creditSubscriptions'] : [],
-        recurringTransactions: Array.isArray(data['recurringTransactions']) ? data['recurringTransactions'] : [],
       },
     };
   }
@@ -767,7 +743,6 @@ export class BackupService {
       liabilities: BackupService.countByUser('liabilities', userId),
       loans: BackupService.countByUser('loans', userId),
       networthSnapshots: BackupService.countByUser('networth_snapshots', userId),
-      recurringTransactions: BackupService.countByUser('recurring_transactions', userId),
     };
 
     // Warnings: mirror the import's skip logic so the user sees what won't survive.

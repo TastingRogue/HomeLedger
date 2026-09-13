@@ -144,21 +144,6 @@ describe('BackupService', () => {
       );
       CREATE INDEX IF NOT EXISTS subscriptions_user_id_idx ON subscriptions(user_id);
 
-      CREATE TABLE IF NOT EXISTS recurring_transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
-        category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
-        name TEXT NOT NULL,
-        amount REAL NOT NULL,
-        type TEXT NOT NULL,
-        frequency TEXT NOT NULL,
-        next_date TEXT NOT NULL,
-        enabled INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS recurring_transactions_user_id_idx ON recurring_transactions(user_id);
-
       CREATE TABLE IF NOT EXISTS goals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -286,7 +271,6 @@ describe('BackupService', () => {
       DELETE FROM transactions;
       DELETE FROM transfers;
       DELETE FROM subscriptions;
-      DELETE FROM recurring_transactions;
       DELETE FROM budgets;
       DELETE FROM goals;
       DELETE FROM rules;
@@ -474,7 +458,6 @@ describe('BackupService', () => {
           transactionSplits: [],
           transfers: [],
           subscriptions: [],
-          recurringTransactions: [],
           goals: [],
           budgets: [],
           budgetCategories: [],
@@ -614,7 +597,6 @@ describe('BackupService', () => {
           transactionSplits: [],
           transfers: [],
           subscriptions: [],
-          recurringTransactions: [],
           goals: [],
           budgets: [],
           budgetCategories: [],
