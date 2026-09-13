@@ -298,7 +298,7 @@
 
   <!-- View Tabs -->
   <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-  <nav class="view-tabs" role="tablist" aria-label="Vistas de suscripciones">
+  <nav class="view-tabs" role="tablist" aria-label={$t('a11y.subscriptions_views')}>
     <button
       class="tab-btn"
       class:active={activeView === 'lista'}
@@ -334,7 +334,7 @@
       </div>
     {:else}
       <div class="table-wrap">
-        <table class="data-table" aria-label="Lista de suscripciones">
+        <table class="data-table" aria-label={$t('a11y.subscriptions_list')}>
           <thead>
             <tr>
               <th>{$t('subscriptions.col_name')}</th>
@@ -443,7 +443,7 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{editingSub ? $t('subscriptions.edit_title') : $t('subscriptions.new_title')}</h2>
-        <button class="close-btn" onclick={closeForm} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       {#if formError}
@@ -524,13 +524,13 @@
 {#if deactivateTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label="Confirmar desactivación"  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.confirm_deactivation')}  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('subscriptions.delete_title')}</h2>
-        <button class="close-btn" onclick={cancelDeactivate} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={cancelDeactivate} aria-label={$t('common.close')}>&times;</button>
       </header>
       <p class="confirm-msg">{$t('subscriptions.delete_confirm')}</p>
       <p class="confirm-name">{deactivateTarget.name}</p>

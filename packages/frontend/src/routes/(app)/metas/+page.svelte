@@ -263,7 +263,7 @@
       <button class="btn btn-primary" onclick={openCreateForm}>{$t('goals.create_first')}</button>
     </div>
   {:else}
-    <div class="goals-list" role="list" aria-label="Lista de metas de ahorro">
+    <div class="goals-list" role="list" aria-label={$t('a11y.goals_list')}>
       {#each goals as goal (goal.id)}
         {@const isCompleted = goal.status === 'Completada'}
         <div class="goal-row" class:completed={isCompleted} role="listitem">
@@ -275,7 +275,7 @@
             {/if}
           </div>
           <div class="goal-progress-row">
-            <div class="progress-bar" role="progressbar" aria-valuenow={goal.progress} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso: {goal.progress.toFixed(1)}%">
+            <div class="progress-bar" role="progressbar" aria-valuenow={goal.progress} aria-valuemin={0} aria-valuemax={100} aria-label={$t('a11y.goal_progress', { pct: goal.progress.toFixed(1) })}>
               <div class="progress-fill {getProgressBarClass(goal.progress, goal.status)}" style="width:{Math.min(goal.progress, 100)}%"></div>
             </div>
             <span class="progress-pct {getProgressBarClass(goal.progress, goal.status)}">{goal.progress.toFixed(1)}%</span>
@@ -313,7 +313,7 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{editingGoal ? $t('goals.edit_title') : $t('goals.new_title')}</h2>
-        <button class="close-btn" onclick={closeForm} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       {#if formError}
@@ -362,13 +362,13 @@
 {#if fundTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label="Abonar a meta"  onkeydown={(e) => { if (e.key === 'Escape') closeFundModal(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_deposit')}  onkeydown={(e) => { if (e.key === 'Escape') closeFundModal(); }}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('goals.fund_title')}</h2>
-        <button class="close-btn" onclick={closeFundModal} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeFundModal} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       <p class="modal-subtitle">{fundTarget.name}</p>
@@ -400,13 +400,13 @@
 {#if withdrawTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label="Retirar de meta"  onkeydown={(e) => { if (e.key === 'Escape') closeWithdrawModal(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_withdraw')}  onkeydown={(e) => { if (e.key === 'Escape') closeWithdrawModal(); }}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('goals.withdraw_title')}</h2>
-        <button class="close-btn" onclick={closeWithdrawModal} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeWithdrawModal} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       <p class="modal-subtitle">{withdrawTarget.name}</p>

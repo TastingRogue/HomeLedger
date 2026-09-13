@@ -370,7 +370,7 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{editingAccount ? $t('accounts.edit_title') : $t('accounts.new_title')}</h2>
-        <button class="close-btn" onclick={closeForm} aria-label="Cerrar">×</button>
+        <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>×</button>
       </header>
       {#if formError}<div class="form-alert" role="alert">{formError}</div>{/if}
       <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} novalidate>
@@ -424,7 +424,7 @@
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('accounts.deactivate_title')}</h2>
-        <button class="close-btn" onclick={cancelDeactivate} aria-label="Cerrar">×</button>
+        <button class="close-btn" onclick={cancelDeactivate} aria-label={$t('common.close')}>×</button>
       </header>
       <p class="confirm-text">{$t('accounts.deactivate_confirm', { name: deactivateTarget.name })}</p>
       <div class="form-buttons">
@@ -452,7 +452,7 @@
             {#if selectedAccount.bank}<span class="detail-bank">{selectedAccount.bank}</span>{/if}
           </div>
         </div>
-        <button class="close-btn" onclick={closeAccountDetail} aria-label="Cerrar">×</button>
+        <button class="close-btn" onclick={closeAccountDetail} aria-label={$t('common.close')}>×</button>
       </header>
 
       <div class="detail-balance-row">

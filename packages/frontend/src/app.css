@@ -488,3 +488,98 @@ button:disabled {
   color: var(--text-secondary);
   margin-bottom: 0.75rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY FOUNDATIONS (P3.A)
+   Global responses to the three user-preference media queries, per the
+   apple-design skill §14. These live here (the single global sheet imported
+   by the root layout) so they apply app-wide instead of the previous
+   scattered per-page rules. Being global + late in the cascade, they override
+   component transitions without touching layout.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Reduced motion ───────────────────────────────────────────────────
+   "Reduced" does not mean "none": we keep opacity/color changes (they aid
+   comprehension) but remove movement — slides, springs, scale press-feedback,
+   parallax, and long spinners. We collapse durations to near-zero rather than
+   0 so state changes still register, and neutralize transform-based motion.
+   This supersedes the per-page prefers-reduced-motion blocks in
+   transacciones/reglas/categorias/prestamos (harmless duplicates now). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Kill press-scale / hover-lift movement everywhere. Any transform applied
+     purely for feedback (scale/translate on :active or :hover) is dropped;
+     transforms that are structural (icon rotation state, layout) should not
+     rely on this and are rare in the app. */
+  *:active,
+  *:hover {
+    transform: none !important;
+  }
+
+  /* Spinners: an indefinite rotation is vestibular motion. Freeze it — the
+     element still reads as a "loading" affordance via its ring shape. */
+  .auth-spinner,
+  .sf-spinner,
+  [class*='spinner'] {
+    animation: none !important;
+  }
+}
+
+/* ─── Reduced transparency ─────────────────────────────────────────────
+   Make translucent materials frostier/solid: drop backdrop blur and raise the
+   scrim opacity so nothing bleeds through. Covers the shared modal backdrops
+   plus any page-scoped backdrop/overlay class via attribute matching. */
+@media (prefers-reduced-transparency: reduce) {
+  .overlay,
+  .modal-backdrop,
+  .sf-modal-backdrop,
+  [class*='overlay'],
+  [class*='backdrop'] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+  }
+}
+
+/* ─── Increased contrast ───────────────────────────────────────────────
+   Near-solid separation: strengthen borders and firm up subtle/translucent
+   surfaces so regions are clearly delineated. Accent hues are preserved so
+   charts and status colors stay meaningful. Applied to both themes. */
+@media (prefers-contrast: more) {
+  :root {
+    --border-default: #3d5573;
+    --border-subtle: #2b3d55;
+    --text-secondary: #b6c2d1;
+    --text-muted: #8b9bb0;
+    --bg-hover: #24344a;
+  }
+
+  :root[data-theme='light'] {
+    --border-default: #9aa8bc;
+    --border-subtle: #b4c0d0;
+    --text-secondary: #33404f;
+    --text-muted: #5a6879;
+    --bg-hover: #dbe2ec;
+  }
+
+  /* Give interactive surfaces a defined edge even where the design used a
+     borderless fill. */
+  button,
+  input,
+  select,
+  textarea {
+    border: 1px solid var(--border-default);
+  }
+}

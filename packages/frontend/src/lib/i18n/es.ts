@@ -986,6 +986,35 @@ export const es = {
 
   // Footer
   'footer.rights': '© 2026 HomeLedger. Todos los derechos reservados.',
+
+  // Accessibility (aria-labels for regions, controls, and dynamic descriptions)
+  'a11y.main_nav': 'Navegación principal',
+  'a11y.open_menu': 'Abrir menú',
+  'a11y.close_menu': 'Cerrar menú',
+  'a11y.back': 'Volver',
+  'a11y.delete_char': 'Borrar',
+  'a11y.subscriptions_views': 'Vistas de suscripciones',
+  'a11y.subscriptions_list': 'Lista de suscripciones',
+  'a11y.confirm_deactivation': 'Confirmar desactivación',
+  'a11y.budgets_summary': 'Resumen general de presupuestos',
+  'a11y.budgets_list': 'Lista de presupuestos',
+  'a11y.confirm_deletion': 'Confirmar eliminación',
+  'a11y.goals_list': 'Lista de metas de ahorro',
+  'a11y.goal_deposit': 'Abonar a meta',
+  'a11y.goal_withdraw': 'Retirar de meta',
+  'a11y.goal_progress': 'Progreso: {pct}%',
+  'a11y.alerts_list': 'Lista de alertas',
+  'a11y.category_new': 'Nueva Categoría',
+  'a11y.category_edit': 'Editar Categoría',
+  'a11y.quick_step1': 'Paso 1: Tipo y Monto',
+  'a11y.quick_step2': 'Paso 2: Cuenta y Categoría',
+  'a11y.quick_step3': 'Paso 3: Confirmar',
+  'a11y.transaction_type': 'Tipo de transacción',
+  'a11y.numeric_keypad': 'Teclado numérico',
+  'a11y.select_account': 'Seleccionar cuenta',
+  'a11y.select_category': 'Seleccionar categoría',
+  'a11y.budget_category_n': 'Categoría {n}',
+  'a11y.budget_amount_n': 'Monto {n}',
 } satisfies Record<string, string>;
 
 // The set of translation keys, derived from the canonical Spanish dictionary.

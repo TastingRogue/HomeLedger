@@ -266,7 +266,7 @@
   {:else}
     <!-- Summary Stats Row -->
     {#if summary && (summary.totalAllocated > 0 || budgets.length > 0)}
-      <div class="summary-row" aria-label="Resumen general de presupuestos">
+      <div class="summary-row" aria-label={$t('a11y.budgets_summary')}>
         <div class="stat">
           <span class="stat-label">{$t('budgets.allocated')}</span>
           <span class="stat-value">{formatCurrency(summary.totalAllocated)}</span>
@@ -293,7 +293,7 @@
         <button class="btn btn-primary" onclick={openCreateForm}>{$t('budgets.create_first')}</button>
       </div>
     {:else}
-      <div class="budgets-list" role="list" aria-label="Lista de presupuestos">
+      <div class="budgets-list" role="list" aria-label={$t('a11y.budgets_list')}>
         {#each budgets as budget (budget.id)}
           <article class="budget-card" role="listitem">
             <div class="budget-top">
@@ -357,7 +357,7 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{editingBudget ? $t('budgets.edit_title') : $t('budgets.new_title')}</h2>
-        <button class="close-btn" onclick={closeForm} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       {#if formError}
@@ -399,15 +399,15 @@
 
           {#each formAllocations as alloc, i}
             <div class="alloc-row">
-              <select bind:value={alloc.categoryId} class:invalid={!!validationErrors[`cat_${i}`]} aria-label="Categoría {i + 1}">
+              <select bind:value={alloc.categoryId} class:invalid={!!validationErrors[`cat_${i}`]} aria-label={$t('a11y.budget_category_n', { n: i + 1 })}>
                 <option value="">{$t('budgets.category_placeholder')}</option>
                 {#each categories as cat (cat.id)}
                   <option value={cat.id}>{cat.name}</option>
                 {/each}
               </select>
-              <input type="number" step="0.01" min="0.01" bind:value={alloc.allocated} placeholder={$t('budgets.amount_placeholder')} class:invalid={!!validationErrors[`amt_${i}`]} aria-label="Monto {i + 1}" />
+              <input type="number" step="0.01" min="0.01" bind:value={alloc.allocated} placeholder={$t('budgets.amount_placeholder')} class:invalid={!!validationErrors[`amt_${i}`]} aria-label={$t('a11y.budget_amount_n', { n: i + 1 })} />
               {#if formAllocations.length > 1}
-                <button type="button" class="btn-remove" onclick={() => removeAllocation(i)} aria-label="Eliminar">&times;</button>
+                <button type="button" class="btn-remove" onclick={() => removeAllocation(i)} aria-label={$t('common.delete')}>&times;</button>
               {/if}
             </div>
             {#if validationErrors[`cat_${i}`]}<span class="field-err">{validationErrors[`cat_${i}`]}</span>{/if}
@@ -430,13 +430,13 @@
 {#if deleteTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label="Confirmar eliminación"  onkeydown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.confirm_deletion')}  onkeydown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
       <header class="modal-header">
         <h2>{$t('budgets.delete_title')}</h2>
-        <button class="close-btn" onclick={closeDeleteConfirm} aria-label="Cerrar">&times;</button>
+        <button class="close-btn" onclick={closeDeleteConfirm} aria-label={$t('common.close')}>&times;</button>
       </header>
 
       <p class="modal-subtitle">{$t('budgets.delete_confirm', { name: deleteTarget.name })}</p>

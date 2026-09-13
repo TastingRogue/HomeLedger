@@ -180,7 +180,7 @@
       <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
         <header class="modal-header">
           <h2 id="confirm-title">{$t('backup.confirm_title')}</h2>
-          <button class="close-btn" onclick={cancelImport} aria-label="Cerrar">&times;</button>
+          <button class="close-btn" onclick={cancelImport} aria-label={$t('common.close')}>&times;</button>
         </header>
         <p class="confirm-warning">{$t('backup.confirm_warning')}</p>
         {#if selectedFile}

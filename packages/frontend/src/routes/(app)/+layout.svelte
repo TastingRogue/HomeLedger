@@ -87,13 +87,13 @@
     {/if}
 
     <!-- Sidebar -->
-    <nav class="sidebar" class:open={sidebarOpen} aria-label="Navegación principal">
+    <nav class="sidebar" class:open={sidebarOpen} aria-label={$t('a11y.main_nav')}>
       <div class="sidebar-top">
         <div class="brand">
           <span class="brand-icon"><Icon name="dollar-sign" size={18} /></span>
           <span class="brand-name">HomeLedger</span>
         </div>
-        <button class="sidebar-close" onclick={closeSidebar} aria-label="Cerrar menú">×</button>
+        <button class="sidebar-close" onclick={closeSidebar} aria-label={$t('a11y.close_menu')}>×</button>
       </div>
 
       <div class="nav-sections">
@@ -134,7 +134,7 @@
     </nav>
 
     <!-- Mobile toggle -->
-    <button class="mobile-toggle" onclick={toggleSidebar} aria-label="Abrir menú">
+    <button class="mobile-toggle" onclick={toggleSidebar} aria-label={$t('a11y.open_menu')}>
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
         <path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>

@@ -243,7 +243,7 @@
 <div class="quick-register">
   <!-- Header -->
   <header class="qr-header">
-    <button class="qr-back-btn" onclick={goBack} aria-label="Volver">←</button>
+    <button class="qr-back-btn" onclick={goBack} aria-label={$t('a11y.back')}>←</button>
     <h1>Registro Rápido</h1>
     <div class="qr-steps">
       <span class="step-dot" class:active={currentStep >= 1}>1</span>
@@ -278,15 +278,15 @@
     {#if errors.general}
       <div class="alert-error" role="alert">
         <span>{errors.general}</span>
-        <button class="alert-dismiss" onclick={() => (errors = { ...errors, general: '' })} aria-label="Cerrar">×</button>
+        <button class="alert-dismiss" onclick={() => (errors = { ...errors, general: '' })} aria-label={$t('common.close')}>×</button>
       </div>
     {/if}
 
     <!-- Step 1: Amount Entry -->
     {#if currentStep === 1}
-      <section class="qr-step" aria-label="Paso 1: Tipo y Monto">
+      <section class="qr-step" aria-label={$t('a11y.quick_step1')}>
         <!-- Type selection FIRST -->
-        <div class="type-toggle-step1" role="group" aria-label="Tipo de transacción">
+        <div class="type-toggle-step1" role="group" aria-label={$t('a11y.transaction_type')}>
           <button
             class="type-btn-step1"
             class:active={transactionType === 'Gasto'}
@@ -315,7 +315,7 @@
           <span class="field-error">{errors.amount}</span>
         {/if}
 
-        <div class="keypad" role="group" aria-label="Teclado numérico">
+        <div class="keypad" role="group" aria-label={$t('a11y.numeric_keypad')}>
           <button class="key" onclick={() => appendDigit('1')} type="button">1</button>
           <button class="key" onclick={() => appendDigit('2')} type="button">2</button>
           <button class="key" onclick={() => appendDigit('3')} type="button">3</button>
@@ -327,7 +327,7 @@
           <button class="key" onclick={() => appendDigit('9')} type="button">9</button>
           <button class="key" onclick={() => appendDigit('.')} type="button">.</button>
           <button class="key" onclick={() => appendDigit('0')} type="button">0</button>
-          <button class="key key-delete" onclick={deleteDigit} aria-label="Borrar" type="button">⌫</button>
+          <button class="key key-delete" onclick={deleteDigit} aria-label={$t('a11y.delete_char')} type="button">⌫</button>
         </div>
 
         <div class="step-actions">
@@ -339,7 +339,7 @@
 
     <!-- Step 2: Account & Category Selection -->
     {#if currentStep === 2}
-      <section class="qr-step" aria-label="Paso 2: Cuenta y Categoría">
+      <section class="qr-step" aria-label={$t('a11y.quick_step2')}>
         <div class="amount-summary">
           <span>{transactionType === 'Ingreso' ? '↑ Ingreso' : '↓ Gasto'}:</span>
           <strong>{formatCurrency(parsedAmount)}</strong>
@@ -349,7 +349,7 @@
           <!-- svelte-ignore a11y_label_has_associated_control -->
           <label class="selector-label">CUENTA *</label>
           {#if errors.account}<span class="field-error">{errors.account}</span>{/if}
-          <div class="selector-grid" role="listbox" aria-label="Seleccionar cuenta">
+          <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_account')}>
             {#each sortedAccounts as account, i (account.id)}
               <button
                 class="selector-item"
@@ -371,7 +371,7 @@
           <!-- svelte-ignore a11y_label_has_associated_control -->
           <label class="selector-label">CATEGORÍA *</label>
           {#if errors.category}<span class="field-error">{errors.category}</span>{/if}
-          <div class="selector-grid" role="listbox" aria-label="Seleccionar categoría">
+          <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_category')}>
             {#each sortedCategories as category, i (category.id)}
               <button
                 class="selector-item"
@@ -397,7 +397,7 @@
 
     <!-- Step 3: Type & Confirm -->
     {#if currentStep === 3}
-      <section class="qr-step" aria-label="Paso 3: Confirmar">
+      <section class="qr-step" aria-label={$t('a11y.quick_step3')}>
         <div class="confirm-summary">
           <div class="confirm-row">
             <span class="confirm-label">Monto</span>

@@ -283,7 +283,7 @@
   {:else if filteredAlerts.length === 0}
     <div class="state-msg"><p>{$t('alerts.no_filtered')}</p></div>
   {:else}
-    <div class="alerts-list" role="list" aria-label="Lista de alertas">
+    <div class="alerts-list" role="list" aria-label={$t('a11y.alerts_list')}>
       {#each filteredAlerts as alert (alert.id)}
         {@const config = alertTypeConfig[alert.type]}
         {@const severity = severityConfig[alert.severity]}

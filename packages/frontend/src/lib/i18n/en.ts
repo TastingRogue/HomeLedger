@@ -987,4 +987,33 @@ export const en: Record<TranslationKey, string> = {
 
   // Footer
   'footer.rights': '© 2026 HomeLedger. All rights reserved.',
+
+  // Accessibility (aria-labels for regions, controls, and dynamic descriptions)
+  'a11y.main_nav': 'Main navigation',
+  'a11y.open_menu': 'Open menu',
+  'a11y.close_menu': 'Close menu',
+  'a11y.back': 'Back',
+  'a11y.delete_char': 'Delete',
+  'a11y.subscriptions_views': 'Subscription views',
+  'a11y.subscriptions_list': 'Subscriptions list',
+  'a11y.confirm_deactivation': 'Confirm deactivation',
+  'a11y.budgets_summary': 'Budgets overview',
+  'a11y.budgets_list': 'Budgets list',
+  'a11y.confirm_deletion': 'Confirm deletion',
+  'a11y.goals_list': 'Savings goals list',
+  'a11y.goal_deposit': 'Deposit to goal',
+  'a11y.goal_withdraw': 'Withdraw from goal',
+  'a11y.goal_progress': 'Progress: {pct}%',
+  'a11y.alerts_list': 'Alerts list',
+  'a11y.category_new': 'New Category',
+  'a11y.category_edit': 'Edit Category',
+  'a11y.quick_step1': 'Step 1: Type and Amount',
+  'a11y.quick_step2': 'Step 2: Account and Category',
+  'a11y.quick_step3': 'Step 3: Confirm',
+  'a11y.transaction_type': 'Transaction type',
+  'a11y.numeric_keypad': 'Numeric keypad',
+  'a11y.select_account': 'Select account',
+  'a11y.select_category': 'Select category',
+  'a11y.budget_category_n': 'Category {n}',
+  'a11y.budget_amount_n': 'Amount {n}',
 };

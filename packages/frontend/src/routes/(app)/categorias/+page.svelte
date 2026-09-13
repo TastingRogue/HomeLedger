@@ -339,10 +339,10 @@
 {#if showCreateModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeCreateModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Nueva Categoría" tabindex="-1">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_new')} tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.new_title')}</h3>
-        <button class="modal-close" onclick={closeCreateModal} aria-label="Cerrar">&times;</button>
+        <button class="modal-close" onclick={closeCreateModal} aria-label={$t('common.close')}>&times;</button>
       </div>
 
       {#if createSuccess}
@@ -387,10 +387,10 @@
 {#if showEditModal && editCat}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="modal-backdrop" onclick={closeEditModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Editar Categoría" tabindex="-1">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_edit')} tabindex="-1">
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.edit_title')}</h3>
-        <button class="modal-close" onclick={closeEditModal} aria-label="Cerrar">&times;</button>
+        <button class="modal-close" onclick={closeEditModal} aria-label={$t('common.close')}>&times;</button>
       </div>
 
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); handleEdit(); }}>
