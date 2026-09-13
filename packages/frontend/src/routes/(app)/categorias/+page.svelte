@@ -16,6 +16,7 @@
   import { formatCurrency, formatPercentage } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
   let categories: Category[] = $state([]);
@@ -338,8 +339,8 @@
 <!-- ═══════════ CREATE CATEGORY MODAL ═══════════ -->
 {#if showCreateModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeCreateModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_new')} tabindex="-1">
+  <div class="modal-backdrop" onclick={closeCreateModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_new')} tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.new_title')}</h3>
         <button class="modal-close" onclick={closeCreateModal} aria-label={$t('common.close')}>&times;</button>
@@ -386,8 +387,8 @@
 <!-- ═══════════ EDIT CATEGORY MODAL ═══════════ -->
 {#if showEditModal && editCat}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeEditModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_edit')} tabindex="-1">
+  <div class="modal-backdrop" onclick={closeEditModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={$t('a11y.category_edit')} tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('categories.edit_title')}</h3>
         <button class="modal-close" onclick={closeEditModal} aria-label={$t('common.close')}>&times;</button>

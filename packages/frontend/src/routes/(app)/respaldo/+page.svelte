@@ -9,6 +9,7 @@
   } from '$lib/api/backup';
   import { ApiError } from '$lib/api/client';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
   let history: BackupHistoryEntry[] = $state([]);
@@ -174,10 +175,10 @@
   <!-- Confirm Dialog -->
   {#if showConfirmDialog}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="overlay" onkeydown={(e) => e.key === 'Escape' && cancelImport()} tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="overlay" onkeydown={(e) => e.key === 'Escape' && cancelImport()} tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="confirm-title" transition:scrim>
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+      <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
         <header class="modal-header">
           <h2 id="confirm-title">{$t('backup.confirm_title')}</h2>
           <button class="close-btn" onclick={cancelImport} aria-label={$t('common.close')}>&times;</button>

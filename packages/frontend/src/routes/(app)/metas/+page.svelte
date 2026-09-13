@@ -14,6 +14,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
   let goals: GoalData[] = $state([]);
@@ -307,10 +308,10 @@
 {#if showForm}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingGoal ? 'Editar meta' : 'Nueva meta'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingGoal ? 'Editar meta' : 'Nueva meta'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{editingGoal ? $t('goals.edit_title') : $t('goals.new_title')}</h2>
         <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
@@ -362,10 +363,10 @@
 {#if fundTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_deposit')}  onkeydown={(e) => { if (e.key === 'Escape') closeFundModal(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_deposit')}  onkeydown={(e) => { if (e.key === 'Escape') closeFundModal(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('goals.fund_title')}</h2>
         <button class="close-btn" onclick={closeFundModal} aria-label={$t('common.close')}>&times;</button>
@@ -400,10 +401,10 @@
 {#if withdrawTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_withdraw')}  onkeydown={(e) => { if (e.key === 'Escape') closeWithdrawModal(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.goal_withdraw')}  onkeydown={(e) => { if (e.key === 'Escape') closeWithdrawModal(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('goals.withdraw_title')}</h2>
         <button class="close-btn" onclick={closeWithdrawModal} aria-label={$t('common.close')}>&times;</button>

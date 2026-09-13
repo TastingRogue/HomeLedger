@@ -16,6 +16,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── Types ───
   interface Category {
@@ -351,10 +352,10 @@
 {#if showForm}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingBudget ? 'Editar presupuesto' : 'Nuevo presupuesto'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingBudget ? 'Editar presupuesto' : 'Nuevo presupuesto'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{editingBudget ? $t('budgets.edit_title') : $t('budgets.new_title')}</h2>
         <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
@@ -430,10 +431,10 @@
 {#if deleteTarget}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.confirm_deletion')}  onkeydown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={$t('a11y.confirm_deletion')}  onkeydown={(e) => { if (e.key === 'Escape') closeDeleteConfirm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('budgets.delete_title')}</h2>
         <button class="close-btn" onclick={closeDeleteConfirm} aria-label={$t('common.close')}>&times;</button>

@@ -17,6 +17,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
   let loans = $state<Loan[]>([]);
@@ -259,9 +260,9 @@
 
 <!-- Create / edit modal -->
 {#if showForm}
-  <div class="overlay" role="presentation" onclick={closeForm}>
+  <div class="overlay" role="presentation" onclick={closeForm} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{editing ? $t('loans.edit_title') : $t('loans.new_title')}</h2>
         <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
@@ -303,9 +304,9 @@
 
 <!-- Record payment modal -->
 {#if payTarget}
-  <div class="overlay" role="presentation" onclick={closePayment}>
+  <div class="overlay" role="presentation" onclick={closePayment} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('loans.payment_title')}</h2>
         <button class="close-btn" onclick={closePayment} aria-label={$t('common.close')}>&times;</button>
@@ -344,9 +345,9 @@
 
 <!-- Schedule + payments detail modal -->
 {#if detailTarget}
-  <div class="overlay" role="presentation" onclick={closeDetail}>
+  <div class="overlay" role="presentation" onclick={closeDetail} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-wide" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{detailTarget.name} — {$t('loans.schedule_title')}</h2>
         <button class="close-btn" onclick={closeDetail} aria-label={$t('common.close')}>&times;</button>
@@ -415,9 +416,9 @@
 
 <!-- Delete confirm -->
 {#if deleteTarget}
-  <div class="overlay" role="presentation" onclick={() => (deleteTarget = null)}>
+  <div class="overlay" role="presentation" onclick={() => (deleteTarget = null)} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('loans.delete_title')}</h2>
         <button class="close-btn" onclick={() => (deleteTarget = null)} aria-label={$t('common.close')}>&times;</button>

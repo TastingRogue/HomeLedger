@@ -7,6 +7,7 @@
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   let transfers = $state<Transfer[]>([]);
   let accounts = $state<AccountData[]>([]);
@@ -123,10 +124,10 @@
 
 <!-- Form Modal -->
 {#if showFormModal}
-  <div class="overlay"  role="dialog" aria-modal="true">
+  <div class="overlay"  role="dialog" aria-modal="true" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header"><h2>{isEditing ? $t('transfers.edit_title') : $t('transfers.new_title')}</h2><button class="close-btn" onclick={closeFormModal}>×</button></header>
       <form onsubmit={(e) => { e.preventDefault(); submitForm(); }}>
         {#if formErrors.general}<div class="form-alert">{formErrors.general}</div>{/if}
@@ -145,10 +146,10 @@
 
 <!-- Delete Modal -->
 {#if showDeleteModal && deletingTransfer}
-  <div class="overlay"  role="dialog" aria-modal="true">
+  <div class="overlay"  role="dialog" aria-modal="true" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header"><h2>{$t('transfers.delete_title')}</h2><button class="close-btn" onclick={closeDeleteModal}>×</button></header>
       <p class="confirm-text">{$t('transfers.delete_confirm', { name: deletingTransfer.name })}</p>
       <div class="form-buttons"><button class="btn-cancel" onclick={closeDeleteModal}>{$t('common.cancel')}</button><button class="btn-danger-solid" onclick={confirmDelete}>{$t('common.delete')}</button></div>

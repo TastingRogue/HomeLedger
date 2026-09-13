@@ -10,6 +10,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
   import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
   import { theme, setTheme } from '$lib/stores/theme';
@@ -1022,8 +1023,8 @@
 <!-- QUICK TRANSACTION MODAL -->
 {#if showQuickModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeQuickModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={closeQuickModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{quickType === 'Gasto' ? $t('dashboard.quick_add_expense') : $t('dashboard.quick_add_income')}</h3>
         <button class="modal-close" onclick={closeQuickModal}>&times;</button>
@@ -1065,8 +1066,8 @@
 <!-- EDIT TRANSACTION MODAL -->
 {#if showEditTxModal && editTx}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeEditTxModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={closeEditTxModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transaction')}</h3>
         <button class="modal-close" onclick={closeEditTxModal}>&times;</button>
@@ -1132,8 +1133,8 @@
 <!-- EDIT TRANSFER MODAL -->
 {#if showEditTfModal && editTf}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeEditTfModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={closeEditTfModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transfer')}</h3>
         <button class="modal-close" onclick={closeEditTfModal}>&times;</button>
@@ -1192,8 +1193,8 @@
 <!-- ATTACH RECEIPT MODAL -->
 {#if showAttachModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeAttachModal} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={closeAttachModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.attach_title')}</h3>
         <button class="modal-close" onclick={closeAttachModal}>&times;</button>
@@ -1237,8 +1238,8 @@
 <!-- SUBSCRIPTION EDIT POPUP -->
 {#if showSubEdit}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={closeSubEdit} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={closeSubEdit} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_subscription')}</h3>
         <button class="modal-close" onclick={closeSubEdit}>&times;</button>

@@ -18,6 +18,7 @@
   import { listCategories, type Category } from '$lib/api/categories';
   import { ApiError } from '$lib/api/client';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
   let rules = $state<Rule[]>([]);
@@ -330,10 +331,10 @@
 
 <!-- Create / Edit modal -->
 {#if showForm}
-  <div class="overlay" role="presentation" onclick={closeForm}>
+  <div class="overlay" role="presentation" onclick={closeForm} transition:scrim>
     <!-- Inner onclick only stops backdrop dismiss; Escape (window) + backdrop click cover keyboard. -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-wide" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{editing ? $t('rules.edit_title') : $t('rules.new_title')}</h2>
         <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>&times;</button>
@@ -435,9 +436,9 @@
 
 <!-- Delete confirm -->
 {#if deleteTarget}
-  <div class="overlay" role="presentation" onclick={() => (deleteTarget = null)}>
+  <div class="overlay" role="presentation" onclick={() => (deleteTarget = null)} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('rules.delete_title')}</h2>
         <button class="close-btn" onclick={() => (deleteTarget = null)} aria-label={$t('common.close')}>&times;</button>

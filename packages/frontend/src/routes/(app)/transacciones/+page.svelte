@@ -8,6 +8,7 @@
   import Dropdown from '$lib/components/Dropdown.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // --- State ---
   let transactions = $state<Transaction[]>([]);
@@ -606,10 +607,10 @@
 <!-- Detail Popup Modal -->
 {#if selectedTransaction}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="overlay" role="dialog" aria-modal="true" onclick={closePanel} tabindex="-1">
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closePanel} tabindex="-1" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{selectedTransaction.name}</h2>
         <button class="close-btn" onclick={closePanel}>×</button>
@@ -649,10 +650,10 @@
 <!-- No Accounts Modal -->
 {#if showNoAccountsModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="overlay" role="dialog" aria-modal="true" onclick={closeNoAccountsModal} tabindex="-1">
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closeNoAccountsModal} tabindex="-1" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('transactions.no_accounts_title')}</h2>
         <button class="close-btn" onclick={closeNoAccountsModal}>×</button>
@@ -676,10 +677,10 @@
 
 <!-- Form Modal -->
 {#if showFormModal}
-  <div class="overlay" role="dialog" aria-modal="true">
+  <div class="overlay" role="dialog" aria-modal="true" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{isEditing ? $t('transactions.edit_transaction') : $t('transactions.new_transaction')}</h2>
         <button class="close-btn" onclick={closeFormModal}>×</button>
@@ -744,10 +745,10 @@
 
 <!-- Delete Modal -->
 {#if showDeleteModal && deletingTransaction}
-  <div class="overlay" role="dialog" aria-modal="true">
+  <div class="overlay" role="dialog" aria-modal="true" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('transactions.delete_title')}</h2>
         <button class="close-btn" onclick={closeDeleteModal}>×</button>
@@ -763,9 +764,9 @@
 
 <!-- Split Editor Modal -->
 {#if showSplitModal && splitTx}
-  <div class="overlay" role="presentation" onclick={closeSplitModal}>
+  <div class="overlay" role="presentation" onclick={closeSplitModal} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('transactions.split_title')}</h2>
         <button class="close-btn" onclick={closeSplitModal} aria-label={$t('common.close')}>×</button>

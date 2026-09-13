@@ -6,6 +6,7 @@
   import { formatCurrency, formatDateShort, nowDatetimeLocal } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   interface Account { id:number; name:string }
   interface Category { id:number; name:string }
@@ -98,10 +99,10 @@
 {#if error}<div class="error">{error}</div>{/if}
 <section class="table-card">{#if loading}<div class="empty">{$t('receipts.loading')}</div>{:else if attachments.length===0}<div class="empty"><strong>{$t('receipts.empty_title')}</strong><span>{$t('receipts.empty_desc')}</span></div>{:else}<div class="table-wrap"><table><thead><tr><th>{$t('receipts.col_date')}</th><th>{$t('receipts.col_merchant')}</th><th>{$t('receipts.col_file')}</th><th>{$t('receipts.col_total')}</th><th>{$t('receipts.col_transaction')}</th><th>{$t('receipts.col_source')}</th><th>{$t('receipts.col_status')}</th><th></th></tr></thead><tbody>{#each filtered as a (a.id)}{@const r=receipts.find(x=>x.attachmentId===a.id)}<tr class:clickable={!!r} onclick={()=>r&&open(r)}><td>{r?.receiptDate?formatDateShort(r.receiptDate):formatDateShort(a.createdAt)}</td><td class="merchant">{r?.merchant??$t('receipts.not_analyzed')}</td><td class="filename">{a.originalName??$t('receipts.col_file')}</td><td class="amount">{r?.total!==null&&r?.total!==undefined?formatCurrency(r.total):'—'}</td><td>{r?.transactionName??(a.transactionId?`#${a.transactionId}`:'—')}</td><td>{r?source(r.sourceType):'—'}</td><td>{#if r}<span class="status" class:ok={r.status==='completed'} class:bad={r.status==='failed'}>{status(r.status)}</span>{:else}<span class="status">{$t('receipts.status_pending')}</span>{/if}</td><td>{#if !r||r.status==='failed'}<button class="analyze" onclick={(e)=>{e.stopPropagation();analyze(a.id)}} disabled={analyzing===a.id}>{analyzing===a.id?$t('receipts.analyzing'):$t('receipts.analyze')}</button>{:else}<button class="view" onclick={(e)=>{e.stopPropagation();open(r)}}>{$t('receipts.view')}</button>{/if}</td></tr>{/each}</tbody></table></div>{/if}</section></div>
 {#if showUpload}
-<div class="overlay" role="presentation" onclick={closeUpload}>
+<div class="overlay" role="presentation" onclick={closeUpload} transition:scrim>
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()}>
+  <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()} transition:modalPanel>
     <div class="detail-head">
       <div><p class="eyebrow">{$t('receipts.page_eyebrow')}</p><h2>{$t('receipts.upload_title')}</h2></div>
       <button class="close" onclick={closeUpload}>×</button>
@@ -155,10 +156,10 @@
 {/if}
 
 {#if selected}
-<div class="overlay" role="presentation" onclick={close}>
+<div class="overlay" role="presentation" onclick={close} transition:scrim>
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()}>
+  <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()} transition:modalPanel>
     <div class="detail-head">
       <div><p class="eyebrow">{$t('receipts.eyebrow_document')}</p><h2>{selected.merchant??selected.filename}</h2><span class="muted">{selected.filename}</span></div>
       <div class="detail-head-actions">

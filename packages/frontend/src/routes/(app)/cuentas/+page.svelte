@@ -15,6 +15,7 @@
   import { ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   let accounts: AccountData[] = $state([]);
   let loading = $state(true);
@@ -364,10 +365,10 @@
 
 <!-- Create / Edit Modal -->
 {#if showForm}
-  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{editingAccount ? $t('accounts.edit_title') : $t('accounts.new_title')}</h2>
         <button class="close-btn" onclick={closeForm} aria-label={$t('common.close')}>×</button>
@@ -418,10 +419,10 @@
 
 <!-- Deactivate Confirmation -->
 {#if deactivateTarget}
-  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }}>
+  <div class="overlay" role="dialog" aria-modal="true" tabindex="-1"  onkeydown={(e) => { if (e.key === 'Escape') cancelDeactivate(); }} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('accounts.deactivate_title')}</h2>
         <button class="close-btn" onclick={cancelDeactivate} aria-label={$t('common.close')}>×</button>
@@ -440,10 +441,10 @@
 <!-- Account Detail Modal -->
 {#if selectedAccount}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="overlay" role="dialog" aria-modal="true" onclick={closeAccountDetail} onkeydown={(e) => { if (e.key === 'Escape') closeAccountDetail(); }} tabindex="-1">
+  <div class="overlay" role="dialog" aria-modal="true" onclick={closeAccountDetail} onkeydown={(e) => { if (e.key === 'Escape') closeAccountDetail(); }} tabindex="-1" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document">
+    <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <div class="detail-header-info">
           <h2>{selectedAccount.name}</h2>

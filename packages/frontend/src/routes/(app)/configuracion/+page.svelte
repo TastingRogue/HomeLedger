@@ -8,6 +8,7 @@
   import { localeOptions as registryLocaleOptions } from '$lib/i18n/registry';
   import { theme, setTheme, type Theme } from '$lib/stores/theme';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   // User profile
   let userName = $state('');
@@ -288,8 +289,8 @@
 <!-- Password Change Modal -->
 {#if showPasswordModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="modal-backdrop" onclick={() => showPasswordModal = false} role="presentation">
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-backdrop" onclick={() => showPasswordModal = false} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('settings.change_password')}</h3>
         <button class="modal-close" onclick={() => showPasswordModal = false}>&times;</button>

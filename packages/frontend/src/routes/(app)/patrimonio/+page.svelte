@@ -8,6 +8,7 @@
   import { ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { modalPanel, scrim } from '$lib/motion';
 
   let data = $state<NetWorthSummary | null>(null);
   let loading = $state(true);
@@ -179,10 +180,10 @@
 
 <!-- Create/Edit Modal -->
 {#if showModal}
-  <div class="overlay" role="presentation" onclick={closeModal}>
+  <div class="overlay" role="presentation" onclick={closeModal} transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()} transition:modalPanel>
       <header class="modal-head">
         <h2>{modalKind === 'asset' ? (isEditing ? $t('networth.edit_asset') : $t('networth.new_asset')) : (isEditing ? $t('networth.edit_liability') : $t('networth.new_liability'))}</h2>
         <button class="close" onclick={closeModal}>×</button>
