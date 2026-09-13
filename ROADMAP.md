@@ -313,11 +313,13 @@ currencies are handled in aggregates.
 
 These have backend support but no frontend UI, or are incomplete.
 
-### P2.1 — Rules (auto-categorization) UI
-- [ ] Backend is complete (`RulesEngineService`, `rules.routes.ts`) ✅
-- [ ] Add frontend API client `lib/api/rules.ts`
-- [ ] Add `reglas` route + UI (list/create/edit/delete/test/apply)
-- [ ] i18n es/en
+### P2.1 — Rules (auto-categorization) UI ✅ (done)
+- [x] Backend was already complete (`RulesEngineService`, `rules.routes.ts`)
+- [x] Frontend API client `lib/api/rules.ts` (list/create/update/delete/test/apply + `Rule`/`RuleCondition`/`RuleAction` types mirroring the backend)
+- [x] `/reglas` route + UI: rules table (priority, name, condition/action chips, match count, inline enable toggle), create/edit modal with dynamic **condition** rows (field + operator + value; `between` shows min/max; numeric fields use number inputs) and **action** rows (setCategory → category picker, setType → Income/Expense, addTag → text), delete confirm, per-form **Test** (dry-run) and header **Apply to uncategorized**. Escape-to-close, backdrop dismiss, instant press feedback + `prefers-reduced-motion` guard (apple-design).
+- [x] Nav entry under Analysis (`zap` icon)
+- [x] i18n es/en: `nav.rules`, `page_title.rules`, full `rules.*` namespace (fields/operators/action-types included). Parity verified: **874 keys each**, 0 mismatches.
+- [x] Verified: frontend typecheck 0 errors / 0 warnings, build clean, full suite still 438/438.
 
 ### P2.2 — Loans UI + delete
 - [ ] Add missing DELETE route + `LoanService.delete()`
