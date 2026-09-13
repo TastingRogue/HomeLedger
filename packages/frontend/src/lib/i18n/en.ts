@@ -719,6 +719,7 @@ export const en: Record<string, string> = {
   'auth.name_label': 'Name',
   'auth.name_placeholder': 'Your name',
   'auth.confirm_password_label': 'Confirm password',
+  'auth.confirm_password_placeholder': 'Repeat your password',
   'auth.have_account': 'Already have an account?',
   'auth.no_account': "Don't have an account?",
   'auth.go_login': 'Sign in',
@@ -852,6 +853,13 @@ export const en: Record<string, string> = {
   'networth.name_required': 'Name is required',
   'networth.value_required': 'Enter a valid value',
   'networth.type_required': 'Type is required',
+
+  // Page titles (browser tab)
+  'page_title.login': 'Sign In',
+  'page_title.register': 'Create Account',
+  'page_title.backup': 'Backup',
+  'page_title.quick_register': 'Quick Entry',
+  'page_title.receipts': 'Receipts & Invoices',
 
   // Footer
   'footer.rights': '© 2026 HomeLedger. All rights reserved.',

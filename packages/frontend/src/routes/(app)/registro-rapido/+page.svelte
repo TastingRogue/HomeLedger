@@ -237,7 +237,7 @@
 </script>
 
 <svelte:head>
-  <title>Registro Rápido | HomeLedger</title>
+  <title>{$t('page_title.quick_register')} | HomeLedger</title>
 </svelte:head>
 
 <div class="quick-register">

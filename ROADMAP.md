@@ -148,9 +148,11 @@ multi-arch manifest — no QEMU (which hung on `better-sqlite3`).
 - [ ] (Follow-up) Extend lint to `.svelte` files — needs `eslint-plugin-svelte` + parser; deferred to avoid pulling a new dep + a fresh batch of findings mid-phase. `.ts` across backend + frontend (api/stores/utils) is linted and gated.
 - [ ] (Follow-up) Chip away at the 85 `no-explicit-any` warnings over time
 
-### P1.3 — i18n completeness
-- [ ] Byte-level parity check between `es.ts` and `en.ts`
-- [ ] Fix stray hardcoded strings (e.g. `recibos/+page.svelte` `<title>`, `register/+page.svelte` password placeholder)
+### P1.3 — i18n completeness ✅ (done)
+- [x] Key-level parity verified between `es.ts` and `en.ts` — 819 keys each, zero keys missing on either side, no duplicates
+- [x] Fixed the untranslated **visible** strings: 5 hardcoded `<title>` tags (login, register, backup/respaldo, quick-register, receipts) now use a new `page_title.*` namespace; register's confirm-password placeholder now uses `auth.confirm_password_placeholder`. Numeric `placeholder="0.00"` left as-is (language-neutral).
+- [x] typecheck 0/0, build clean, parity re-confirmed (813 → 819 keys, both dicts)
+- [ ] (Follow-up → P3 accessibility) Many hardcoded Spanish `aria-label`s remain (Cerrar, Volver, view/list labels, etc.). These are accessibility strings, not directly visible; batch-translating them fits the P3 accessibility pass rather than expanding this item.
 
 ### P1.4 — Standardize i18n so new languages are easy to add
 Adding a language today means editing several hardcoded spots. Refactor to a
@@ -318,7 +320,7 @@ backup, so a restore clears them. Fix requires bundling binary attachment files.
 
 - [ ] Frontend test suite (currently ZERO tests) — at least smoke/e2e on critical flows (login, create tx, dashboard, backup)
 - [ ] Receipt OCR accuracy review (currently regex/heuristic best-effort)
-- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav)
+- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3)
 - [ ] Performance check with a large dataset (thousands of transactions)
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
 - [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)

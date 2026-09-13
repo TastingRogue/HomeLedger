@@ -130,7 +130,7 @@
 </script>
 
 <svelte:head>
-  <title>Respaldo - HomeLedger</title>
+  <title>{$t('page_title.backup')} - HomeLedger</title>
 </svelte:head>
 
 <div class="page">
