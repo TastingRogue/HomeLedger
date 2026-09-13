@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/TastingRogue/HomeLedger/discussions
+    about: Ask a question or discuss an idea before opening an issue.
+  - name: Documentation
+    url: https://github.com/TastingRogue/HomeLedger#readme
+    about: Setup, deployment, backup/restore, and Home Assistant docs.

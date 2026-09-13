@@ -6,8 +6,8 @@
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/irving1flores/homeledger.git
-   cd homeledger
+   git clone https://github.com/TastingRogue/HomeLedger.git
+   cd HomeLedger
    ```
 
 2. **Set up environment variables:**
@@ -166,30 +166,12 @@ deploy:
       memory: 512M
 ```
 
-### Reverse Proxy (Nginx)
+### Reverse Proxy + HTTPS
 
-```nginx
-server {
-    listen 80;
-    server_name homeledger.example.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### SSL/TLS (with Caddy)
-
-```caddy
-homeledger.example.com {
-    reverse_proxy localhost:3000
-}
-```
+Production reverse-proxy configs with TLS for **Caddy** (automatic HTTPS),
+**Nginx** (+ certbot), and **Traefik** — plus the `TRUST_PROXY` / `CORS_ORIGIN`
+settings to use behind a proxy — are in
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#reverse-proxy--https)**.
 
 ---
 
@@ -238,5 +220,5 @@ ports:
 ## Support
 
 For issues, questions, or contributions:
-- GitHub: https://github.com/irving1flores/homeledger
+- GitHub: https://github.com/TastingRogue/HomeLedger
 - Docker Hub: https://hub.docker.com/r/irving1flores/homeledger

@@ -307,6 +307,19 @@ migration step is required.
 > if something goes wrong. Backup import remaps ids safely, so a restore never
 > collides with existing data.
 
+## Deployment & operations
+
+For putting HomeLedger on the public internet safely, see
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**:
+
+- **Reverse proxy + HTTPS** — copy-pasteable configs for Caddy (automatic TLS),
+  Nginx (+ certbot), and Traefik (Docker labels), plus the `TRUST_PROXY` /
+  `CORS_ORIGIN` wiring for running behind a proxy.
+- **Backup & restore / disaster recovery** — the three mechanisms (per-user JSON
+  export/import with preview, automated whole-DB gzip snapshots + in-app restore,
+  and volume-level tar), and which to use when.
+- **Upgrading & rolling back**, and account recovery.
+
 ## Project Structure
 
 ```
@@ -550,6 +563,13 @@ locally every 5 minutes (no cloud).
 
 Example: notify when a subscription payment is due soon, or when credit
 utilization is high, using the binary sensors as automation triggers.
+
+## Contributing
+
+Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for local
+setup, the checks to run before a PR, project conventions, and a two-step guide
+to **adding a language**. Bug reports and feature requests use the issue
+templates.
 
 ## Support the Project
 
