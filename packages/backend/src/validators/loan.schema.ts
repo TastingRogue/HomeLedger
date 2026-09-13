@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { hasAtMostTwoDecimals } from '../utils/money.js';
+
+const twoDecimalMsg = 'El monto no puede tener más de 2 decimales';
 
 /**
  * Schema de validación para creación de préstamos.
@@ -14,7 +17,8 @@ export const createLoanSchema = z.object({
   principal: z
     .number({ error: 'El monto principal es obligatorio y debe ser un número' })
     .positive('El monto principal debe ser mayor a 0')
-    .max(999999999.99, 'El monto principal no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'El monto principal no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
   interestRate: z
     .number({ error: 'La tasa de interés es obligatoria y debe ser un número' })
@@ -75,17 +79,20 @@ export const recordPaymentSchema = z.object({
   amount: z
     .number({ error: 'El monto total del pago es obligatorio y debe ser un número' })
     .positive('El monto del pago debe ser mayor a 0')
-    .max(999999999.99, 'El monto del pago no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'El monto del pago no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
   principal: z
     .number({ error: 'La porción de capital es obligatoria y debe ser un número' })
     .min(0, 'La porción de capital no puede ser negativa')
-    .max(999999999.99, 'La porción de capital no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'La porción de capital no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
   interest: z
     .number({ error: 'La porción de interés es obligatoria y debe ser un número' })
     .min(0, 'La porción de interés no puede ser negativa')
-    .max(999999999.99, 'La porción de interés no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'La porción de interés no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
   date: z
     .string({ error: 'La fecha del pago es obligatoria' })

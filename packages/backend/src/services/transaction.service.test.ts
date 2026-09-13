@@ -188,6 +188,26 @@ describe('TransactionService', () => {
       expect(balance).toBeCloseTo(10000 - 150.50, 2);
     });
 
+    it('mantiene el balance exacto (sin drift de floats) al sumar muchas transacciones con decimales', async () => {
+      // Amounts chosen to trigger classic float drift when summed naively.
+      const expenses = [0.1, 0.2, 0.1, 0.7, 0.1, 0.2, 0.1, 5.55, 19.99, 0.01];
+      for (const amount of expenses) {
+        TransactionService.create(testUserId, {
+          name: 'Gasto',
+          accountId: testAccountId,
+          categoryId: testCategoryId,
+          amount,
+          type: TransactionType.Gasto,
+          date: '2024-01-15T12:00:00',
+        });
+      }
+      // Sum = 27.05 exactly (1.5 + 25.55). Naive float reduce would drift.
+      const expectedTotal = 27.05;
+      const balance = await AccountService.calculateBalance(testAccountId);
+      // Strict equality: rounding must have removed all sub-cent drift.
+      expect(balance).toBe(10000 - expectedTotal);
+    });
+
     it('debe crear una transacción de tipo Ingreso y reflejarla en el balance calculado', async () => {
       const result = TransactionService.create(testUserId, {
         name: 'Nómina',

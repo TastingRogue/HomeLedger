@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { BudgetPeriod } from '@homeledger/shared';
+import { hasAtMostTwoDecimals } from '../utils/money.js';
+
+const twoDecimalMsg = 'El monto no puede tener más de 2 decimales';
 
 /**
  * Schema de validación para creación de presupuestos.
@@ -32,7 +35,8 @@ export const createBudgetSchema = z.object({
         allocated: z
           .number({ error: 'El monto asignado es obligatorio y debe ser un número' })
           .positive('El monto asignado debe ser mayor a 0')
-          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99'),
+          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99')
+          .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
       })
     )
     .min(1, 'Debe incluir al menos una categoría'),
@@ -81,7 +85,8 @@ export const updateBudgetSchema = z.object({
         allocated: z
           .number({ error: 'El monto asignado debe ser un número' })
           .positive('El monto asignado debe ser mayor a 0')
-          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99'),
+          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99')
+          .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
       })
     )
     .min(1, 'Debe incluir al menos una categoría')

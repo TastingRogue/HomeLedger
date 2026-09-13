@@ -227,6 +227,8 @@ Override these in production.
 | `CORS_ORIGIN` | Comma-separated allowed origins; unset reflects the request origin | unset (reflect origin) |
 | `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
+| `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
+| `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
 | `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |

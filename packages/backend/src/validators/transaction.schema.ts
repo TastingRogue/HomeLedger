@@ -115,7 +115,10 @@ export const quickTransactionSchema = z.object({
   amount: z
     .number({ error: 'El monto es obligatorio y debe ser un número' })
     .min(0.01, 'El monto debe ser al menos 0.01')
-    .max(999999999.99, 'El monto no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'El monto no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, {
+      message: 'El monto no puede tener más de 2 decimales',
+    }),
 
   accountId: z
     .number({ error: 'La cuenta es obligatoria y debe ser un número' })

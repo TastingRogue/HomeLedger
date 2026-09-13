@@ -57,9 +57,14 @@ ENV DATA_DIR=/data
 # "Run" with no extra settings): it boots, creates an admin user and lets you
 # log in. These are INSECURE demo defaults — override them in production via
 # `-e JWT_SECRET=... -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=...`.
+# ALLOW_INSECURE_DEFAULTS lets the app boot with these demo values despite
+# NODE_ENV=production (it logs a loud warning). Any real deployment that sets
+# its own secrets — or drops this flag — is protected: the app refuses to start
+# on insecure values. See packages/backend/src/security-check.ts.
 ENV JWT_SECRET=insecure-dev-secret-change-me-min-32-characters-long
 ENV ADMIN_EMAIL=admin@homeledger.local
 ENV ADMIN_PASSWORD=changeme123
+ENV ALLOW_INSECURE_DEFAULTS=true
 
 RUN mkdir -p /data
 

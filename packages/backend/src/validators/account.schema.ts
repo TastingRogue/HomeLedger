@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { AccountType } from '@homeledger/shared';
+import { hasAtMostTwoDecimals } from '../utils/money.js';
+
+const twoDecimalMsg = 'El monto no puede tener más de 2 decimales';
 
 /**
  * Schema de validación para creación de cuentas financieras.
@@ -16,7 +19,8 @@ export const createAccountSchema = z
     initialBalance: z
       .number({ error: 'El balance inicial es obligatorio y debe ser un número' })
       .min(-999999999.99, 'El balance inicial no puede ser menor a -999,999,999.99')
-      .max(999999999.99, 'El balance inicial no puede exceder 999,999,999.99'),
+      .max(999999999.99, 'El balance inicial no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
     currency: z
       .string()
@@ -34,12 +38,14 @@ export const createAccountSchema = z
 
     balanceLimit: z
       .number({ error: 'El límite de balance debe ser un número' })
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional(),
 
     creditLimit: z
       .number({ error: 'El límite de crédito debe ser un número' })
       .min(0.01, 'El límite de crédito debe ser al menos 0.01')
       .max(999999999.99, 'El límite de crédito no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional(),
 
     linkedSubscriptionIds: z
@@ -76,6 +82,7 @@ export const updateAccountSchema = z
       .number({ error: 'El balance inicial debe ser un número' })
       .min(-999999999.99, 'El balance inicial no puede ser menor a -999,999,999.99')
       .max(999999999.99, 'El balance inicial no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional(),
 
     currency: z
@@ -95,6 +102,7 @@ export const updateAccountSchema = z
 
     balanceLimit: z
       .number({ error: 'El límite de balance debe ser un número' })
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional()
       .nullable(),
 
@@ -102,6 +110,7 @@ export const updateAccountSchema = z
       .number({ error: 'El límite de crédito debe ser un número' })
       .min(0.01, 'El límite de crédito debe ser al menos 0.01')
       .max(999999999.99, 'El límite de crédito no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional()
       .nullable(),
 

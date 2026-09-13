@@ -1,7 +1,8 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import { initializeDatabase, closeDatabase } from './db/connection.js';
 import { seed } from './db/seed.js';
+import { assertSecureStartup } from './security-check.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
 import { authRoutes } from './routes/v1/auth.routes.js';
@@ -23,8 +24,30 @@ import { attachmentRoutes } from './routes/v1/attachments.routes.js';
 import { receiptRoutes } from './routes/v1/receipts.routes.js';
 import { networthRoutes } from './routes/v1/networth.routes.js';
 
+/**
+ * Parse the TRUST_PROXY env into a Fastify `trustProxy` value.
+ * Only enable this when HomeLedger runs behind a reverse proxy you control,
+ * so `request.ip` (used for rate limiting/logging) reflects the real client
+ * from `X-Forwarded-For` instead of the proxy's address. Enabling it without a
+ * proxy would let clients spoof their IP, so it is OFF by default.
+ *   - unset / "false" / "0" → disabled (direct connections)
+ *   - "true" / "1"          → trust the immediate proxy
+ *   - anything else         → passed through to Fastify (e.g. a hop count like
+ *     "2", or a CIDR/subnet). Fastify accepts a string here.
+ */
+function parseTrustProxy(raw: string | undefined): boolean | string {
+  const value = raw?.trim();
+  if (!value || value === 'false' || value === '0') return false;
+  if (value === 'true' || value === '1') return true;
+  return value;
+}
+
 export async function buildApp() {
-  const app = Fastify({ logger: { level: process.env['LOG_LEVEL'] || 'info' } });
+  const options: FastifyServerOptions = {
+    logger: { level: process.env['LOG_LEVEL'] || 'info' },
+    trustProxy: parseTrustProxy(process.env['TRUST_PROXY']),
+  };
+  const app = Fastify(options);
   // CORS: restrict to configured origins in production. Set CORS_ORIGIN to a
   // comma-separated list of allowed origins (e.g. "https://app.example.com").
   // When unset, reflect the request origin (convenient for local/self-hosted
@@ -81,6 +104,17 @@ export async function buildApp() {
 }
 
 async function start(): Promise<void> {
+  // Validate security-sensitive config BEFORE building the app or touching the
+  // DB. In production, insecure demo secrets abort startup (unless explicitly
+  // allowed); otherwise we log a loud warning.
+  try {
+    const warnings = assertSecureStartup();
+    for (const line of warnings) console.warn(line);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+
   const app = await buildApp();
   const port = parseInt(process.env['PORT'] || '3000', 10);
   const host = process.env['HOST'] || '0.0.0.0';

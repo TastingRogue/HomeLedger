@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { hasAtMostTwoDecimals } from '../utils/money.js';
 
 /**
  * Schema de validación para creación de transferencias entre cuentas.
@@ -22,7 +23,8 @@ export const createTransferSchema = z
     amount: z
       .number({ error: 'El monto es obligatorio y debe ser un número' })
       .positive('El monto debe ser mayor a 0')
-      .max(999999999.99, 'El monto no puede exceder 999,999,999.99'),
+      .max(999999999.99, 'El monto no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: 'El monto no puede tener más de 2 decimales' }),
 
     sourceAccountId: z
       .number({ error: 'La cuenta origen es obligatoria y debe ser un número' })

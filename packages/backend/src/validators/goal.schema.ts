@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { GoalType } from '@homeledger/shared';
+import { hasAtMostTwoDecimals } from '../utils/money.js';
+
+const twoDecimalMsg = 'El monto no puede tener más de 2 decimales';
 
 /**
  * Schema de validación para creación de metas de ahorro.
@@ -15,7 +18,8 @@ export const createGoalSchema = z.object({
   targetAmount: z
     .number({ error: 'El monto objetivo es obligatorio y debe ser un número' })
     .min(0.01, 'El monto objetivo debe ser al menos 0.01')
-    .max(999999999.99, 'El monto objetivo no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'El monto objetivo no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 
   type: z.nativeEnum(GoalType, {
     error: 'El tipo de meta es obligatorio y debe ser válido',
@@ -45,6 +49,7 @@ export const updateGoalSchema = z.object({
     .number({ error: 'El monto objetivo debe ser un número' })
     .min(0.01, 'El monto objetivo debe ser al menos 0.01')
     .max(999999999.99, 'El monto objetivo no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
     .optional(),
 
   type: z.nativeEnum(GoalType, {
@@ -68,7 +73,8 @@ export const fundGoalSchema = z.object({
   amount: z
     .number({ error: 'El monto es obligatorio y debe ser un número' })
     .positive('El monto debe ser mayor a 0')
-    .max(999999999.99, 'El monto no puede exceder 999,999,999.99'),
+    .max(999999999.99, 'El monto no puede exceder 999,999,999.99')
+    .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
 });
 
 export type CreateGoalSchema = z.infer<typeof createGoalSchema>;

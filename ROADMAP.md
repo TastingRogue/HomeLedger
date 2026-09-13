@@ -43,9 +43,10 @@ Implications for the feature list:
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **410 passing, 0 failing** ✅ (P0.1 + P0.2 + P0.3 done on branch `p0-stability-blockers`)
+- Test suite: **429 passing, 0 failing** ✅
+- **ALL P0 BLOCKERS DONE** (P0.1–P0.5) on branch `p0-stability-blockers`
 - Last audit: codebase-wide inventory completed (see phases below)
-- Next P0: P0.4 security hardening, then P0.5 money floats
+- Next: P1 (release quality) — arm64, lint/CI, i18n, backups, multi-user, etc.
 
 ---
 
@@ -99,26 +100,30 @@ Docker (fresh boot + restart-on-existing-DB).
 - **Decision (recorded):** runtime `ensureTable` tables (`receipt_analyses`, `receipt_items`, `backup_history`, `alert_settings`) are kept as idempotent `CREATE TABLE IF NOT EXISTS` — they self-create safely on upgrade, which satisfies the data-safety goal. Converting them to formal migrations is a nice-to-have follow-up, not a blocker.
 - [ ] (Follow-up, low priority) Resync drizzle-kit snapshots so `generate` stops reporting the phantom `categories.type` drift; optionally formalize the runtime tables as migrations
 
-### P0.4 — Production security hardening ⛔
-The image ships insecure demo defaults (`JWT_SECRET`, `ADMIN_PASSWORD`) with no
-guard.
+### P0.4 — Production security hardening ✅ (done)
+The image shipped insecure demo defaults (`JWT_SECRET`, `ADMIN_PASSWORD`) with no
+guard. Now there's a startup security check + configurable proxy trust.
 
-- [ ] On boot with `NODE_ENV=production`, refuse to start (or loud warning) if `JWT_SECRET` is the known demo value or too weak, and if `ADMIN_PASSWORD` is `changeme123`
-- [ ] Add `trustProxy` config to Fastify so IP-based rate limiting/logging works behind a reverse proxy (`server.ts` line ~26)
-- [ ] Verify auth middleware covers all sensitive routes; confirm `requireRole` is wired where it should be
-- [ ] Re-verify: password min length, auth rate limit (10/min), CORS via `CORS_ORIGIN`
+- [x] Startup security check (`packages/backend/src/security-check.ts`, wired in `server.ts` before DB init): in `NODE_ENV=production`, **refuses to start** if `JWT_SECRET` is a known demo value / <32 chars, or `ADMIN_PASSWORD` is a known demo value — unless `ALLOW_INSECURE_DEFAULTS=true` (then loud warning). Outside production: warning only.
+- [x] Demo Docker image sets `ALLOW_INSECURE_DEFAULTS=true` so zero-config demo still boots (with warning); any real deploy that sets its own secrets — or drops the flag — is protected by default
+- [x] Added configurable `TRUST_PROXY` env → Fastify `trustProxy`, so `request.ip` (rate limiting/logging) is the real client behind a reverse proxy; OFF by default (avoids IP spoofing without a proxy)
+- [x] Verified auth middleware: global `onRequest` hook default-denies every `/api/*` route except 4 public ones (login/register/refresh/health), JWT Bearer or API key. `requireRole` exists but is unused — no admin-only routes yet; wiring it is tracked in **P1.10** (multi-user), not a hole today
+- [x] Re-verified: register password `.min(8)`, auth rate limit 10/min, CORS via `CORS_ORIGIN`
+- [x] Documented `ALLOW_INSECURE_DEFAULTS` + `TRUST_PROXY` in README env table
+- [x] 9 unit tests for the security check; verified the 3 scenarios against the **compiled** module (refuse / warn+boot / clean). Suite: 419 passing. (Docker end-to-end deferred — Docker daemon was down; logic proven via compiled-module run)
 
-### P0.5 — Money correctness (floats) ⛔
-All monetary columns are stored as SQLite `real` (floating point) — confirmed in
-`schema.ts`: `initialBalance`, `amount`, `allocated`, `rollover`, `targetAmount`,
-`savedAmount`, `value`, `balance`, `principal`, `interest`, etc. Floats cause
-rounding errors when summing (classic `0.1 + 0.2 ≠ 0.3`), which is unacceptable
-for a finance app where a total can be off by a cent.
+### P0.5 — Money correctness (floats) ✅ (done)
+Monetary columns stay SQLite `real`, but float drift on aggregation/persistence
+is now eliminated by consistent cent-rounding (Option B — chosen over integer
+cents to avoid a schema+API+backup migration for a personal-finance app whose
+amounts are validated to 2 decimals).
 
-- [ ] Audit every place money is summed/subtracted (balances, budgets, reports, splits, net worth) for float rounding drift
-- [ ] Decide and apply a fix strategy: store money as integer cents, or enforce consistent rounding (e.g. round to 2 decimals at every write/aggregate)
-- [ ] If migrating to integer cents: write a data migration and update all read/write paths + the backup format
-- [ ] Add tests that sum many transactions and assert exact expected totals (no drift)
+- [x] Audited every money aggregation (via context-gatherer): `calculateBalance`, reports (dashboard/cashflow/trends/category/budget-vs-actual), budgets (spent/remaining/totals + persisted rollover), net worth, goals (fund/withdraw), loans/splits (already rounded)
+- [x] **Strategy: consistent cent-rounding.** Added `packages/backend/src/utils/money.ts` (`roundMoney`, `sumMoney`, `hasAtMostTwoDecimals`); applied `roundMoney` at every aggregation point and — critically — before persisting `goals.savedAmount` (fund/withdraw) and `budgetCategories.rollover` (which compounds across periods)
+- [x] Closed the input edge: added the 2-decimal `.refine` to goal/loan/budget/account/transfer + quickTransaction schemas (previously only createTransaction enforced it), so non-cent values can't enter
+- [x] No schema/API/backup change — amounts stay decimal numbers; API contract and frontend `formatCurrency` unaffected
+- [x] Tests: `money.test.ts` (10) + a transaction drift test that sums drift-prone amounts (0.1, 0.2, 0.7, 5.55, 19.99, 0.01…) and asserts an **exact** balance via strict `.toBe`. Suite: **429 passing**, typecheck clean
+- Note: `loan.remainingAmount`, split validation, and the amortization schedule already used `Math.round(x*100)/100` — left as-is (correct)
 
 ---
 
