@@ -47,7 +47,7 @@ check that will fail on any missing or mismatched key (see below).
 
 If you changed backend or frontend code and run via Docker, remember the images
 bake the source at build time — rebuild the image to see your changes (see
-[README → Applying Code Changes](README.md#applying-code-changes-rebuild)).
+[README → Applying code changes](README.md#applying-code-changes-docker-rebuild)).
 
 ## Project layout
 
@@ -58,7 +58,7 @@ A monorepo with three workspaces under `packages/`:
 - `packages/shared` — shared TypeScript types
 
 The full structure is documented in the
-[README → Project Structure](README.md#project-structure).
+[README → Project structure](README.md#project-structure).
 
 ## Conventions
 

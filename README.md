@@ -1,19 +1,18 @@
 # HomeLedger
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com)
+[![Version](https://img.shields.io/badge/version-1.0.0-22c55e.svg)](CHANGELOG.md)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/r/irving1flores/homeledger)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
-[![Roadmap](https://img.shields.io/badge/Roadmap-to%20v1.0.0-8b5cf6)](ROADMAP.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ec4899?logo=githubsponsors)](https://github.com/sponsors/TastingRogue)
 
 > **HomeLedger** is a free, open-source, self-hosted personal finance manager — an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
 
-**[Screenshots](#screenshots)** · **[Features](#features)** · **[Quick Start](#quick-start)** · **[Docker](#docker-recommended-for-production)** · **[API](#api-endpoints)** · **[Roadmap](ROADMAP.md)** · **[Support the Project](#support-the-project)**
+HomeLedger is a **self-hosted personal finance app** for people who want to own their financial data instead of trusting it to a cloud service — a privacy-friendly, open-source alternative to Mint, YNAB or Monarch. It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS integration. Bilingual (English / Spanish) with a configurable install currency.
 
----
+**Using HomeLedger:** [Screenshots](#screenshots) · [Features](#features) · [Quick Start](#quick-start) · [Docker](#docker-recommended-for-production) · [Environment Variables](#environment-variables) · [Upgrading](#upgrading) · [Account Recovery](#account-recovery-locked-out) · [Home Assistant](#home-assistant) · [API](#api-endpoints)
 
-HomeLedger is a **self-hosted personal finance app** and **expense tracker** for people who want to own their financial data instead of trusting it to a cloud service. It's a privacy-friendly, open-source alternative to apps like Mint, YNAB or Monarch: track multiple bank accounts, log income and expenses, set category budgets, plan savings goals, manage recurring subscriptions and monitor your net worth — all from a single self-hosted web app.
-
-It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS custom integration, so your finances can drive dashboards and automations. Bilingual interface (English / Spanish) and a configurable install currency are built in.
+**Contributing:** [Development](#development) · [Contributing guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Support the Project](#support-the-project)
 
 ## Screenshots
 
@@ -126,33 +125,10 @@ plus full JSON backup import/export with preview and validation.
 | Packaging | Docker multi-arch |
 | Icons | Custom SVG Icon component (Lucide-style) |
 
-## Requirements
-
-- Node.js >= 20 (Docker images are built on Node 22)
-- npm >= 9
-
 ## Quick Start
 
-### Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/TastingRogue/HomeLedger.git
-cd HomeLedger
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your values (JWT_SECRET required, min 32 chars)
-
-# Start in development mode
-npm run dev:backend    # API on http://localhost:3000
-npm run dev:frontend   # Frontend on http://localhost:5173
-```
-
-The first user registered automatically becomes admin. The database is created automatically on first run.
+The fastest way to run HomeLedger is Docker — no toolchain to install. For local
+development from source (Node) see **[Development](#development)**.
 
 ### Docker (recommended for production)
 
@@ -323,111 +299,6 @@ For putting HomeLedger on the public internet safely, see
   and volume-level tar), and which to use when.
 - **Upgrading & rolling back**, and account recovery.
 
-## Project Structure
-
-```
-homeledger/
-├── packages/
-│   ├── backend/          # Fastify API server
-│   │   ├── src/
-│   │   │   ├── server.ts         # Entry point
-│   │   │   ├── routes/v1/        # API route handlers
-│   │   │   ├── services/         # Business logic
-│   │   │   ├── db/               # Schema, migrations, connection
-│   │   │   ├── middleware/       # Auth, rate-limit, errors
-│   │   │   ├── scheduler/        # Cron jobs (auto-charge, alerts, budgets)
-│   │   │   ├── importers/        # Bank file parsers
-│   │   │   └── validators/       # Zod schemas
-│   │   └── data/                 # SQLite DB + attachments
-│   ├── frontend/         # SvelteKit app
-│   │   ├── src/
-│   │   │   ├── routes/           # Pages (app layout + auth)
-│   │   │   ├── lib/api/          # API client functions
-│   │   │   ├── lib/stores/       # Preferences, user profile
-│   │   │   ├── lib/components/   # Icon, Dropdown, DatePicker, Charts
-│   │   │   ├── lib/i18n/         # Translation dictionaries (es/en)
-│   │   │   ├── lib/utils/        # Currency formatting, date utils
-│   │   │   └── app.css           # Global design system
-│   │   └── package.json
-│   └── shared/           # Shared TypeScript types
-├── ha-addon/             # Home Assistant Add-on
-├── ha-integration/       # HA Custom Integration (Python)
-├── Dockerfile            # Multi-stage build
-├── docker-compose.yml    # Deployment config
-└── .env.example          # Environment template
-```
-
-## Available Scripts
-
-```bash
-# From monorepo root
-npm run dev:backend       # Backend with hot-reload (tsx watch)
-npm run dev:frontend      # Frontend with Vite HMR
-npm run build             # Build shared + backend + frontend
-npm run test              # Run all tests (vitest)
-npm run lint              # Lint all packages
-npm run format            # Format with Prettier
-
-# Database
-npm run db:generate -w packages/backend   # Generate migration
-npm run db:migrate -w packages/backend    # Apply migrations
-```
-
-## Applying Code Changes (rebuild)
-
-> :warning: **The Docker images bake the source code at build time — they do
-> not mount your working copy.** After changing any backend or frontend code
-> you **must rebuild the image**, or the container keeps running the old code.
-> (Docker Compose only mounts `/data`, never the source.)
-
-After editing code, pick the workflow that matches how you run the app:
-
-**Running with Docker Compose (dev):**
-
-```bash
-# Rebuild images and recreate containers with the new code.
-# No need to stop or remove anything first: --force-recreate replaces the
-# running containers, and the `homeledger-data` volume (your DB) is preserved.
-docker compose up -d --build --force-recreate
-
-# Confirm both containers are healthy
-docker compose ps
-```
-
-**Running the standalone image:**
-
-```bash
-docker build -t homeledger:standalone .
-docker rm -f homeledger
-docker run -d --name homeledger -p 3000:3000 -v homeledger-data:/data homeledger:standalone
-```
-
-**Publishing to Docker Hub:** commit to `main` and push. The GitHub Actions
-workflow (`.github/workflows/docker-build.yml`) rebuilds and pushes the image
-automatically.
-
-### Verify before shipping
-
-Run these from the repo root and make sure they pass before rebuilding or committing:
-
-```bash
-npm run typecheck -w packages/backend    # tsc --noEmit
-npm run typecheck -w packages/frontend   # svelte-check (expect 0 errors, 0 warnings)
-npm run build                            # full build
-npm audit                                # expect 0 vulnerabilities
-```
-
-### Notes for specific changes
-
-- **Receipt analysis / OCR:** results are cached in the database. After changing
-  the parser, existing receipts keep their old values until you press
-  **Re-analyze** in the receipt popup (or restore a backup).
-- **New database tables created outside Drizzle** (raw SQL, like
-  `receipt_analyses`): remember to also clear them in
-  `BackupService.import()` so restoring a backup wipes them like the rest.
-- **New env vars:** add sensible defaults in the `Dockerfile` (for zero-config
-  run) and document them in the Environment Variables table above.
-
 ## API Endpoints
 
 Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: <key>`.
@@ -484,18 +355,6 @@ All four report into an in-memory status registry, visible to admins at
 > intentionally not supported (accounts must use the instance currency). Choosing
 > a currency sets the symbol and unit for the whole install. **Multi-currency with
 > conversion is planned post-1.0** (see the roadmap). Language is per-user.
-
-## Custom Components
-
-| Component | Purpose |
-|-----------|---------|
-| `Icon.svelte` | 20+ SVG icons inline (no external dependencies) |
-| `Dropdown.svelte` | Custom dark-themed dropdown menu |
-| `DatePicker.svelte` | Calendar with month navigation, time picker, dynamic positioning |
-| `ComboChart.svelte` | Combined bar + line chart (reactive to data changes) |
-| `DoughnutChart.svelte` | Donut with center text (reactive) |
-| `LineChart.svelte` | Line chart with gradient fill |
-| `BarChart.svelte` | Standard bar chart |
 
 ## Home Assistant
 
@@ -581,6 +440,101 @@ locally every 5 minutes (no cloud).
 
 Example: notify when a subscription payment is due soon, or when credit
 utilization is high, using the binary sensors as automation triggers.
+
+## Development
+
+Prefer to run from source (Node) instead of Docker? You'll need **Node.js ≥ 20**
+(Docker images build on Node 22) and **npm ≥ 9**.
+
+```bash
+git clone https://github.com/TastingRogue/HomeLedger.git
+cd HomeLedger
+npm install
+cp .env.example .env          # edit it — JWT_SECRET is required (min 32 chars)
+
+npm run dev:backend           # API on http://localhost:3000
+npm run dev:frontend          # Frontend on http://localhost:5173 (proxies /api to 3000)
+```
+
+The first user you register becomes the admin; the SQLite database is created
+automatically on first run. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the
+full contributor guide (conventions, testing, migrations, and a two-step guide
+to **adding a language**).
+
+### Scripts
+
+```bash
+npm run dev:backend       # Backend with hot-reload (tsx watch)
+npm run dev:frontend      # Frontend with Vite HMR
+npm run build             # Build shared + backend + frontend
+npm run test              # Run all tests (Vitest, backend + frontend)
+npm run lint              # Lint all packages
+npm run format            # Format with Prettier
+npm run db:generate -w packages/backend   # Generate a migration
+npm run db:migrate  -w packages/backend   # Apply migrations
+```
+
+Before opening a PR, make sure these pass from the repo root:
+
+```bash
+npm run typecheck -w packages/backend    # tsc --noEmit
+npm run typecheck -w packages/frontend   # svelte-check (expect 0 errors, 0 warnings)
+npm run test                             # full monorepo suite
+npm run build                            # full build
+```
+
+### Applying code changes (Docker rebuild)
+
+> :warning: **The Docker images bake the source at build time — they do not
+> mount your working copy.** After changing backend or frontend code you **must
+> rebuild the image**, or the container keeps running the old code. (Compose only
+> mounts `/data`, never the source.)
+
+```bash
+# Docker Compose (dev): rebuild + recreate with the new code.
+# --force-recreate replaces the running containers; the homeledger-data volume
+# (your DB) is preserved. No need to stop/remove anything first.
+docker compose up -d --build --force-recreate
+docker compose ps            # confirm both containers are healthy
+
+# Standalone image:
+docker build -t homeledger:standalone .
+docker rm -f homeledger
+docker run -d --name homeledger -p 3000:3000 -v homeledger-data:/data homeledger:standalone
+```
+
+**Publishing to Docker Hub:** commit to `main` and push — the GitHub Actions
+workflow (`.github/workflows/docker-build.yml`) rebuilds and pushes automatically.
+
+**Notes for specific changes:**
+
+- **Receipt OCR:** results are cached in the DB. After changing the parser,
+  existing receipts keep their old values until you press **Re-analyze** in the
+  receipt popup (or restore a backup).
+- **New tables created outside Drizzle** (raw SQL, like `receipt_analyses`): also
+  clear them in `BackupService.import()` so a restore wipes them like the rest.
+- **New env vars:** add a sensible default in the `Dockerfile` (for zero-config
+  run) and document them in the [Environment Variables](#environment-variables) table.
+
+### Project structure
+
+```
+homeledger/
+├── packages/
+│   ├── backend/          # Fastify API — routes/v1, services, db (schema/
+│   │   │                 #   migrations), middleware, scheduler, importers
+│   │   └── data/         # SQLite DB + attachments (DATA_DIR)
+│   ├── frontend/         # SvelteKit 5 — routes, lib/api, lib/stores,
+│   │   │                 #   lib/components, lib/i18n (es/en), app.css
+│   │   └── ...
+│   └── shared/           # Shared TypeScript types
+├── ha-addon/             # Home Assistant Add-on
+├── ha-integration/       # HA Custom Integration (Python)
+├── docs/                 # DEPLOYMENT.md, STABILITY.md, screenshots
+├── Dockerfile            # Single self-contained image (app + API)
+├── docker-compose.yml    # Deployment config
+└── .env.example          # Environment template
+```
 
 ## Contributing
 
