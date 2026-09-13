@@ -28,6 +28,7 @@ panel_title: "HomeLedger"
 options:
   TZ: "America/Mexico_City"
   DEFAULT_LOCALE: "en"
+  DISPLAY_CURRENCY: "MXN"
   BACKUP_ENABLED: true
   BACKUP_RETENTION: 7
   REGISTRATION_MODE: "first_user_only"
@@ -39,6 +40,7 @@ options:
 schema:
   TZ: str
   DEFAULT_LOCALE: "list(es|en)"
+  DISPLAY_CURRENCY: "list(MXN|USD|EUR|COP|ARS|CLP|PEN|BRL)"
   BACKUP_ENABLED: bool
   BACKUP_RETENTION: "int(1,)"
   REGISTRATION_MODE: "list(first_user_only|open|closed)"

@@ -4,7 +4,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import Dropdown from '$lib/components/Dropdown.svelte';
   import { get } from 'svelte/store';
-  import { preferences, setLocale, setCurrency, currencyConfig, type SupportedCurrency, type SupportedLocale } from '$lib/stores/preferences';
+  import { preferences, setLocale, currencyConfig, type SupportedLocale } from '$lib/stores/preferences';
   import { localeOptions as registryLocaleOptions } from '$lib/i18n/registry';
   import { theme, setTheme, type Theme } from '$lib/stores/theme';
   import { t } from '$lib/i18n';
@@ -37,11 +37,10 @@
   // Preferences (reactive). Initialize synchronously from the persisted store
   // so the sync $effect below never fires with a stale default that would
   // clobber the saved locale/currency when the page mounts.
-  let selectedCurrency = $state<SupportedCurrency>(get(preferences).currency);
+
   let selectedLocale = $state<SupportedLocale>(get(preferences).locale);
   let selectedTheme = $state<Theme>(get(theme));
 
-  const currencyOptions: { value: SupportedCurrency; label: string }[] = Object.entries(currencyConfig).map(([k, v]) => ({ value: k as SupportedCurrency, label: `${v.symbol} — ${v.name}` }));
   // Built from the language registry so adding a language needs no change here.
   const localeOptions = registryLocaleOptions;
   const themeOptions = $derived([
@@ -102,11 +101,7 @@
     finally { revokingAll = false; }
   }
 
-  function handleCurrencyChange(e: Event) {
-    const val = (e.target as HTMLSelectElement).value as SupportedCurrency;
-    selectedCurrency = val;
-    setCurrency(val);
-  }
+
 
   function handleLocaleChange(e: Event) {
     const val = (e.target as HTMLSelectElement).value as SupportedLocale;
@@ -114,11 +109,8 @@
     setLocale(val);
   }
 
-  // Sync dropdown bind:value to store
-  $effect(() => {
-    setCurrency(selectedCurrency);
-  });
-
+  // Currency is instance-wide (single-currency per install), not user-editable
+  // here — it is applied from /api/v1/config. Only locale/theme sync from the UI.
   $effect(() => {
     setLocale(selectedLocale);
   });
@@ -194,7 +186,9 @@
                 <span class="pref-label">{$t('settings.currency')}</span>
                 <span class="pref-desc">{$t('settings.currency_desc')}</span>
               </div>
-              <Dropdown bind:value={selectedCurrency} options={currencyOptions} />
+              <!-- Single-currency per install: the instance currency is set by the
+                   admin (env DISPLAY_CURRENCY / admin API), shown here read-only. -->
+              <span class="pref-value">{currencyConfig[$preferences.currency]?.symbol} — {currencyConfig[$preferences.currency]?.name}</span>
             </div>
             <div class="pref-row">
               <div class="pref-info">

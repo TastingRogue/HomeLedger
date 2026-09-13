@@ -10,6 +10,12 @@ import {
   setRegistrationMode,
   setRegistrationAllowlist,
 } from '../../config/registration.js';
+import {
+  SUPPORTED_CURRENCIES,
+  type SupportedCurrency,
+  getInstanceCurrency,
+  setInstanceCurrency,
+} from '../../config/currency.js';
 
 /**
  * Admin user-management API. All routes require the admin role.
@@ -42,6 +48,24 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       success: true,
       data: { mode: getRegistrationMode(), allowlist: getRegistrationAllowlist(), modes: REGISTRATION_MODES },
     });
+  });
+
+  /** GET /api/v1/users/currency — the instance currency (single-currency model). */
+  app.get('/currency', async (_request, reply) => {
+    return reply.status(200).send({
+      success: true,
+      data: { currency: getInstanceCurrency(), supported: SUPPORTED_CURRENCIES },
+    });
+  });
+
+  /** PUT /api/v1/users/currency — set the instance currency. Body: { currency }. */
+  app.put<{ Body: { currency?: string } }>('/currency', async (request, reply) => {
+    const currency = request.body?.currency;
+    if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(currency ?? '')) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_CURRENCY', message: `currency debe ser una de: ${SUPPORTED_CURRENCIES.join(', ')}` } });
+    }
+    setInstanceCurrency(currency as SupportedCurrency);
+    return reply.status(200).send({ success: true, data: { currency: getInstanceCurrency() } });
   });
 
   /** PUT /api/v1/users/registration — update the registration policy. Body: { mode?, allowlist? }. */

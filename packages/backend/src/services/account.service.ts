@@ -3,6 +3,7 @@ import { getDb } from '../db/connection.js';
 import { accounts, transactions, transfers, creditSubscriptions, subscriptions } from '../db/schema.js';
 import type { CreateAccountSchema, UpdateAccountSchema } from '../validators/account.schema.js';
 import { roundMoney } from '../utils/money.js';
+import { getInstanceCurrency } from '../config/currency.js';
 
 /**
  * Tipo de estado de salud crediticia.
@@ -29,6 +30,25 @@ export class AccountError extends Error {
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7
  */
 export class AccountService {
+  /**
+   * Resolves the account currency for the single-currency-per-install model.
+   * If a currency is provided it MUST equal the instance currency (mixing
+   * currencies is unsupported and would make totals wrong); when omitted it
+   * defaults to the instance currency.
+   *
+   * @throws AccountError CURRENCY_MISMATCH if a different currency is requested
+   */
+  private static resolveCurrency(requested?: string | null): string {
+    const instance = getInstanceCurrency();
+    if (requested && requested.toUpperCase() !== instance) {
+      throw new AccountError(
+        `Esta instancia usa una sola moneda (${instance}). No se admiten cuentas en otra moneda.`,
+        'CURRENCY_MISMATCH',
+      );
+    }
+    return instance;
+  }
+
   /**
    * Crea una nueva cuenta financiera para un usuario.
    * Valida que el nombre sea único entre cuentas activas del mismo usuario.
@@ -60,7 +80,7 @@ export class AccountService {
         balanceLimit: input.balanceLimit ?? null,
         creditLimit: input.creditLimit ?? null,
         status: 'Activo',
-        currency: input.currency ?? 'MXN',
+        currency: AccountService.resolveCurrency(input.currency),
         createdAt: now,
         updatedAt: now,
       })
@@ -116,7 +136,7 @@ export class AccountService {
         ...(input.initialBalance !== undefined && { initialBalance: input.initialBalance }),
         ...(input.balanceLimit !== undefined && { balanceLimit: input.balanceLimit ?? null }),
         ...(input.creditLimit !== undefined && { creditLimit: input.creditLimit ?? null }),
-        ...(input.currency !== undefined && { currency: input.currency }),
+        ...(input.currency !== undefined && { currency: AccountService.resolveCurrency(input.currency) }),
         updatedAt: now,
       })
       .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))

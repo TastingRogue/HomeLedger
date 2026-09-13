@@ -300,9 +300,12 @@ Login and register exist, but there's no way to recover a forgotten password.
 Users can pick from 8 currencies, but it's unclear how accounts in *different*
 currencies are handled in aggregates.
 
-- [ ] Determine current behavior: are consolidated balance / net worth / reports summing across different-currency accounts as if they were the same number? (That would be wrong.)
-- [ ] Decide the model: single currency per install, per-account currency with conversion, or clearly separate per-currency totals
-- [ ] Apply and document the chosen model; avoid presenting a meaningless mixed-currency total
+- [x] Investigated (deep audit): confirmed there was **no** currency model — all totals (dashboard consolidated balance, monthly summary, net worth, cashflow, trends, category analysis, budgets) sum amounts directly with no currency dimension; `accounts.currency` was never set by the UI and never read by any calculation; no FX/conversion anywhere; assets/liabilities have no currency. So mixing currencies would have produced silently-wrong totals.
+- [x] **Decision (user-confirmed): Option A — single currency per install.** Matches how the app already behaves, fits local-first (no outbound FX calls), and closes the silent-mixing bug.
+- [x] Applied: instance currency stored in `app_settings` (`config/currency.ts`), seeded from `DISPLAY_CURRENCY` env (default MXN, validated against the 8 supported), admin-editable (`GET/PUT /api/v1/users/currency`), exposed via `GET /api/v1/config`. `AccountService.create/update` now **reject a mismatched currency** (`CURRENCY_MISMATCH` → 400) and default to the instance currency, so totals can never mix currencies. Frontend applies the instance currency from `/config` (authoritative); the Settings currency picker is now a read-only display (currency is instance-wide, not per-user). Documented as single-currency in README + `.env.example`/Docker/compose/HA.
+- [x] Verified: backend+frontend typecheck 0/0, full suite passing, build clean.
+
+> **Real multi-currency (per-currency totals and/or FX conversion) is explicitly a post-1.0 feature** — see the FUTURE/v2 section. It requires a currency dimension on every aggregation plus assets/liabilities, and (for conversion) exchange-rate sourcing, which conflicts with local-first defaults.
 
 ---
 
@@ -443,8 +446,9 @@ Several reports exist 🟡. Extend and allow user-defined reports (rendered loca
 - [ ] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
-- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency
-- [ ] Optional, user-enabled FX auto-fetch only (off by default) — ties to P1.13
+- [ ] Builds on P1.13 (v1 shipped single-currency-per-install). Add a currency dimension to every aggregation (dashboard/net worth/reports/budgets) **and** to assets/liabilities.
+- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency, and/or per-currency separate totals
+- [ ] Optional, user-enabled FX auto-fetch only (off by default) — keeps local-first default
 
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.

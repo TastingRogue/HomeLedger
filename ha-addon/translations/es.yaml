@@ -11,6 +11,11 @@ configuration:
       Idioma principal de la instalación: nombres de las categorías del sistema
       e idioma por defecto de la interfaz (es o en). Cada usuario puede cambiar
       su propio idioma después.
+  DISPLAY_CURRENCY:
+    name: Moneda de la instalación
+    description: >-
+      Moneda única usada en toda la instalación (MXN, USD, EUR, COP, ARS, CLP,
+      PEN, BRL). HomeLedger v1 usa una sola moneda, sin conversión entre monedas.
   BACKUP_ENABLED:
     name: Respaldos automáticos
     description: >-

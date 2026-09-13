@@ -41,6 +41,7 @@ HomeLedger es una aplicación de gestión de finanzas personales auto-hospedada 
 |--------|-------------|-----------|-------------------|
 | `TZ` | Zona horaria | No | `America/Mexico_City` |
 | `DEFAULT_LOCALE` | Idioma principal de la instalación (nombres de categorías del sistema e idioma por defecto de la interfaz): `es` o `en`. Cada usuario puede cambiar su propio idioma. | No | `en` |
+| `DISPLAY_CURRENCY` | Moneda única de la instalación (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL). v1 es de una sola moneda (sin conversión). | No | `MXN` |
 | `BACKUP_ENABLED` | Activa los respaldos automáticos (snapshots comprimidos de toda la base de datos en `/data/backups`) | No | `true` |
 | `BACKUP_RETENTION` | Cuántos respaldos conservar; los más antiguos se eliminan automáticamente | No | `7` |
 | `REGISTRATION_MODE` | Quién puede registrarse: `first_user_only` (seguro: solo el primer usuario/admin, luego cerrado), `open` o `closed`. El admin puede cambiarlo en la app. | No | `first_user_only` |

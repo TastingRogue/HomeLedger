@@ -14,6 +14,7 @@ echo "Iniciando HomeLedger para Home Assistant..."
 if [ -f "$CONFIG_PATH" ]; then
   export TZ=$(jq -r '.TZ // "America/Mexico_City"' "$CONFIG_PATH")
   export DEFAULT_LOCALE=$(jq -r '.DEFAULT_LOCALE // "en"' "$CONFIG_PATH")
+  export DISPLAY_CURRENCY=$(jq -r '.DISPLAY_CURRENCY // "MXN"' "$CONFIG_PATH")
   export BACKUP_ENABLED=$(jq -r '.BACKUP_ENABLED // true' "$CONFIG_PATH")
   export BACKUP_RETENTION=$(jq -r '.BACKUP_RETENTION // 7' "$CONFIG_PATH")
   export REGISTRATION_MODE=$(jq -r '.REGISTRATION_MODE // "first_user_only"' "$CONFIG_PATH")
@@ -25,6 +26,7 @@ else
   echo "ADVERTENCIA: No se encontró archivo de opciones, usando valores por defecto"
   export TZ="${TZ:-America/Mexico_City}"
   export DEFAULT_LOCALE="${DEFAULT_LOCALE:-en}"
+  export DISPLAY_CURRENCY="${DISPLAY_CURRENCY:-MXN}"
   export BACKUP_ENABLED="${BACKUP_ENABLED:-true}"
   export BACKUP_RETENTION="${BACKUP_RETENTION:-7}"
   export REGISTRATION_MODE="${REGISTRATION_MODE:-first_user_only}"

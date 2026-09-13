@@ -52,30 +52,42 @@ preferences.subscribe((value) => {
   saveToStorage(value);
 });
 
+const SUPPORTED_CURRENCIES: SupportedCurrency[] = ['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'];
+
 /**
- * Applies the host's primary language (from GET /api/v1/config) as the UI locale
- * on a genuine first run only — i.e. when the user has not explicitly picked a
- * language. This completes the resolution chain:
- *   stored user choice → host DEFAULT_LOCALE → English (registry default).
+ * Applies instance config from GET /api/v1/config at startup:
+ *  - `locale`: the host's default language, adopted only on a genuine first run
+ *    (stored user choice → host DEFAULT_LOCALE → English). A user's choice wins.
+ *  - `currency`: the INSTANCE currency. HomeLedger v1 is single-currency per
+ *    install, so this is authoritative and always applied (it is not a per-user
+ *    override). Amounts are displayed with this one currency.
  *
- * A user's saved choice always wins; this never overrides it. Safe to call once
- * at app startup; failures (offline, endpoint missing) are ignored so the app
- * simply keeps the English fallback.
+ * Failures (offline, endpoint missing) are ignored so the app keeps its defaults.
  */
-export async function applyHostDefaultLocale(): Promise<void> {
-  if (!browser || localeWasStored) return;
+export async function applyInstanceConfig(): Promise<void> {
+  if (!browser) return;
   try {
     const res = await fetch('/api/v1/config');
     if (!res.ok) return;
     const body = await res.json().catch(() => ({}));
-    const hostLocale = (body?.data?.defaultLocale ?? body?.defaultLocale) as unknown;
+    const data = body?.data ?? body;
+
+    const hostLocale = data?.defaultLocale as unknown;
     if (isSupportedLocale(hostLocale) && !localeWasStored) {
       preferences.update((p) => ({ ...p, locale: hostLocale }));
     }
+
+    const instanceCurrency = data?.instanceCurrency as unknown;
+    if (typeof instanceCurrency === 'string' && (SUPPORTED_CURRENCIES as string[]).includes(instanceCurrency)) {
+      preferences.update((p) => ({ ...p, currency: instanceCurrency as SupportedCurrency }));
+    }
   } catch {
-    /* offline or endpoint unavailable — keep the English fallback */
+    /* offline or endpoint unavailable — keep defaults */
   }
 }
+
+/** @deprecated use applyInstanceConfig */
+export const applyHostDefaultLocale = applyInstanceConfig;
 
 // Helper to update a single preference
 export function setLocale(locale: SupportedLocale) {

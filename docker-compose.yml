@@ -27,6 +27,8 @@ services:
       # Primary language for the install (system categories + default UI
       # language): 'es' or 'en'. Falls back to English. Users can still switch.
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+      # Single display currency for the whole install (no conversion in v1).
+      DISPLAY_CURRENCY: ${DISPLAY_CURRENCY:-MXN}
       # Automated backups: gzip whole-DB snapshots under /data/backups, keeping
       # the newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.
       BACKUP_ENABLED: ${BACKUP_ENABLED:-true}

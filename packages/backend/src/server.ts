@@ -5,6 +5,7 @@ import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
 import { getDefaultLocale } from './config/locale.js';
 import { seedRegistrationSettingsFromEnv } from './config/registration.js';
+import { seedCurrencySettingFromEnv, getInstanceCurrency } from './config/currency.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
 import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
@@ -85,7 +86,7 @@ export async function buildApp() {
   });
   // Public runtime config for the frontend (no auth). Exposes the host's chosen
   // primary language so the UI can default to it before any user preference.
-  app.get('/api/v1/config', async () => ({ defaultLocale: getDefaultLocale() }));
+  app.get('/api/v1/config', async () => ({ defaultLocale: getDefaultLocale(), instanceCurrency: getInstanceCurrency() }));
   // Admin-only scheduler status: makes a silently-failed cron job visible.
   app.get('/api/v1/health/scheduler', { preHandler: [requireRole(['admin'])] }, async () => ({
     success: true,
@@ -162,11 +163,12 @@ async function start(): Promise<void> {
   } catch (error) {
     app.log.error(error, 'Database seeding failed.');
   }
-  // Seed registration policy from env on first run (safe default otherwise).
+  // Seed registration policy + instance currency from env on first run.
   try {
     seedRegistrationSettingsFromEnv();
+    seedCurrencySettingFromEnv();
   } catch (error) {
-    app.log.warn({ error }, 'Could not seed registration settings.');
+    app.log.warn({ error }, 'Could not seed instance settings.');
   }
   startScheduler();
   const shutdown = async (signal: string) => {

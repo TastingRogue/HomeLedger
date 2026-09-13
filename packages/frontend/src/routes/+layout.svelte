@@ -3,7 +3,7 @@
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { theme } from '$lib/stores/theme';
-	import { applyHostDefaultLocale } from '$lib/stores/preferences';
+	import { applyInstanceConfig } from '$lib/stores/preferences';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -12,9 +12,9 @@
 	// the attribute before first paint.
 	onMount(() => {
 		theme.update((t) => t);
-		// On a genuine first run (no stored language), adopt the host's chosen
-		// default language. A user's saved choice always wins over this.
-		void applyHostDefaultLocale();
+		// Apply instance config: host default language (first run only) + the
+		// instance currency (single-currency-per-install, always authoritative).
+		void applyInstanceConfig();
 	});
 </script>
 

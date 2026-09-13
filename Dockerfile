@@ -55,6 +55,8 @@ ENV DATA_DIR=/data
 # Primary language for the install (system categories + default UI language).
 # 'es' or 'en'; falls back to English if unset/invalid. Users can still switch.
 ENV DEFAULT_LOCALE=en
+# The install's single display currency (single-currency per install, no conversion).
+ENV DISPLAY_CURRENCY=MXN
 # Automated backups: gzip whole-DB snapshots under $DATA_DIR/backups, keeping the
 # newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.
 ENV BACKUP_ENABLED=true
