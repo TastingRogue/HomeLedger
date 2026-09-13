@@ -87,20 +87,23 @@ plus full JSON backup import/export with preview and validation.
 ## Features
 
 - **Multi-account**: Debit, Credit, Investment, Vouchers, Cash — with dynamic balance tracking
-- **Transactions**: Full income/expense recording with split by type, month grouping, card grid + table views
+- **Transactions**: Full income/expense recording with split by type, subcategories, per-transaction category splits, month grouping, card grid + table views, and **CSV export**
 - **Transfers**: Movements between accounts with fund validation and edit support
 - **Subscriptions**: Recurring payment management with auto-charge, catch-up after downtime, and visual calendar
 - **Budgets**: Category-based spending control with progress bars and dashboard integration
 - **Savings Goals**: Objective tracking with fund/withdraw actions and progress visualization
+- **Loans**: Track principal, interest and term with an amortization schedule, payment recording, and payoff progress
 - **Credit Monitoring**: Utilization bars, health status, and linked subscriptions
 - **Bank Import**: CSV/XLSX/OFX/QIF/JSON with parsers for BBVA, Santander, and Nu Mexico
-- **Categories**: Fully editable (including system categories), with type classification (Expense/Income/Both)
+- **Rules**: Auto-categorization engine — condition/action rules with test + apply-to-uncategorized
+- **Categories**: Fully editable (including system categories) with subcategories and type classification (Expense/Income/Both)
 - **Alerts**: Auto-generated (low balance, high credit, due payments, completed goals) with manual evaluation trigger
 - **Reports**: 6-month trends, category donut, savings rate ring, monthly comparison bars
-- **Backup**: Full JSON export/import with preview and validation
+- **Backup**: Full JSON export/import (with dry-run preview and validation) plus scheduled admin gzip whole-DB snapshots with in-app restore
 - **Attachments**: Upload receipts/invoices (images, PDFs) and link to transactions/transfers
 - **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
 - **Receipts**: Analyze uploaded receipts/attachments to extract transaction details
+- **Admin**: User management, registration control (first-user/open/closed + allowlist), and instance settings — admin-gated
 - **Currency**: single currency per install (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL), set by the admin
 - **Language**: Spanish + English with full interface translation
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
@@ -117,7 +120,7 @@ plus full JSON backup import/export with preview and validation.
 | Language | TypeScript (full-stack) |
 | Validation | Zod |
 | Auth | JWT + bcrypt + refresh tokens |
-| Scheduler | node-cron (auto-charges, alerts, budget resets) |
+| Scheduler | node-cron (auto-charges, alerts, budget resets, backups) |
 | Charts | Chart.js (dynamic import for SSR compat) |
 | Testing | Vitest + fast-check |
 | Packaging | Docker multi-arch |
@@ -432,20 +435,24 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 | Resource | Methods |
 |----------|---------|
 | `/auth` | register, login, refresh, logout, me (GET/PUT), change-password, revoke-all-sessions |
+| `/users` *(admin)* | list, enable/disable, delete, reset-password, registration policy (GET/PUT), instance currency (GET/PUT) |
 | `/accounts` | CRUD + deactivate |
-| `/transactions` | CRUD + quick create |
+| `/transactions` | CRUD + quick create + split + **CSV export** (`/export.csv`) |
 | `/transfers` | CRUD (create, list, update, delete) |
 | `/subscriptions` | CRUD + delete + calendar |
 | `/goals` | CRUD + fund + withdraw |
 | `/budgets` | CRUD + summary |
-| `/categories` | CRUD + analysis |
+| `/loans` | CRUD + record payment + amortization schedule + payments |
+| `/categories` | CRUD + subcategories + analysis |
 | `/alerts` | list, mark read, mark all read, evaluate, delete, settings |
 | `/reports` | dashboard, cashflow, trends, categories, budget-vs-actual |
+| `/networth` | current, history, assets/liabilities CRUD |
 | `/attachments` | upload, list, download, link, delete |
 | `/receipts` | list, get, analyze attachment |
 | `/imports` | upload, preview, confirm |
-| `/backup` | export, import |
+| `/backup` | export, import, preview (dry-run); snapshots list/create/restore *(admin)*; history |
 | `/ha` | status, webhook, sensors |
+| `/health` · `/config` | liveness probe (+ `/health/scheduler`, admin) · public runtime config |
 
 ## Scheduler Jobs
 
@@ -453,7 +460,11 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 |-----|----------|-------------|
 | Auto-charge | Daily 00:05 + on startup | Processes due subscriptions, catches up missed charges |
 | Alert evaluation | Every hour + on startup | Evaluates all alert conditions for all users |
-| Budget reset | Monthly | Resets budget periods |
+| Budget reset | Monthly (day 1, 00:10) | Resets budget periods |
+| Backup snapshot | `BACKUP_CRON` (default daily 03:00) | Gzip whole-DB snapshot under `$DATA_DIR/backups` + retention rotation. Toggle with `BACKUP_ENABLED`. |
+
+All four report into an in-memory status registry, visible to admins at
+`GET /api/v1/health/scheduler`.
 
 ## Multi-currency & i18n
 

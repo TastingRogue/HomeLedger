@@ -101,9 +101,13 @@
   function getDaysRemaining(sub: Subscription): number {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const next = new Date(sub.nextPaymentDate + 'T00:00:00');
+    // nextPaymentDate may be a bare date ("YYYY-MM-DD") or a full ISO datetime.
+    // Take only the date part before anchoring to local midnight, so appending
+    // "T00:00:00" never produces an invalid date (which rendered as "NaN días").
+    const datePart = sub.nextPaymentDate.split('T')[0];
+    const next = new Date(datePart + 'T00:00:00');
     const diff = Math.round((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
+    return Number.isNaN(diff) ? 0 : diff;
   }
 
   function getStatusBadge(status: string): string {

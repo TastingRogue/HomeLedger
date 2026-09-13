@@ -444,6 +444,14 @@ add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
 
 > Priority: **P3.A is 1.0-worthy** (reduced-motion is a genuine accessibility gap). P3.B–P3.F are 1.0-if-time / 1.1 craft. P3.G is post-1.0. All are additive polish on an already-functional UI.
 
+- [x] **P3.H — Runtime visual-craft review (from live screenshots) ✅ (done).** A pass over all app views running in Docker against the apple-design skill, fixing what static analysis couldn't surface:
+  - **Bug — "NaN días" in Subscriptions:** `getDaysRemaining` did `new Date(nextPaymentDate + 'T00:00:00')`, which produced an invalid date (→ `NaN días`) when `nextPaymentDate` was a full ISO datetime rather than a bare `YYYY-MM-DD` (Internet Izzi/Gym showed "Nañ días"). Now splits off the date part first and guards `NaN`. (apple-design §16 Craft — broken data display erodes trust.)
+  - **Tabular figures:** added a global `font-variant-numeric: tabular-nums` rule to `app.css` scoped to the app's established money-value class hooks (`.sc-value`, `.amount`, `.month-total`, `.a-value`, `.stat-value`, `.item-amount`, `.num`, `.card-balance`, etc.) so digits align in lists/columns/stat cards and don't jitter in width as values change — the right default for a finance app (§16 Craft).
+  - Verified: frontend typecheck 0/0, build clean.
+  - **Flagged, NOT auto-changed (need your call — they're data/product decisions, not code bugs):**
+    - **Categories show mixed es/en names** (e.g. "Supermercado" *and* "Groceries", "Salud" *and* "Health") — the demo backup was imported into an instance seeded in a different language, so both the seeded English system set and the imported Spanish set coexist. Not a rendering bug; it's overlapping data. Fix is a data decision (dedupe/delete one set), not a UI change.
+    - **Alerts header stray "ℹ" bubble** — a small info affordance next to the title reads as visually loose; worth confirming intent before restyling.
+
 ---
 
 ## Phase P4 — Feature depth (post-1.0, local-first compatible)

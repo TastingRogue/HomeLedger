@@ -705,3 +705,22 @@ a.nav-link {
 .toggle-input:active {
   transform: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TABULAR FIGURES (apple-design §16 Craft)
+   A finance app shows money in lists, columns, and stat cards where digits
+   should line up and not jitter in width as values change. Use tabular
+   (monospaced) figures for the money/number displays. These class names are
+   the app's established money-value hooks (they render `formatCurrency(...)`),
+   so this is a targeted rule — not a broad wildcard that could catch prose.
+   Global here (plain class selectors) so it applies across every page's
+   Svelte-scoped styles too.
+   ═══════════════════════════════════════════════════════════════════════ */
+.sc-value, .stat-value, .stat-value-lg,
+.amount, .cell-amount, .up-amount, .month-total, .item-amount,
+.a-value, .cat-amount, .sb-value, .confirm-value,
+.amount-saved, .amount-target, .progress-amounts,
+.card-balance, .num, .balance {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
