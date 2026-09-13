@@ -388,7 +388,15 @@
     showSplitModal = true;
   }
   function closeSplitModal() { showSplitModal = false; splitTx = null; }
-  function handleSplitKeydown(e: KeyboardEvent) { if (e.key === 'Escape' && showSplitModal) closeSplitModal(); }
+  // Close whichever modal is open on Escape (keyboard accessibility).
+  function handleSplitKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    if (showSplitModal) closeSplitModal();
+    else if (selectedTransaction) closePanel();
+    else if (showFormModal) closeFormModal();
+    else if (showDeleteModal) closeDeleteModal();
+    else if (showNoAccountsModal) closeNoAccountsModal();
+  }
   function addSplitRow() { splitRows = [...splitRows, { categoryId: splitTx ? String(splitTx.categoryId) : '', amount: '', note: '' }]; }
   function removeSplitRow(i: number) { splitRows = splitRows.filter((_, idx) => idx !== i); }
 
@@ -477,7 +485,7 @@
   </div>
 
   {#if error}
-    <div class="alert-error" role="alert"><span>{error}</span><button onclick={() => (error = '')}>×</button></div>
+    <div class="alert-error" role="alert"><span>{error}</span><button onclick={() => (error = '')} aria-label={$t('common.close')}>×</button></div>
   {/if}
 
   {#if loading}
@@ -644,7 +652,7 @@
     <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{selectedTransaction.name}</h2>
-        <button class="close-btn" onclick={closePanel}>×</button>
+        <button class="close-btn" onclick={closePanel} aria-label={$t('common.close')}>×</button>
       </header>
       <div class="detail-body">
         <div class="detail-amount" class:amount-red={selectedTransaction.type === 'Gasto'} class:amount-green={selectedTransaction.type === 'Ingreso'}>
@@ -687,7 +695,7 @@
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('transactions.no_accounts_title')}</h2>
-        <button class="close-btn" onclick={closeNoAccountsModal}>×</button>
+        <button class="close-btn" onclick={closeNoAccountsModal} aria-label={$t('common.close')}>×</button>
       </header>
       <div class="no-accounts-body">
         <p class="no-accounts-msg">{$t('transactions.no_accounts_message')}</p>
@@ -714,7 +722,7 @@
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{isEditing ? $t('transactions.edit_transaction') : $t('transactions.new_transaction')}</h2>
-        <button class="close-btn" onclick={closeFormModal}>×</button>
+        <button class="close-btn" onclick={closeFormModal} aria-label={$t('common.close')}>×</button>
       </header>
       <form onsubmit={(e) => { e.preventDefault(); submitForm(); }}>
         {#if formErrors.general}<div class="form-alert">{formErrors.general}</div>{/if}
@@ -782,7 +790,7 @@
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{$t('transactions.delete_title')}</h2>
-        <button class="close-btn" onclick={closeDeleteModal}>×</button>
+        <button class="close-btn" onclick={closeDeleteModal} aria-label={$t('common.close')}>×</button>
       </header>
       <p class="confirm-text">{$t('transactions.delete_confirm', { name: deletingTransaction.name })}</p>
       <div class="form-buttons">

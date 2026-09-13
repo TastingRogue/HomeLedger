@@ -58,6 +58,7 @@
     }catch{ /* pickers stay empty; user can still create a new tx if data loaded */ }
   }
   function closeUpload(){ showUpload=false; uploadFile=null; uploadError=''; }
+  function handleKeydown(e:KeyboardEvent){ if(e.key!=='Escape')return; if(showUpload)closeUpload(); else if(selected)close(); }
   function onUploadFile(e:Event){ const input=e.target as HTMLInputElement; uploadFile=input.files?.[0]??null; }
   async function submitUpload(){
     uploadError='';
@@ -94,6 +95,7 @@
   const status=(s:string)=>s==='completed'?$t('receipts.status_completed'):s==='failed'?$t('receipts.status_failed'):s==='processing'?$t('receipts.status_processing'):$t('receipts.status_pending'); const source=(s:string)=>s==='cfdi_xml'?$t('receipts.source_cfdi'):s==='ocr'?$t('receipts.source_ocr'):s==='pdf_text'?$t('receipts.source_pdf'):$t('receipts.source_unknown');
 </script>
 <svelte:head><title>{$t('page_title.receipts')} · HomeLedger</title></svelte:head>
+<svelte:window onkeydown={handleKeydown} />
 <div class="page"><header class="header"><div><p class="eyebrow">{$t('receipts.page_eyebrow')}</p><h1>{$t('receipts.page_title')}</h1><p class="subtitle">{$t('receipts.page_subtitle')}</p></div><div class="stats"><span>{$t('receipts.stat_analyzed',{n:receipts.length})}</span><span>{$t('receipts.stat_attachments',{n:attachments.length})}</span></div></header>
 <div class="toolbar"><input bind:value={search} placeholder={$t('receipts.search_placeholder')}/><button class="secondary" onclick={load} disabled={loading}>{$t('receipts.refresh')}</button><button class="upload-btn" onclick={openUpload} disabled={uploading}>{uploading?$t('receipts.uploading'):$t('receipts.upload')}</button></div>
 {#if error}<div class="error">{error}</div>{/if}

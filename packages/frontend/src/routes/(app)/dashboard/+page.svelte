@@ -596,6 +596,16 @@
 
   function closeSubEdit() { showSubEdit = false; editSubId = null; }
 
+  // Close whichever modal is open on Escape (keyboard accessibility).
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    if (showQuickModal) closeQuickModal();
+    else if (showEditTxModal) closeEditTxModal();
+    else if (showEditTfModal) closeEditTfModal();
+    else if (showAttachModal) closeAttachModal();
+    else if (showSubEdit) closeSubEdit();
+  }
+
   async function submitSubEdit() {
     if (!editSubId || !editSubName.trim() || !editSubAmount || !editSubAccountId || !editSubCategoryId) {
       editSubError = $t('dashboard.fill_all_fields'); return;
@@ -656,6 +666,7 @@
 </script>
 
 <svelte:head><title>{$t('nav.dashboard')} - HomeLedger</title></svelte:head>
+<svelte:window onkeydown={handleKeydown} />
 
 {#if loading}
   <div class="loading"><div class="spinner"></div><p>{$t('common.loading')}</p></div>
@@ -1027,7 +1038,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{quickType === 'Gasto' ? $t('dashboard.quick_add_expense') : $t('dashboard.quick_add_income')}</h3>
-        <button class="modal-close" onclick={closeQuickModal}>&times;</button>
+        <button class="modal-close" onclick={closeQuickModal} aria-label={$t('common.close')}>&times;</button>
       </div>
       {#if quickSuccess}
         <div class="modal-success"><span class="success-check">✓</span> {$t('dashboard.registered_success')}</div>
@@ -1070,7 +1081,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transaction')}</h3>
-        <button class="modal-close" onclick={closeEditTxModal}>&times;</button>
+        <button class="modal-close" onclick={closeEditTxModal} aria-label={$t('common.close')}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitEditTx(); }}>
         <div class="form-field">
@@ -1095,8 +1106,7 @@
           </div>
         </div>
         <div class="form-field">
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label>{$t('common.date')}</label>
+          <span class="field-label">{$t('common.date')}</span>
           <DatePicker bind:value={editTxDate} showTime={true} />
         </div>
         <div class="form-field">
@@ -1106,12 +1116,11 @@
         {#if editTxError}<p class="modal-error">{editTxError}</p>{/if}
         {#if editTxAttachments.length > 0}
           <div class="attachments-section">
-            <!-- svelte-ignore a11y_label_has_associated_control -->
-            <label>{$t('dashboard.attached_receipts')}</label>
+            <span class="section-label">{$t('dashboard.attached_receipts')}</span>
             {#each editTxAttachments as att (att.id)}
               <div class="attachment-row">
                 <span class="att-name">{att.originalName ?? att.filename}</span>
-                <button class="att-download" onclick={() => downloadAttachment(att.id, att.originalName ?? att.filename)} title="Descargar">↓</button>
+                <button class="att-download" onclick={() => downloadAttachment(att.id, att.originalName ?? att.filename)} title={$t('common.download')} aria-label={$t('common.download')}>↓</button>
               </div>
             {/each}
           </div>
@@ -1137,7 +1146,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_transfer')}</h3>
-        <button class="modal-close" onclick={closeEditTfModal}>&times;</button>
+        <button class="modal-close" onclick={closeEditTfModal} aria-label={$t('common.close')}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitEditTf(); }}>
         <div class="form-field">
@@ -1149,8 +1158,7 @@
           <input id="etf-amount" type="number" step="0.01" min="0.01" bind:value={editTfAmount} required />
         </div>
         <div class="form-field">
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label>{$t('common.date')}</label>
+          <span class="field-label">{$t('common.date')}</span>
           <DatePicker bind:value={editTfDate} showTime={true} />
         </div>
         <div class="form-row">
@@ -1166,12 +1174,11 @@
         {#if editTfError}<p class="modal-error">{editTfError}</p>{/if}
         {#if editTfAttachments.length > 0}
           <div class="attachments-section">
-            <!-- svelte-ignore a11y_label_has_associated_control -->
-            <label>{$t('dashboard.attached_receipts')}</label>
+            <span class="section-label">{$t('dashboard.attached_receipts')}</span>
             {#each editTfAttachments as att (att.id)}
               <div class="attachment-row">
                 <span class="att-name">{att.originalName ?? att.filename}</span>
-                <button class="att-download" onclick={() => downloadAttachment(att.id, att.originalName ?? att.filename)} title="Descargar">↓</button>
+                <button class="att-download" onclick={() => downloadAttachment(att.id, att.originalName ?? att.filename)} title={$t('common.download')} aria-label={$t('common.download')}>↓</button>
               </div>
             {/each}
           </div>
@@ -1197,7 +1204,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.attach_title')}</h3>
-        <button class="modal-close" onclick={closeAttachModal}>&times;</button>
+        <button class="modal-close" onclick={closeAttachModal} aria-label={$t('common.close')}>&times;</button>
       </div>
       {#if attachSuccess}
         <div class="modal-success"><span class="success-check">✓</span> {$t('dashboard.upload_success')}</div>
@@ -1242,7 +1249,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('dashboard.edit_subscription')}</h3>
-        <button class="modal-close" onclick={closeSubEdit}>&times;</button>
+        <button class="modal-close" onclick={closeSubEdit} aria-label={$t('common.close')}>&times;</button>
       </div>
       <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitSubEdit(); }}>
         <div class="form-field">
@@ -1499,7 +1506,7 @@
   .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; }
   .modal-form { padding: 1.2rem; display: flex; flex-direction: column; gap: 0.85rem; }
   .form-field { display: flex; flex-direction: column; gap: 0.25rem; }
-  .form-field label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .form-field label, .form-field .field-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
   .modal-error { font-size: 0.7rem; color: var(--accent-red); background: var(--tag-red-bg); padding: 0.3rem 0.5rem; border-radius: var(--radius-sm); margin: 0; }
   .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
   .btn-cancel { padding: 0.4rem 0.75rem; font-size: 0.75rem; background: none; border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; }
@@ -1522,7 +1529,7 @@
 
   /* Attachments in edit modal */
   .attachments-section { margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-elevated); border-radius: var(--radius-sm); }
-  .attachments-section label { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 0.3rem; }
+  .attachments-section .section-label { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 0.3rem; }
   .attachment-row { display: flex; align-items: center; justify-content: space-between; padding: 0.25rem 0; }
   .att-name { font-size: 0.7rem; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
   .att-download { font-size: 0.8rem; color: var(--accent-blue); text-decoration: none; padding: 0.15rem 0.4rem; background: var(--tag-blue-bg); border-radius: var(--radius-sm); font-weight: 600; border: none; cursor: pointer; }

@@ -346,8 +346,7 @@
         </div>
 
         <div class="selector-section">
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label class="selector-label">CUENTA *</label>
+          <span class="selector-label">CUENTA *</span>
           {#if errors.account}<span class="field-error">{errors.account}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_account')}>
             {#each sortedAccounts as account, i (account.id)}
@@ -368,8 +367,7 @@
         </div>
 
         <div class="selector-section">
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label class="selector-label">CATEGORÍA *</label>
+          <span class="selector-label">CATEGORÍA *</span>
           {#if errors.category}<span class="field-error">{errors.category}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_category')}>
             {#each sortedCategories as category, i (category.id)}

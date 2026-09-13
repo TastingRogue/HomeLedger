@@ -167,6 +167,7 @@ export const es = {
   'common.confirm': 'Confirmar',
   'common.filter': 'Filtrar',
   'common.clear': 'Limpiar',
+  'common.download': 'Descargar',
   'common.today': 'Hoy',
   'common.this_week': 'Esta semana',
   'common.this_month': 'Este mes',

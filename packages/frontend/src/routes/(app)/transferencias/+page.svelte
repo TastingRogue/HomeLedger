@@ -82,10 +82,18 @@
   async function confirmDelete() { if (!deletingTransfer) return; try { await deleteTransfer(deletingTransfer.id); closeDeleteModal(); await loadTransfers(); } catch (e) { if (e instanceof ApiError) error = e.message; closeDeleteModal(); } }
   function getAccountName(id: number): string { return accounts.find(a => a.id === id)?.name ?? '—'; }
 
+  // Close whichever modal is open on Escape (keyboard accessibility).
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Escape') return;
+    if (showFormModal) closeFormModal();
+    else if (showDeleteModal) closeDeleteModal();
+  }
+
   onMount(async () => { await loadAccounts(); await loadTransfers(); });
 </script>
 
 <svelte:head><title>{$t('transfers.title')} | HomeLedger</title></svelte:head>
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="page">
   <header class="page-header">
@@ -96,7 +104,7 @@
     <button class="btn-new" onclick={openCreateForm}>{$t('transfers.new')}</button>
   </header>
 
-  {#if error}<div class="alert-error"><span>{error}</span><button onclick={() => (error = '')}>×</button></div>{/if}
+  {#if error}<div class="alert-error"><span>{error}</span><button onclick={() => (error = '')} aria-label={$t('common.close')}>×</button></div>{/if}
 
   {#if loading}
     <div class="state-msg"><div class="spinner"></div><span>{$t('common.loading')}</span></div>
@@ -128,7 +136,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
-      <header class="modal-header"><h2>{isEditing ? $t('transfers.edit_title') : $t('transfers.new_title')}</h2><button class="close-btn" onclick={closeFormModal}>×</button></header>
+      <header class="modal-header"><h2>{isEditing ? $t('transfers.edit_title') : $t('transfers.new_title')}</h2><button class="close-btn" onclick={closeFormModal} aria-label={$t('common.close')}>×</button></header>
       <form onsubmit={(e) => { e.preventDefault(); submitForm(); }}>
         {#if formErrors.general}<div class="form-alert">{formErrors.general}</div>{/if}
         <div class="field"><label for="tf-name">{$t('transfers.form_name')}</label><input id="tf-name" type="text" bind:value={formName} maxlength={100} class:invalid={!!formErrors.name} />{#if formErrors.name}<span class="field-err">{formErrors.name}</span>{/if}</div>
@@ -150,7 +158,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="modal modal-sm" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
-      <header class="modal-header"><h2>{$t('transfers.delete_title')}</h2><button class="close-btn" onclick={closeDeleteModal}>×</button></header>
+      <header class="modal-header"><h2>{$t('transfers.delete_title')}</h2><button class="close-btn" onclick={closeDeleteModal} aria-label={$t('common.close')}>×</button></header>
       <p class="confirm-text">{$t('transfers.delete_confirm', { name: deletingTransfer.name })}</p>
       <div class="form-buttons"><button class="btn-cancel" onclick={closeDeleteModal}>{$t('common.cancel')}</button><button class="btn-danger-solid" onclick={confirmDelete}>{$t('common.delete')}</button></div>
     </div>

@@ -332,6 +332,14 @@
   });
 </script>
 
+<svelte:window onkeydown={(e) => {
+  if (e.key !== 'Escape') return;
+  if (restoreTarget) restoreTarget = null;
+  else if (deleteTarget) deleteTarget = null;
+  else if (resetTarget) resetTarget = null;
+  else if (showPasswordModal) showPasswordModal = false;
+}} />
+
 <svelte:head><title>{$t('settings.title')} - HomeLedger</title></svelte:head>
 
 <div class="page">
@@ -632,7 +640,7 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
       <div class="modal-header">
         <h3 class="modal-title">{$t('settings.change_password')}</h3>
-        <button class="modal-close" onclick={() => showPasswordModal = false}>&times;</button>
+        <button class="modal-close" onclick={() => showPasswordModal = false} aria-label={$t('common.close')}>&times;</button>
       </div>
       {#if passwordSuccess}
         <div class="modal-success">{$t('settings.password_updated')}</div>

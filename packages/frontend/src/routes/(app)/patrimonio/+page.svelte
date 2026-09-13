@@ -48,6 +48,7 @@
     showModal = true;
   }
   function closeModal() { showModal = false; editingId = null; formError = ''; }
+  function handleKeydown(e: KeyboardEvent) { if (e.key === 'Escape' && showModal) closeModal(); }
 
   async function save() {
     formError = '';
@@ -89,6 +90,7 @@
 </script>
 
 <svelte:head><title>{$t('networth.title')} · HomeLedger</title></svelte:head>
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="page">
   <header class="page-header">

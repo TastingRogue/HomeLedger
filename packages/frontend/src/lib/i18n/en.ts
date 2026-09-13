@@ -168,6 +168,7 @@ export const en: Record<TranslationKey, string> = {
   'common.confirm': 'Confirm',
   'common.filter': 'Filter',
   'common.clear': 'Clear',
+  'common.download': 'Download',
   'common.today': 'Today',
   'common.this_week': 'This week',
   'common.this_month': 'This month',

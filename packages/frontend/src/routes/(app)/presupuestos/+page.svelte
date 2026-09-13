@@ -392,8 +392,7 @@
         <!-- Category Allocations -->
         <div class="allocations-section">
           <div class="alloc-header">
-            <!-- svelte-ignore a11y_label_has_associated_control -->
-            <label>{$t('budgets.form_allocations')} <span class="req">*</span></label>
+            <span class="alloc-label">{$t('budgets.form_allocations')} <span class="req">*</span></span>
             <button type="button" class="btn btn-sm btn-secondary" onclick={addAllocation}>{$t('budgets.add_allocation')}</button>
           </div>
           {#if validationErrors.categories}<span class="field-err">{validationErrors.categories}</span>{/if}
@@ -575,7 +574,7 @@
   /* Allocations */
   .allocations-section { border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--spacing-md); margin-bottom: var(--spacing-md); }
   .alloc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); }
-  .alloc-header label { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
+  .alloc-header .alloc-label { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
   .alloc-row { display: flex; gap: var(--spacing-sm); align-items: center; margin-bottom: var(--spacing-sm); }
   .alloc-row select { flex: 2; }
   .alloc-row input { flex: 1; }
