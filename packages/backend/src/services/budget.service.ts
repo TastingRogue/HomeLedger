@@ -1,4 +1,4 @@
-import { eq, and, or, gte, lte, sql, sum } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
@@ -98,7 +98,7 @@ export class BudgetService {
       const existing = db
         .select({ id: categories.id })
         .from(categories)
-        .where(and(eq(categories.id, cat.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
+        .where(and(eq(categories.id, cat.categoryId), eq(categories.userId, userId)))
         .get();
 
       if (!existing) {
@@ -766,7 +766,7 @@ export class BudgetService {
           const okCat = db
             .select({ id: categories.id })
             .from(categories)
-            .where(and(eq(categories.id, cat.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
+            .where(and(eq(categories.id, cat.categoryId), eq(categories.userId, userId)))
             .get();
           if (!okCat) {
             throw new BudgetError(`La categoría con ID ${cat.categoryId} no existe`, 'CATEGORY_NOT_FOUND');

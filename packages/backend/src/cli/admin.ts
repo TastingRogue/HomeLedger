@@ -26,6 +26,7 @@ import bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
 import { initializeDatabase, getDb, closeDatabase } from '../db/connection.js';
 import { users } from '../db/schema.js';
+import { seedCategoriesForUser } from '../db/seed.js';
 
 const SALT_ROUNDS = 12;
 
@@ -72,10 +73,13 @@ async function createAdmin(email: string, password?: string, name?: string): Pro
   if (pw.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.');
   const now = new Date().toISOString();
   const passwordHash = await bcrypt.hash(pw, SALT_ROUNDS);
-  getDb()
+  const created = getDb()
     .insert(users)
     .values({ email: email.trim(), passwordHash, name: name ?? 'Admin', role: 'admin', disabled: false, createdAt: now, updatedAt: now })
-    .run();
+    .returning({ id: users.id })
+    .get();
+  // Give the new admin its own default category set (per-user model).
+  seedCategoriesForUser(created.id);
   console.log(`Administrador creado: ${email}`);
   if (!password) console.log(`Contraseña (cópiala ahora): ${pw}`);
 }

@@ -1,4 +1,4 @@
-import { eq, and, or, sql, gte, lte } from 'drizzle-orm';
+import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { categories, subcategories, transactions } from '../db/schema.js';
 
@@ -34,24 +34,16 @@ export interface CategoryAnalysisItem {
  */
 export class CategoryService {
   /**
-   * Retorna las categorías disponibles para un usuario, incluyendo:
-   * - Categorías del sistema (isSystem=true, userId=null)
-   * - Categorías creadas por el usuario
-   * Cada categoría incluye sus subcategorías.
+   * Retorna las categorías del usuario (modelo por-usuario: cada usuario tiene
+   * su propio conjunto). Cada categoría incluye sus subcategorías.
    */
   static async list(userId: number) {
     const db = getDb();
 
-    // Obtener categorías del sistema y del usuario
     const cats = db
       .select()
       .from(categories)
-      .where(
-        or(
-          eq(categories.isSystem, true),
-          eq(categories.userId, userId)
-        )
-      )
+      .where(eq(categories.userId, userId))
       .all();
 
     // Obtener subcategorías para las categorías encontradas
@@ -115,19 +107,11 @@ export class CategoryService {
       );
     }
 
-    // Validar nombre único entre categorías del usuario y del sistema
+    // Validar nombre único entre las categorías del usuario
     const existing = db
       .select({ id: categories.id })
       .from(categories)
-      .where(
-        and(
-          eq(categories.name, name),
-          or(
-            eq(categories.isSystem, true),
-            eq(categories.userId, userId)
-          )
-        )
-      )
+      .where(and(eq(categories.name, name), eq(categories.userId, userId)))
       .get();
 
     if (existing) {
@@ -157,39 +141,23 @@ export class CategoryService {
   }
 
   /**
-   * Actualiza una categoría existente (nombre, icono, color).
-   * Valida que el nombre sea único entre las categorías del usuario y las del sistema.
-   * Las categorías del sistema no se pueden editar.
+   * Actualiza una categoría del usuario (nombre, icono, color, tipo).
+   * Valida que el nombre sea único entre las categorías del usuario.
    *
-   * @throws CategoryError si la categoría no existe, es del sistema, o el nombre ya existe
+   * @throws CategoryError si la categoría no existe/no es del usuario, o el nombre ya existe
    */
-  static async update(categoryId: number, userId: number, input: { name?: string; icon?: string | null; color?: string | null; type?: string }, role?: string) {
+  static async update(categoryId: number, userId: number, input: { name?: string; icon?: string | null; color?: string | null; type?: string }) {
     const db = getDb();
 
-    // Verificar que la categoría existe
+    // The category must exist and belong to this user (per-user model — every
+    // category is owned by a user and freely editable by its owner).
     const category = db
       .select()
       .from(categories)
-      .where(eq(categories.id, categoryId))
+      .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
       .get();
 
     if (!category) {
-      throw new CategoryError(
-        'Categoría no encontrada',
-        'CATEGORY_NOT_FOUND'
-      );
-    }
-
-    // System categories are the shared, admin-curated set: only an admin may
-    // edit them. User categories must belong to the requesting user.
-    if (category.isSystem) {
-      if (role !== 'admin') {
-        throw new CategoryError(
-          'Solo un administrador puede editar las categorías del sistema',
-          'FORBIDDEN'
-        );
-      }
-    } else if (category.userId !== userId) {
       throw new CategoryError(
         'Categoría no encontrada',
         'CATEGORY_NOT_FOUND'
@@ -214,19 +182,11 @@ export class CategoryService {
         );
       }
 
-      // Validar nombre único (excluir la categoría actual)
+      // Validar nombre único entre las categorías del usuario (excluir la actual)
       const existing = db
         .select({ id: categories.id })
         .from(categories)
-        .where(
-          and(
-            eq(categories.name, name),
-            or(
-              eq(categories.isSystem, true),
-              eq(categories.userId, userId)
-            )
-          )
-        )
+        .where(and(eq(categories.name, name), eq(categories.userId, userId)))
         .get();
 
       if (existing && existing.id !== categoryId) {
@@ -259,33 +219,24 @@ export class CategoryService {
   }
 
   /**
-   * Elimina una categoría solo si no tiene transacciones asociadas.
-   * Las categorías del sistema no se pueden eliminar.
+   * Elimina una categoría del usuario, solo si no tiene transacciones asociadas.
    *
-   * @throws CategoryError si la categoría no existe, es del sistema, o tiene transacciones asociadas
+   * @throws CategoryError si la categoría no existe/no es del usuario, o tiene transacciones asociadas
    */
-  static async delete(categoryId: number) {
+  static async delete(categoryId: number, userId: number) {
     const db = getDb();
 
-    // Verificar que la categoría existe
+    // The category must exist and belong to this user.
     const category = db
       .select()
       .from(categories)
-      .where(eq(categories.id, categoryId))
+      .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
       .get();
 
     if (!category) {
       throw new CategoryError(
         'Categoría no encontrada',
         'CATEGORY_NOT_FOUND'
-      );
-    }
-
-    // System categories are shared and cannot be deleted
-    if (category.isSystem) {
-      throw new CategoryError(
-        'No se puede eliminar una categoría del sistema',
-        'CATEGORY_IS_SYSTEM'
       );
     }
 

@@ -5,6 +5,7 @@ import { eq, and, count } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import { getRegistrationMode, getRegistrationAllowlist } from '../config/registration.js';
+import { seedCategoriesForUser } from '../db/seed.js';
 import type { RegisterSchema, LoginSchema } from '../validators/auth.schema.js';
 
 const SALT_ROUNDS = 12;
@@ -105,6 +106,9 @@ export class AuthService {
       })
       .returning()
       .get();
+
+    // Every new user gets their own default category set (per-user model).
+    seedCategoriesForUser(result.id);
 
     // Generate tokens
     const tokenPayload: TokenPayload = {

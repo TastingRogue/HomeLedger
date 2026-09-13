@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { getDb } from './connection.js';
 import { categories, users } from './schema.js';
@@ -7,18 +7,20 @@ import { getDefaultLocale, type BackendLocale } from '../config/locale.js';
 type CategoryType = 'Gasto' | 'Ingreso' | 'Ambos';
 
 /**
- * Designed default system categories, keyed by a stable, language-independent
- * `key`. These are system-wide (isSystem: true, userId: null) and shared across
- * all users. They are seeded in the host's primary language (DEFAULT_LOCALE),
- * chosen by the admin at launch; individual users can then delete these and
- * create their own in any language.
+ * Designed default categories, keyed by a stable, language-independent `key`.
+ * Every user gets their OWN copy of this set at account creation (per-user
+ * model — categories are not shared across users). The copy is seeded in the
+ * instance's primary language (DEFAULT_LOCALE, chosen by the admin at launch);
+ * afterwards each user can freely rename, retype, or delete their own
+ * categories — including switching them to another language — without
+ * affecting anyone else.
  *
  * `type` follows the schema enum: 'Gasto' (expense), 'Ingreso' (income), or
  * 'Ambos' (both — for categories that legitimately go in either direction).
  *
- * `uncategorized` is the default landing category for imported/unmatched
- * transactions; the import service and rules engine look it up by KEY (not name)
- * so it works regardless of the seed language.
+ * `uncategorized` is each user's default landing category for imported/unmatched
+ * transactions; the import service and rules engine look it up by KEY per user
+ * (not by name), so it works regardless of the seed language.
  */
 const SYSTEM_CATEGORIES: { key: string; es: string; en: string; type: CategoryType }[] = [
   { key: 'income', es: 'Ingresos', en: 'Income', type: 'Ingreso' },
@@ -49,64 +51,50 @@ function localizedName(cat: { es: string; en: string }, locale: BackendLocale): 
 }
 
 /**
- * Seeds the designed system categories in the host's primary language.
+ * Seeds the designed default categories for a single user, in the instance's
+ * primary language. Called from every user-creation path (registration, the
+ * env-bootstrapped admin, and the CLI create-admin) so a new account always
+ * starts with a usable, editable category set of its own.
  *
- * Idempotent and safe for both fresh installs and upgrades:
- * - New designed categories are keyed by `key`; any key already present is left
- *   untouched (so we never duplicate on re-seed).
- * - Legacy upgrade: installs seeded before the `key` column existed have the old
- *   Notion-export Spanish categories with `key = NULL`. We backfill the critical
- *   `uncategorized` key onto a pre-existing "Corrección" row so the import/rules
- *   default lookup keeps working. We do NOT delete or rename the other legacy
- *   categories — transactions reference them by id (FK is `restrict`).
+ * Idempotent per user: keys the user already has are skipped, so calling it
+ * again (e.g. a re-run) never duplicates.
+ *
+ * @param userId - the user to seed categories for
+ * @param locale - display language; defaults to the instance DEFAULT_LOCALE
  */
-async function seedCategories(): Promise<void> {
+export function seedCategoriesForUser(userId: number, locale: BackendLocale = getDefaultLocale()): void {
   const db = getDb();
   const now = new Date().toISOString();
-  const locale = getDefaultLocale();
 
-  // --- Legacy upgrade backfill: adopt an old "Corrección" row as uncategorized.
-  const legacyDefault = db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(and(eq(categories.isSystem, true), eq(categories.name, 'Corrección'), isNull(categories.key)))
-    .get();
-  if (legacyDefault) {
-    db.update(categories).set({ key: UNCATEGORIZED_KEY }).where(eq(categories.id, legacyDefault.id)).run();
-    console.log('[seed] Backfilled key="uncategorized" onto legacy "Corrección" category.');
-  }
-
-  // --- Seed designed categories by key (skip keys already present).
   const existingKeys = new Set(
     db
       .select({ key: categories.key })
       .from(categories)
-      .where(eq(categories.isSystem, true))
+      .where(eq(categories.userId, userId))
       .all()
       .map((c) => c.key)
       .filter((k): k is string => k !== null),
   );
 
   const toInsert = SYSTEM_CATEGORIES.filter((cat) => !existingKeys.has(cat.key));
-
-  if (toInsert.length > 0) {
-    db.insert(categories)
-      .values(
-        toInsert.map((cat) => ({
-          key: cat.key,
-          name: localizedName(cat, locale),
-          type: cat.type,
-          userId: null,
-          isSystem: true,
-          createdAt: now,
-        }))
-      )
-      .run();
-
-    console.log(`[seed] Inserted ${toInsert.length} system categories (locale=${locale}).`);
-  } else {
-    console.log('[seed] System categories already exist, skipping.');
+  if (toInsert.length === 0) {
+    return;
   }
+
+  db.insert(categories)
+    .values(
+      toInsert.map((cat) => ({
+        key: cat.key,
+        name: localizedName(cat, locale),
+        type: cat.type,
+        userId,
+        isSystem: false,
+        createdAt: now,
+      }))
+    )
+    .run();
+
+  console.log(`[seed] Seeded ${toInsert.length} categories for user ${userId} (locale=${locale}).`);
 }
 
 /**
@@ -138,7 +126,7 @@ async function seedAdminUser(): Promise<void> {
   const now = new Date().toISOString();
   const passwordHash = await bcrypt.hash(adminPassword, SALT_ROUNDS);
 
-  db.insert(users)
+  const admin = db.insert(users)
     .values({
       email: adminEmail,
       passwordHash,
@@ -147,7 +135,11 @@ async function seedAdminUser(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     })
-    .run();
+    .returning({ id: users.id })
+    .get();
+
+  // Give the bootstrap admin its own default category set (per-user model).
+  seedCategoriesForUser(admin.id);
 
   console.log(`[seed] Admin user created: ${adminEmail}`);
 }
@@ -155,10 +147,13 @@ async function seedAdminUser(): Promise<void> {
 /**
  * Main seed function. Runs all seed operations.
  * Safe to call multiple times (idempotent).
+ *
+ * Note: categories are seeded PER USER (see `seedCategoriesForUser`), not
+ * globally — so `seed()` only bootstraps the env-configured admin, which
+ * receives its own category set.
  */
 export async function seed(): Promise<void> {
   console.log('[seed] Starting database seeding...');
-  await seedCategories();
   await seedAdminUser();
   console.log('[seed] Database seeding complete.');
 }

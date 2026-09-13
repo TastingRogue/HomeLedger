@@ -69,19 +69,23 @@ export const accounts = sqliteTable('accounts', {
 
 export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  // Stable identifier for system categories (e.g. 'uncategorized'), independent
-  // of the displayed name/language. Null for user-created categories.
+  // Per-user model: every category is owned by a user (no shared/global rows).
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // Stable identifier for the seeded default categories (e.g. 'uncategorized'),
+  // independent of the displayed name/language. Null for user-created categories.
   key: text('key'),
   name: text('name').notNull(),
   icon: text('icon'),
   color: text('color'),
   type: text('type', { enum: ['Gasto', 'Ingreso', 'Ambos'] }).notNull().default('Ambos'),
+  // Retained for schema compatibility; always false under the per-user model.
   isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
 }, (table) => [
   index('categories_user_id_idx').on(table.userId),
   index('categories_key_idx').on(table.key),
+  // A user has at most one category per stable key (prevents duplicate seeding).
+  uniqueIndex('categories_user_id_key_unique').on(table.userId, table.key),
 ]);
 
 export const subcategories = sqliteTable('subcategories', {

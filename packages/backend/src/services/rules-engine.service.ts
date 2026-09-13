@@ -250,11 +250,12 @@ export class RulesEngineService {
   static applyToUncategorized(userId: number): ApplyResult {
     const db = getDb();
 
-    // Find the default/"uncategorized" system category by stable KEY (language-independent).
+    // Find the user's own "uncategorized" category by stable KEY (per user,
+    // language-independent).
     const defaultCategory = db
       .select()
       .from(categories)
-      .where(and(eq(categories.isSystem, true), eq(categories.key, UNCATEGORIZED_KEY)))
+      .where(and(eq(categories.userId, userId), eq(categories.key, UNCATEGORIZED_KEY)))
       .get();
 
     if (!defaultCategory) {

@@ -42,14 +42,15 @@ function seedTestUser(userId = 1): number {
   return userId;
 }
 
-function seedSystemCategories(): void {
+/** Seeds a user's default category set (per-user model — all owned by the user). */
+function seedDefaultCategories(userId: number): void {
   const now = new Date().toISOString();
-  const systemCats = ['Comida', 'Compras', 'Renta', 'Transporte', 'Salud'];
+  const defaults = ['Comida', 'Compras', 'Renta', 'Transporte', 'Salud'];
   testDb.insert(schema.categories).values(
-    systemCats.map((name) => ({
+    defaults.map((name) => ({
       name,
-      userId: null,
-      isSystem: true,
+      userId,
+      isSystem: false,
       createdAt: now,
     }))
   ).run();
@@ -116,14 +117,14 @@ describe('CategoryService', () => {
   });
 
   describe('list()', () => {
-    it('debe retornar categor�as del sistema y del usuario', async () => {
+    it('debe retornar las categor�as del usuario', async () => {
       const userId = seedTestUser();
-      seedSystemCategories();
+      seedDefaultCategories(userId);
       seedUserCategory(userId, 'Mi Categor�a');
 
       const result = await CategoryService.list(userId);
 
-      expect(result.length).toBe(6); // 5 sistema + 1 usuario
+      expect(result.length).toBe(6); // 5 por defecto + 1 propia
       const names = result.map((c) => c.name);
       expect(names).toContain('Comida');
       expect(names).toContain('Mi Categor�a');
@@ -195,9 +196,9 @@ describe('CategoryService', () => {
       ).rejects.toThrow('no puede exceder 50 caracteres');
     });
 
-    it('debe rechazar nombre duplicado con categor�a del sistema', async () => {
+    it('debe rechazar nombre duplicado con una categor�a por defecto', async () => {
       const userId = seedTestUser();
-      seedSystemCategories();
+      seedDefaultCategories(userId);
 
       await expect(
         CategoryService.create(userId, { name: 'Comida' })
@@ -237,7 +238,7 @@ describe('CategoryService', () => {
       const userId = seedTestUser();
       const categoryId = seedUserCategory(userId, 'Para Eliminar');
 
-      await CategoryService.delete(categoryId);
+      await CategoryService.delete(categoryId, userId);
 
       const result = await CategoryService.list(userId);
       expect(result.find((c) => c.name === 'Para Eliminar')).toBeUndefined();
@@ -251,28 +252,25 @@ describe('CategoryService', () => {
       seedTransaction(userId, accountId, categoryId, 100, 'Gasto', '2024-01-15');
 
       await expect(
-        CategoryService.delete(categoryId)
+        CategoryService.delete(categoryId, userId)
       ).rejects.toThrow('tiene transacciones asociadas');
     });
 
-    it('debe rechazar eliminaci�n de categor�a del sistema', async () => {
-      seedTestUser();
-      seedSystemCategories();
+    it('no debe eliminar la categor�a de otro usuario', async () => {
+      const user1 = seedTestUser(1);
+      const user2 = seedTestUser(2);
+      const cat1 = seedUserCategory(user1, 'De User1');
 
-      // Obtener una categor�a del sistema
-      const systemCat = testDb.select().from(schema.categories)
-        .where(schema.categories.isSystem ? undefined : undefined)
-        .all()
-        .find((c) => c.isSystem);
-
+      // user2 no puede borrar la categor�a de user1.
       await expect(
-        CategoryService.delete(systemCat!.id)
-      ).rejects.toThrow('del sistema');
+        CategoryService.delete(cat1, user2)
+      ).rejects.toThrow('no encontrada');
     });
 
     it('debe lanzar error si la categor�a no existe', async () => {
+      const userId = seedTestUser();
       await expect(
-        CategoryService.delete(999)
+        CategoryService.delete(999, userId)
       ).rejects.toThrow('no encontrada');
     });
 
@@ -286,7 +284,7 @@ describe('CategoryService', () => {
         { categoryId, name: 'Sub2', createdAt: now },
       ]).run();
 
-      await CategoryService.delete(categoryId);
+      await CategoryService.delete(categoryId, userId);
 
       const subs = testDb.select().from(schema.subcategories).all();
       expect(subs).toHaveLength(0);

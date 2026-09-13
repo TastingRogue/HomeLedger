@@ -1,4 +1,4 @@
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { subscriptions, transactions, accounts, categories } from '../db/schema.js';
 import { SubscriptionCycle, TransactionType } from '@homeledger/shared';
@@ -79,7 +79,7 @@ export class SubscriptionService {
     const category = db
       .select({ id: categories.id })
       .from(categories)
-      .where(and(eq(categories.id, input.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
+      .where(and(eq(categories.id, input.categoryId), eq(categories.userId, userId)))
       .get();
 
     if (!category) {
@@ -191,7 +191,7 @@ export class SubscriptionService {
       const category = db
         .select({ id: categories.id })
         .from(categories)
-        .where(and(eq(categories.id, input.categoryId), or(eq(categories.isSystem, true), eq(categories.userId, userId))))
+        .where(and(eq(categories.id, input.categoryId), eq(categories.userId, userId)))
         .get();
 
       if (!category) {

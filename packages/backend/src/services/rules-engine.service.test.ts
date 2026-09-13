@@ -127,18 +127,18 @@ describe('RulesEngineService', () => {
       .get();
     userId = user.id;
 
-    // Create a category
+    // Create a category owned by the user (per-user model).
     const cat = db
       .insert(categories)
-      .values({ name: 'Comida', userId: null, isSystem: true, createdAt: now })
+      .values({ name: 'Comida', userId, isSystem: false, createdAt: now })
       .returning()
       .get();
     categoryId = cat.id;
 
-    // Create default "uncategorized" system category (looked up by key)
+    // The user's own "uncategorized" category (looked up by key, per user).
     const defaultCat = db
       .insert(categories)
-      .values({ key: 'uncategorized', name: 'Sin categoría', userId: null, isSystem: true, createdAt: now })
+      .values({ key: 'uncategorized', name: 'Sin categoría', userId, isSystem: false, createdAt: now })
       .returning()
       .get();
     defaultCategoryId = defaultCat.id;

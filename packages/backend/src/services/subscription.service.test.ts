@@ -180,13 +180,13 @@ describe('SubscriptionService', () => {
       .get();
     accountId = account.id;
 
-    // Create a category
+    // Create a category owned by the user (per-user model).
     const category = db
       .insert(categories)
       .values({
-        userId: null,
+        userId,
         name: 'Entretenimiento',
-        isSystem: true,
+        isSystem: false,
         createdAt: now,
       })
       .returning()

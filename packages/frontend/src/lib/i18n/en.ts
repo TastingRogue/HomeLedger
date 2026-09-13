@@ -479,7 +479,6 @@ export const en: Record<TranslationKey, string> = {
   'categories.no_expenses': 'No expenses in the selected period.',
   'categories.total': 'Total',
   'categories.count': '{count} categories',
-  'categories.system_badge': 'System',
   'categories.new_title': '🏷️ New Category',
   'categories.edit_title': '✏️ Edit Category',
   'categories.form_name': 'Name',

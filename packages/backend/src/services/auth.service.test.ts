@@ -2,7 +2,7 @@
 import { AuthService, AuthError } from './auth.service.js';
 import { setRegistrationMode, setRegistrationAllowlist } from '../config/registration.js';
 import { getDb, closeDatabase } from '../db/connection.js';
-import { users, refreshTokens, apiKeys } from '../db/schema.js';
+import { users, refreshTokens, apiKeys, categories } from '../db/schema.js';
 import jwt from 'jsonwebtoken';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -48,14 +48,29 @@ describe('AuthService', () => {
         last_used_at TEXT
       );
       CREATE UNIQUE INDEX IF NOT EXISTS api_keys_key_unique ON api_keys("key");
+
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        key TEXT,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color TEXT,
+        type TEXT NOT NULL DEFAULT 'Ambos',
+        is_system INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS categories_user_id_idx ON categories(user_id);
     `);
   });
 
   beforeEach(() => {
     const db = getDb();
-    // Clean tables before each test
+    // Clean tables before each test (categories cascade from users, but delete
+    // explicitly to be safe since register() now seeds per-user categories).
     db.delete(apiKeys).run();
     db.delete(refreshTokens).run();
+    db.delete(categories).run();
     db.delete(users).run();
     // Default registration to 'open' for the pre-existing auth tests (they
     // register multiple users). P1.11-specific tests set their own mode.

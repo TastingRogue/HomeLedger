@@ -53,10 +53,6 @@
   let subError = $state<string | null>(null);
   let subBusy = $state(false);
 
-  // ─── Computed ───
-  let userCategories = $derived(categories.filter((c) => !c.isSystem));
-  let systemCategories = $derived(categories.filter((c) => c.isSystem));
-
   // ─── Helpers ───
   function getDefaultDateRange(): { start: string; end: string } {
     const now = new Date();
@@ -322,7 +318,6 @@
           <button class="cat-card" type="button" onclick={() => openEditModal(cat)} title={$t('categories.click_edit')}>
             <div class="cat-card-top">
               <span class="cat-card-name">{cat.name}</span>
-              {#if cat.isSystem}<span class="cat-badge system">{$t('categories.system_badge')}</span>{/if}
             </div>
             <div class="cat-card-bottom">
               <span class="cat-type-badge" class:type-gasto={cat.type === 'Gasto'} class:type-ingreso={cat.type === 'Ingreso'} class:type-ambos={cat.type === 'Ambos' || !cat.type}>
@@ -510,8 +505,6 @@
   .cat-card:hover { border-color: var(--accent-purple); background: var(--bg-elevated); }
   .cat-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.3rem; }
   .cat-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cat-badge { font-size: 0.55rem; padding: 0.08rem 0.3rem; border-radius: var(--radius-full); font-weight: 600; }
-  .cat-badge.system { background: var(--bg-hover); color: var(--text-muted); }
   .cat-card-bottom { display: flex; }
   .cat-type-badge { font-size: 0.65rem; padding: 0.12rem 0.35rem; border-radius: var(--radius-full); font-weight: 600; }
   .cat-type-badge.type-gasto { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); }

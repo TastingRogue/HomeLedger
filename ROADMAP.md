@@ -198,6 +198,16 @@ per-category i18n display layer — the category name is just real text in the
 host language. We added one stable `key` per system category purely so backend
 logic (default/"uncategorized" lookup) is language-independent.
 
+> **⚠️ SUPERSEDED by the per-user category model (see below).** The
+> "global, shared, admin-curated system categories" decision above (and the
+> P1.10 "system-category edit/delete is admin-only" wiring) caused a real
+> contradiction: a regular user could not edit or delete the shared categories,
+> so they couldn't switch them to their own language. We changed to a
+> **per-user** model: every user gets their OWN copy of the default set (in the
+> instance language, keyed by `key`) at sign-up, and can freely rename/retype/
+> delete them without affecting anyone else. No shared/system categories remain.
+> See **P3 — Per-user categories** below.
+
 - [x] Curated default set of **16** categories with es/en names + correct `type`: 1 Ingreso (`income`), 10 Gasto (housing, groceries, dining, transportation, utilities, health, entertainment, shopping, personal, education), 5 Ambos (`savings`, `debt`, `gifts`, `other`, `uncategorized`). Dropped legacy junk (`MX-5`, `ISP`, `Vales`, `Limpieza`, `Comida`); folded `Luz`/`ISP`/`Telefonía` → Utilities, `Gasolina` → Transportation, `Nómina`/`Dividendos` → Income, `Renta` → Housing, `Préstamo` → Debt. Default set researched against mainstream budgeting guidance (Ramsey/SoFi/WalletHub/Monarch).
 - [x] Added a stable `key` column to `categories` (schema.ts) via **migration `0003_add_category_key.sql`** (+ `categories_key_idx`); null for user categories. Chose a real migration (not the connection.ts reconcile pattern) since `key` is brand-new and no install has it yet — this also fixes the migration-only test setups.
 - [x] Replaced BOTH magic-string `Corrección` lookups with `key = 'uncategorized'`: `ImportService.getDefaultCategoryId()` and `RulesEngineService.applyToUncategorized()`. `UNCATEGORIZED_KEY` exported from seed.ts.
@@ -451,6 +461,16 @@ add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
   - **Flagged, NOT auto-changed (need your call — they're data/product decisions, not code bugs):**
     - **Categories show mixed es/en names** (e.g. "Supermercado" *and* "Groceries", "Salud" *and* "Health") — the demo backup was imported into an instance seeded in a different language, so both the seeded English system set and the imported Spanish set coexist. Not a rendering bug; it's overlapping data. Fix is a data decision (dedupe/delete one set), not a UI change.
     - **Alerts header stray "ℹ" bubble** — a small info affordance next to the title reads as visually loose; worth confirming intent before restyling.
+
+- [x] **Per-user categories ✅ (done) — supersedes the P1.5/P1.10 shared-category model.** Fixed the contradiction where users couldn't edit/delete the shared "system" categories (so couldn't localize them). Now **every user gets their own copy** of the default category set (in the instance language, keyed by `key`) at account creation, and can freely rename/retype/delete their own — no shared/system categories exist.
+  - `seed.ts`: replaced global `seedCategories()` with `seedCategoriesForUser(userId, locale?)` (inserts the set with `userId`, `isSystem:false`, key preserved). Wired into **all** user-creation paths: `AuthService.register`, the env-bootstrap admin (`seedAdminUser`), and the CLI `create-admin`.
+  - Uncategorized lookups (`ImportService.getDefaultCategoryId`, `RulesEngineService.applyToUncategorized`) now resolve the **user's own** `uncategorized` by `(userId, key)`.
+  - FK-ownership checks in transaction/subscription/budget services simplified from "system OR owned" to just **owned** (`categories.userId = ?`).
+  - `CategoryService`: `list` returns only the user's; `update`/`delete` dropped the `isSystem`/admin-only guard (any owned category is freely editable/deletable; the has-transactions delete block stays); dup-name checks scoped to the user. Removed the `role` plumbing and dead `CANNOT_EDIT/DELETE_SYSTEM_CATEGORY`/`FORBIDDEN` paths. Frontend `categorias` page: removed the "System" badge + dead `systemCategories`/`userCategories` split — every category is now editable.
+  - **Schema/migration 0007:** `categories.user_id` is now `NOT NULL` + a unique `(user_id, key)` index (prevents duplicate seeding). SQLite table-rebuild migration; verified it applies clean on a fresh DB producing the right schema.
+  - **Backup compatibility:** import forces `isSystem:false`; child rows (transactions/splits/subscriptions/budget-categories) whose `categoryId` isn't in the backup now fall back to the user's `uncategorized` category (auto-created if absent) instead of being silently dropped — so old global-model backups keep their rows.
+  - **Data note:** the existing demo DB was **reset** (Camino 2 — no legacy data migration; it held demo data only). Fresh installs and new users get the per-user model directly.
+  - Verified: backend typecheck 0/0, **full suite 486/486** (reframed the category/subscription/rules/auth tests off the shared model to per-user), frontend typecheck 0/0, build clean, i18n parity 1029/1029.
 
 ---
 

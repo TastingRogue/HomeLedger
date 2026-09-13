@@ -365,7 +365,7 @@ export class ImportService {
     }
 
     // Determine default category for transactions without rule match
-    const defaultCategoryId = options?.defaultCategoryId ?? ImportService.getDefaultCategoryId();
+    const defaultCategoryId = options?.defaultCategoryId ?? ImportService.getDefaultCategoryId(userId);
 
     // Process each transaction
     const result: ImportResult = {
@@ -549,33 +549,35 @@ export class ImportService {
   }
 
   /**
-   * Resolves the default "uncategorized" category id for transactions without a
-   * rule match. Looked up by stable KEY so it works regardless of seed language.
+   * Resolves the user's default "uncategorized" category id for transactions
+   * without a rule match. Looked up by stable KEY (per user) so it works
+   * regardless of the seed language.
    */
-  private static getDefaultCategoryId(): number {
+  private static getDefaultCategoryId(userId: number): number {
     const db = getDb();
 
     const defaultCat = db
       .select({ id: categories.id })
       .from(categories)
-      .where(and(eq(categories.isSystem, true), eq(categories.key, UNCATEGORIZED_KEY)))
+      .where(and(eq(categories.userId, userId), eq(categories.key, UNCATEGORIZED_KEY)))
       .get();
 
     if (defaultCat) {
       return defaultCat.id;
     }
 
-    // Fallback: use first available category
+    // Fallback: use the user's first available category.
     const anyCat = db
       .select({ id: categories.id })
       .from(categories)
+      .where(eq(categories.userId, userId))
       .limit(1)
       .get();
 
     if (!anyCat) {
       throw new ImportError(
         'NO_CATEGORIES',
-        'No hay categorías disponibles en el sistema',
+        'No hay categorías disponibles para el usuario',
       );
     }
 

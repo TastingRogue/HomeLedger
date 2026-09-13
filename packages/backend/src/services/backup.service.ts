@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -411,17 +411,47 @@ export class BackupService {
       const attMap = new Map<number, number>();
       const analysisMap = new Map<number, number>();
 
-      // Categories (parents of many; drop original id)
+      // Categories (parents of many; drop original id). Force per-user
+      // ownership (userId + isSystem:false) — the per-user model has no shared
+      // categories, so any legacy isSystem flag from an old backup is cleared.
       for (const cat of backupData.categories ?? []) {
         const rec = cat as Record<string, unknown>;
-        const { id: _drop, ...rest } = rec;
+        const { id: _drop, isSystem: _sys, userId: _uid, ...rest } = rec;
         const inserted = db.insert(categories).values({
-          ...(rest as typeof categories.$inferInsert),
+          ...(rest as Omit<typeof categories.$inferInsert, 'userId' | 'isSystem'>),
           userId,
+          isSystem: false,
         }).returning({ id: categories.id }).get();
         const prev = oldId(rec);
         if (prev != null) catMap.set(prev, inserted.id);
       }
+
+      // Fallback category for rows whose categoryId isn't in the backup. This
+      // matters for OLD (pre-per-user) backups: back then transactions could
+      // reference shared system categories that the per-user export never
+      // captured, so their categoryId won't be in catMap. Rather than silently
+      // drop those rows, we route them to an "uncategorized" category. Prefer an
+      // imported category keyed 'uncategorized'; otherwise create one now.
+      let fallbackCategoryId: number | null =
+        (db
+          .select({ id: categories.id })
+          .from(categories)
+          .where(and(eq(categories.userId, userId), eq(categories.key, 'uncategorized')))
+          .get()?.id) ?? null;
+      const resolveCategory = (rec: Record<string, unknown>): number | null => {
+        const mapped = remap(catMap, fk(rec, 'categoryId'));
+        if (mapped != null) return mapped;
+        // Unmapped but the row DID reference a category → use the fallback.
+        if (fk(rec, 'categoryId') == null) return null;
+        if (fallbackCategoryId == null) {
+          fallbackCategoryId = db
+            .insert(categories)
+            .values({ key: 'uncategorized', name: 'Uncategorized', type: 'Ambos', userId, isSystem: false, createdAt: new Date().toISOString() })
+            .returning({ id: categories.id })
+            .get().id;
+        }
+        return fallbackCategoryId;
+      };
 
       // Subcategories (categoryId -> catMap)
       for (const sub of backupData.subcategories ?? []) {
@@ -453,7 +483,7 @@ export class BackupService {
       for (const tx of backupData.transactions ?? []) {
         const rec = tx as Record<string, unknown>;
         const newAccountId = remap(acctMap, fk(rec, 'accountId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        const newCategoryId = resolveCategory(rec);
         if (newAccountId == null || newCategoryId == null) continue; // required FKs
         const newSubcategoryId = remap(subcatMap, fk(rec, 'subcategoryId'));
         const { id: _drop, accountId: _a, categoryId: _c, subcategoryId: _s, ...rest } = rec;
@@ -472,7 +502,7 @@ export class BackupService {
       for (const split of backupData.transactionSplits ?? []) {
         const rec = split as Record<string, unknown>;
         const newTxId = remap(txMap, fk(rec, 'transactionId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        const newCategoryId = resolveCategory(rec);
         if (newTxId == null || newCategoryId == null) continue;
         const { id: _drop, transactionId: _t, categoryId: _c, ...rest } = rec;
         db.insert(transactionSplits).values({
@@ -503,7 +533,7 @@ export class BackupService {
       for (const sub of backupData.subscriptions ?? []) {
         const rec = sub as Record<string, unknown>;
         const newAccountId = remap(acctMap, fk(rec, 'accountId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        const newCategoryId = resolveCategory(rec);
         if (newAccountId == null || newCategoryId == null) continue;
         const { id: _drop, accountId: _a, categoryId: _c, ...rest } = rec;
         const inserted = db.insert(subscriptions).values({
@@ -542,7 +572,7 @@ export class BackupService {
       for (const bc of backupData.budgetCategories ?? []) {
         const rec = bc as Record<string, unknown>;
         const newBudgetId = remap(budgetMap, fk(rec, 'budgetId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
+        const newCategoryId = resolveCategory(rec);
         if (newBudgetId == null || newCategoryId == null) continue;
         const { id: _drop, budgetId: _b, categoryId: _c, ...rest } = rec;
         db.insert(budgetCategories).values({

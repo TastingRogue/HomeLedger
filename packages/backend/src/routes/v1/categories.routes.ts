@@ -3,7 +3,7 @@ import { CategoryService, CategoryError } from '../../services/category.service.
 import { createCategorySchema, updateCategorySchema, createSubcategorySchema } from '../../validators/category.schema.js';
 import { getDb } from '../../db/connection.js';
 import { subcategories, categories } from '../../db/schema.js';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { TokenPayload } from '../../services/auth.service.js';
 
 /**
@@ -11,8 +11,6 @@ import type { TokenPayload } from '../../services/auth.service.js';
  * CATEGORY_NOT_FOUND → 404
  * DUPLICATE_CATEGORY_NAME → 409
  * CATEGORY_HAS_TRANSACTIONS → 400
- * CANNOT_DELETE_SYSTEM_CATEGORY → 400
- * CANNOT_EDIT_SYSTEM_CATEGORY → 400
  * CATEGORY_NAME_EMPTY → 400
  * CATEGORY_NAME_TOO_LONG → 400
  */
@@ -27,14 +25,9 @@ function handleCategoryError(error: CategoryError, reply: FastifyReply): Fastify
       statusCode = 409;
       break;
     case 'CATEGORY_HAS_TRANSACTIONS':
-    case 'CANNOT_DELETE_SYSTEM_CATEGORY':
-    case 'CANNOT_EDIT_SYSTEM_CATEGORY':
     case 'CATEGORY_NAME_EMPTY':
     case 'CATEGORY_NAME_TOO_LONG':
       statusCode = 400;
-      break;
-    case 'FORBIDDEN':
-      statusCode = 403;
       break;
     default:
       statusCode = 400;
@@ -138,7 +131,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
     const parsed = updateCategorySchema.parse(request.body);
 
     try {
-      const updated = await CategoryService.update(id, user.userId, parsed, user.role);
+      const updated = await CategoryService.update(id, user.userId, parsed);
 
       return reply.status(200).send({
         success: true,
@@ -170,37 +163,9 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    // Verify category exists and belongs to user (or handle in service)
-    const db = getDb();
-    const category = db
-      .select()
-      .from(categories)
-      .where(eq(categories.id, id))
-      .get();
-
-    if (!category) {
-      return reply.status(404).send({
-        success: false,
-        error: {
-          code: 'CATEGORY_NOT_FOUND',
-          message: 'Categoría no encontrada',
-        },
-      });
-    }
-
-    // Ensure user can only delete their own categories (system categories handled by service)
-    if (!category.isSystem && category.userId !== user.userId) {
-      return reply.status(404).send({
-        success: false,
-        error: {
-          code: 'CATEGORY_NOT_FOUND',
-          message: 'Categoría no encontrada',
-        },
-      });
-    }
-
     try {
-      await CategoryService.delete(id);
+      // Ownership is enforced inside the service (scoped by userId).
+      await CategoryService.delete(id, user.userId);
 
       return reply.status(200).send({
         success: true,
@@ -234,20 +199,12 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
 
     const parsed = createSubcategorySchema.parse(request.body);
 
-    // Verify the parent category exists and is accessible by the user
+    // Verify the parent category exists and belongs to the user.
     const db = getDb();
     const category = db
       .select()
       .from(categories)
-      .where(
-        and(
-          eq(categories.id, categoryId),
-          or(
-            eq(categories.isSystem, true),
-            eq(categories.userId, user.userId)
-          )
-        )
-      )
+      .where(and(eq(categories.id, categoryId), eq(categories.userId, user.userId)))
       .get();
 
     if (!category) {
@@ -322,7 +279,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
     const category = db
       .select({ id: categories.id })
       .from(categories)
-      .where(and(eq(categories.id, categoryId), or(eq(categories.isSystem, true), eq(categories.userId, user.userId))))
+      .where(and(eq(categories.id, categoryId), eq(categories.userId, user.userId)))
       .get();
     if (!category) {
       return reply.status(404).send({ success: false, error: { code: 'CATEGORY_NOT_FOUND', message: 'Categoría no encontrada' } });

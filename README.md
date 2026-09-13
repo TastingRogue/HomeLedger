@@ -64,8 +64,8 @@ your own accounts that don't affect income or expenses.
 
 ### Categories
 
-Fully editable categories (including system ones) with expense analysis and
-type classification (Expense / Income / Both).
+Each user gets their own fully editable set of default categories at sign-up,
+with expense analysis and type classification (Expense / Income / Both).
 
 ![Category expense analysis and category grid (demo data)](docs/screenshots/categories.png)
 
@@ -96,7 +96,7 @@ plus full JSON backup import/export with preview and validation.
 - **Credit Monitoring**: Utilization bars, health status, and linked subscriptions
 - **Bank Import**: CSV/XLSX/OFX/QIF/JSON with parsers for BBVA, Santander, and Nu Mexico
 - **Rules**: Auto-categorization engine — condition/action rules with test + apply-to-uncategorized
-- **Categories**: Fully editable (including system categories) with subcategories and type classification (Expense/Income/Both)
+- **Categories**: Per-user — each user gets their own editable default set (in the instance language) at sign-up, with subcategories and type classification (Expense/Income/Both)
 - **Alerts**: Auto-generated (low balance, high credit, due payments, completed goals) with manual evaluation trigger
 - **Reports**: 6-month trends, category donut, savings rate ring, monthly comparison bars
 - **Backup**: Full JSON export/import (with dry-run preview and validation) plus scheduled admin gzip whole-DB snapshots with in-app restore
@@ -232,7 +232,7 @@ Override these in production.
 | `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
 | `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
-| `DEFAULT_LOCALE` | Primary language for the install (system category names on first run, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language. | `en` (falls back to English if unset/invalid) |
+| `DEFAULT_LOCALE` | Primary language for the install (the language each user's default categories are seeded in at sign-up, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language and rename/delete their own categories. | `en` (falls back to English if unset/invalid) |
 | `DISPLAY_CURRENCY` | The install's single currency (`MXN`, `USD`, `EUR`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). All amounts use it — HomeLedger v1 is single-currency (no conversion). Admin can change it in-app. | `MXN` |
 | `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |

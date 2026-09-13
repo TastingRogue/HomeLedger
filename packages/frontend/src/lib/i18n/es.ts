@@ -478,7 +478,6 @@ export const es = {
   'categories.no_expenses': 'No hay gastos en el período seleccionado.',
   'categories.total': 'Total',
   'categories.count': '{count} categorías',
-  'categories.system_badge': 'Sistema',
   'categories.new_title': '🏷️ Nueva Categoría',
   'categories.edit_title': '✏️ Editar Categoría',
   'categories.form_name': 'Nombre',
