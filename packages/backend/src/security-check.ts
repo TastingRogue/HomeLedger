@@ -17,6 +17,9 @@
 /** Known-insecure demo values shipped in the Dockerfile / .env.example. */
 const DEMO_JWT_SECRETS = new Set([
   'insecure-dev-secret-change-me-min-32-characters-long',
+  'homeledger-dev-secret-key-change-in-production-2024',
+  // Legacy demo secret from before the rename — keep blocklisted so any install
+  // still using it is refused in production.
   'smart-finance-dev-secret-key-change-in-production-2024',
   'test-secret',
   'your-strong-random-secret-min-32-chars',

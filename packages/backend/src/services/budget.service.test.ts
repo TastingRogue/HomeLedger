@@ -162,7 +162,7 @@ describe('BudgetService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-budget/smart-finance.db');
+    const dbPath = path.resolve('./data/test-budget/homeledger.db');
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const walPath = dbPath + '-wal';
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);

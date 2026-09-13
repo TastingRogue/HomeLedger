@@ -2,11 +2,11 @@
 
 ## Introduction
 
-Smart Finance es una aplicación móvil nativa para Android diseñada para reemplazar un sistema existente en Notion. La aplicación permite el seguimiento completo de cuentas bancarias, transacciones, suscripciones, tarjetas de crédito y metas de ahorro. Todos los datos se almacenan localmente en el dispositivo (SQLite/Hive) sin depender de un servidor externo ni base de datos en la nube, garantizando funcionamiento 100% offline. La aplicación se distribuye como compra única en Google Play Store (~$49-79 MXN) con todas las funcionalidades desbloqueadas, sin compras dentro de la app ni suscripciones. Opcionalmente el usuario puede respaldar sus datos exportándolos a su propia cuenta de Google Drive. El idioma principal es español y la moneda base es el Peso Mexicano (MXN). La aplicación ofrece entrada rápida de datos optimizada para la experiencia móvil nativa.
+HomeLedger es una aplicación móvil nativa para Android diseñada para reemplazar un sistema existente en Notion. La aplicación permite el seguimiento completo de cuentas bancarias, transacciones, suscripciones, tarjetas de crédito y metas de ahorro. Todos los datos se almacenan localmente en el dispositivo (SQLite/Hive) sin depender de un servidor externo ni base de datos en la nube, garantizando funcionamiento 100% offline. La aplicación se distribuye como compra única en Google Play Store (~$49-79 MXN) con todas las funcionalidades desbloqueadas, sin compras dentro de la app ni suscripciones. Opcionalmente el usuario puede respaldar sus datos exportándolos a su propia cuenta de Google Drive. El idioma principal es español y la moneda base es el Peso Mexicano (MXN). La aplicación ofrece entrada rápida de datos optimizada para la experiencia móvil nativa.
 
 ## Glossary
 
-- **Sistema**: La aplicación Smart Finance en su totalidad (aplicación móvil Android nativa)
+- **Sistema**: La aplicación HomeLedger en su totalidad (aplicación móvil Android nativa)
 - **Gestor_de_Cuentas**: Módulo responsable de crear, editar y administrar cuentas financieras
 - **Registrador_de_Transacciones**: Módulo que captura y almacena ingresos y gastos
 - **Motor_de_Transferencias**: Módulo que procesa movimientos de dinero entre cuentas propias

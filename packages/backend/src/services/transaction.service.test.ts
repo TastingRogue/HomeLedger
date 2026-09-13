@@ -163,7 +163,7 @@ describe('TransactionService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-transaction/smart-finance.db');
+    const dbPath = path.resolve('./data/test-transaction/homeledger.db');
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const walPath = dbPath + '-wal';
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);

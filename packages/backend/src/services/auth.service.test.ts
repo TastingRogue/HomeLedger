@@ -81,7 +81,7 @@ describe('AuthService', () => {
   afterAll(() => {
     closeDatabase();
     // Clean up test database
-    const dbPath = path.resolve('./data/test-auth/smart-finance.db');
+    const dbPath = path.resolve('./data/test-auth/homeledger.db');
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
     }

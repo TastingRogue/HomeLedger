@@ -65,7 +65,7 @@ describe('GoalService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-goal/smart-finance.db');
+    const dbPath = path.resolve('./data/test-goal/homeledger.db');
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const walPath = dbPath + '-wal';
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);

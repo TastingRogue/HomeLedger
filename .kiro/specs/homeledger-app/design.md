@@ -1,8 +1,8 @@
-# Design Document: Smart Finance
+# Design Document: HomeLedger
 
 ## Overview
 
-Smart Finance es una aplicación web auto-hospedada de gestión de finanzas personales de grado profesional. Está diseñada como un producto modular, open-source y gratuito que funciona de forma **completamente independiente** — sin requerir Home Assistant ni ningún otro sistema externo. Opcionalmente, puede integrarse como addon y custom integration de Home Assistant para usuarios de domótica.
+HomeLedger es una aplicación web auto-hospedada de gestión de finanzas personales de grado profesional. Está diseñada como un producto modular, open-source y gratuito que funciona de forma **completamente independiente** — sin requerir Home Assistant ni ningún otro sistema externo. Opcionalmente, puede integrarse como addon y custom integration de Home Assistant para usuarios de domótica.
 
 La aplicación reemplaza un sistema existente en Notion y ofrece: gestión multi-cuenta, transacciones (incluyendo splits y reembolsos), presupuestos, suscripciones, metas de ahorro, importación bancaria (CSV/Excel/OFX), motor de reglas para auto-categorización, tracking de patrimonio neto (activos y pasivos), préstamos, adjuntos/recibos, dashboards completos y una API REST completa.
 
@@ -29,7 +29,7 @@ La aplicación reemplaza un sistema existente en Notion y ofrece: gestión multi
 | PWA | Service Worker + Workbox | Acceso offline desde móvil, instalable |
 | Motor de Reglas | Engine basado en condiciones JSON | Extensible, persistible en DB, evaluable sin deps externas |
 | Import Engine | Parser modular por banco | Arquitectura de plugins para CSV/OFX con mapeos por institución |
-| HA Integration | Python custom_component + REST API | Sensores, servicios y eventos via polling al API de Smart Finance |
+| HA Integration | Python custom_component + REST API | Sensores, servicios y eventos via polling al API de HomeLedger |
 | Scheduler | node-cron | Cargos automáticos, evaluación de alertas, cálculo de presupuestos |
 | Validación | Zod | Schemas compartidos frontend/backend, runtime validation |
 | Moneda default | MXN (Peso Mexicano) | Mercado objetivo México, con soporte futuro multi-moneda |
@@ -62,7 +62,7 @@ La arquitectura sigue un diseño modular donde cada capa es independiente y reem
 
 ```mermaid
 graph TB
-    subgraph "Docker Container - Smart Finance"
+    subgraph "Docker Container - HomeLedger"
         subgraph "Frontend Layer"
             UI[SvelteKit SSR/SPA]
             SW[Service Worker / PWA]
@@ -158,26 +158,26 @@ graph TB
 graph LR
     subgraph "Modo 1: Docker Compose (Recomendado)"
         DC[docker-compose.yml]
-        DC --> CONTAINER1[smart-finance:latest]
+        DC --> CONTAINER1[homeledger:latest]
         CONTAINER1 --> VOL1[Volume: /data]
     end
     
     subgraph "Modo 2: Docker Standalone"
         DS[docker run]
-        DS --> CONTAINER2[smart-finance:latest]
+        DS --> CONTAINER2[homeledger:latest]
         CONTAINER2 --> VOL2[Bind mount: ./data]
     end
     
     subgraph "Modo 3: HA Add-on"
         HASUP[HA Supervisor]
-        HASUP --> CONTAINER3[Smart Finance Addon]
-        CONTAINER3 --> VOL3[/config/addons_data/smart-finance]
+        HASUP --> CONTAINER3[HomeLedger Addon]
+        CONTAINER3 --> VOL3[/config/addons_data/homeledger]
     end
     
     subgraph "Modo 4: HA Custom Integration"
         HACS[HACS / manual]
-        HACS --> PYCOMP[custom_components/smart_finance/]
-        PYCOMP -->|polls| API[Smart Finance API]
+        HACS --> PYCOMP[custom_components/homeledger/]
+        PYCOMP -->|polls| API[HomeLedger API]
     end
 ```
 
@@ -201,7 +201,7 @@ graph TB
         end
     end
     
-    subgraph "Smart Finance (Docker)"
+    subgraph "HomeLedger (Docker)"
         API[REST API v1]
         WH[Webhook Endpoint]
     end
@@ -222,7 +222,7 @@ graph TB
 ### Estructura del Proyecto
 
 ```
-smart-finance/
+homeledger/
 ├── docker-compose.yml              # Instalación principal
 ├── Dockerfile                      # Multi-stage, multi-arch
 ├── .env.example                    # Variables de configuración
@@ -334,7 +334,7 @@ smart-finance/
 │
 ├── ha-integration/                 # HA Custom Integration (Python)
 │   ├── custom_components/
-│   │   └── smart_finance/
+│   │   └── homeledger/
 │   │       ├── __init__.py
 │   │       ├── manifest.json
 │   │       ├── config_flow.py
@@ -719,16 +719,16 @@ const PARSERS: BankParser[] = [
 
 ```python
 # coordinator.py - Data update coordinator
-class SmartFinanceCoordinator(DataUpdateCoordinator):
-    """Coordinator to fetch data from Smart Finance API."""
+class HomeLedgerCoordinator(DataUpdateCoordinator):
+    """Coordinator to fetch data from HomeLedger API."""
     
     def __init__(self, hass, api_url, api_key):
         self.api_url = api_url
         self.api_key = api_key
-        super().__init__(hass, _LOGGER, name="Smart Finance", update_interval=timedelta(minutes=5))
+        super().__init__(hass, _LOGGER, name="HomeLedger", update_interval=timedelta(minutes=5))
     
     async def _async_update_data(self):
-        """Fetch data from Smart Finance API."""
+        """Fetch data from HomeLedger API."""
         async with aiohttp.ClientSession() as session:
             resp = await session.get(
                 f"{self.api_url}/api/v1/ha/status",
@@ -1325,14 +1325,14 @@ function addMonthsSafe(date: Date, months: number): Date {
 version: '3.8'
 
 services:
-  smart-finance:
-    image: ghcr.io/user/smart-finance:latest
-    container_name: smart-finance
+  homeledger:
+    image: ghcr.io/user/homeledger:latest
+    container_name: homeledger
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
-      - smart-finance-data:/data
+      - homeledger-data:/data
     environment:
       - TZ=America/Mexico_City
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
@@ -1345,12 +1345,12 @@ services:
       retries: 3
 
 volumes:
-  smart-finance-data:
+  homeledger-data:
 ```
 
 **Instalación en un comando:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/user/smart-finance/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/user/homeledger/main/docker-compose.yml -o docker-compose.yml
 docker compose up -d
 # La app estará en http://localhost:3000
 ```
@@ -1417,11 +1417,11 @@ Soporta:
 
 ```yaml
 # ha-addon/config.yaml
-name: "Smart Finance"
+name: "HomeLedger"
 description: "Gestión de finanzas personales - Funciona dentro de Home Assistant"
 version: "1.0.0"
-slug: "smart-finance"
-url: "https://github.com/user/smart-finance"
+slug: "homeledger"
+url: "https://github.com/user/homeledger"
 arch:
   - amd64
   - aarch64
@@ -1432,7 +1432,7 @@ ports:
 ingress: true
 ingress_port: 3000
 panel_icon: "mdi:finance"
-panel_title: "Smart Finance"
+panel_title: "HomeLedger"
 map:
   - type: data
     read_only: false
@@ -1450,7 +1450,7 @@ startup: application
 | Método | Complejidad | Comando |
 |--------|-------------|---------|
 | Docker Compose | ⭐ (más fácil) | `docker compose up -d` |
-| Docker run | ⭐⭐ | `docker run -d -p 3000:3000 -v data:/data smart-finance` |
+| Docker run | ⭐⭐ | `docker run -d -p 3000:3000 -v data:/data homeledger` |
 | HA Add-on | ⭐ | Agregar repositorio + instalar desde UI |
 | HA Integration | ⭐⭐ | HACS + configurar URL y API key |
 
@@ -1460,65 +1460,65 @@ startup: application
 
 | Aspecto | HA Add-on | Custom Integration |
 |---------|-----------|-------------------|
-| Qué hace | Corre Smart Finance DENTRO de HA | Conecta HA a una instancia existente |
-| Cuándo usar | Cuando solo usas HA y quieres todo integrado | Cuando ya tienes Smart Finance en Docker standalone |
+| Qué hace | Corre HomeLedger DENTRO de HA | Conecta HA a una instancia existente |
+| Cuándo usar | Cuando solo usas HA y quieres todo integrado | Cuando ya tienes HomeLedger en Docker standalone |
 | Acceso | Via Ingress (panel lateral de HA) | No provee UI, solo sensores/servicios |
-| Requisito | HA OS / Supervised | Cualquier tipo de HA + Smart Finance corriendo |
+| Requisito | HA OS / Supervised | Cualquier tipo de HA + HomeLedger corriendo |
 
 ### Sensores Expuestos (Custom Integration)
 
 ```yaml
 # Sensores principales
 sensor:
-  - platform: smart_finance
+  - platform: homeledger
     sensors:
       # Resumen financiero
       - name: "Gastos del Mes"
-        entity_id: sensor.smart_finance_monthly_expenses
+        entity_id: sensor.homeledger_monthly_expenses
         unit: MXN
         icon: mdi:cash-minus
         
       - name: "Ingresos del Mes"
-        entity_id: sensor.smart_finance_monthly_income
+        entity_id: sensor.homeledger_monthly_income
         unit: MXN
         icon: mdi:cash-plus
         
       - name: "Ahorro Neto del Mes"
-        entity_id: sensor.smart_finance_monthly_savings
+        entity_id: sensor.homeledger_monthly_savings
         unit: MXN
         icon: mdi:piggy-bank
         
       - name: "Presupuesto Restante"
-        entity_id: sensor.smart_finance_remaining_budget
+        entity_id: sensor.homeledger_remaining_budget
         unit: MXN
         icon: mdi:chart-donut
         
       - name: "Patrimonio Neto"
-        entity_id: sensor.smart_finance_net_worth
+        entity_id: sensor.homeledger_net_worth
         unit: MXN
         icon: mdi:bank
         
       # Por cuenta (dinámico según cuentas del usuario)
       - name: "Balance {cuenta}"
-        entity_id: sensor.smart_finance_account_{slug}_balance
+        entity_id: sensor.homeledger_account_{slug}_balance
         
       # Por categoría de gasto (top 5 del mes)
       - name: "Gasto en {categoría}"
-        entity_id: sensor.smart_finance_category_{slug}_expenses
+        entity_id: sensor.homeledger_category_{slug}_expenses
 
 binary_sensor:
-  - platform: smart_finance
+  - platform: homeledger
     sensors:
       - name: "Presupuesto Excedido"
-        entity_id: binary_sensor.smart_finance_over_budget
+        entity_id: binary_sensor.homeledger_over_budget
         device_class: problem
         
       - name: "Crédito Alto"
-        entity_id: binary_sensor.smart_finance_high_credit
+        entity_id: binary_sensor.homeledger_high_credit
         device_class: problem
         
       - name: "Pago Próximo"
-        entity_id: binary_sensor.smart_finance_payment_due
+        entity_id: binary_sensor.homeledger_payment_due
         device_class: problem
 ```
 
@@ -1526,8 +1526,8 @@ binary_sensor:
 
 ```yaml
 # Servicios que se pueden llamar desde automatizaciones
-smart_finance.create_expense:
-  description: "Crear un gasto en Smart Finance"
+homeledger.create_expense:
+  description: "Crear un gasto en HomeLedger"
   fields:
     amount:
       description: "Monto del gasto"
@@ -1545,7 +1545,7 @@ smart_finance.create_expense:
       description: "Descripción opcional"
       example: "Uber Eats"
 
-smart_finance.create_income:
+homeledger.create_income:
   description: "Registrar un ingreso"
   fields:
     amount:
@@ -1555,7 +1555,7 @@ smart_finance.create_income:
     account:
       required: true
 
-smart_finance.refresh:
+homeledger.refresh:
   description: "Forzar actualización de sensores"
 ```
 
@@ -1566,12 +1566,12 @@ automation:
   - alias: "Alerta: Gasto alto en comida"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.smart_finance_category_comida_expenses
+        entity_id: sensor.homeledger_category_comida_expenses
         above: 5000
     action:
       - service: notify.mobile_app
         data:
-          title: "⚠️ Smart Finance"
+          title: "⚠️ HomeLedger"
           message: "Has gastado más de MX$5,000 en Comida este mes"
           
   - alias: "Registrar gasto de luz automáticamente"
@@ -1579,7 +1579,7 @@ automation:
       - platform: state
         entity_id: sensor.cfe_last_payment  # Sensor externo de CFE
     action:
-      - service: smart_finance.create_expense
+      - service: homeledger.create_expense
         data:
           amount: "{{ trigger.to_state.state }}"
           category: "Luz"
@@ -1688,13 +1688,13 @@ La app es 100% standalone. Home Assistant es completamente opcional:
 ### Principio de Independencia
 
 ```
-Smart Finance Core = Backend + Frontend + DB
+HomeLedger Core = Backend + Frontend + DB
                      (esto funciona solo, siempre)
 
-HA Add-on         = Smart Finance Core empaquetado como addon
+HA Add-on         = HomeLedger Core empaquetado como addon
                      (mismo código, diferente entrypoint)
 
-HA Integration    = Cliente Python que consume Smart Finance API
+HA Integration    = Cliente Python que consume HomeLedger API
                      (código separado, no afecta al core)
 ```
 
@@ -2076,7 +2076,7 @@ interface ImportRowError {
 **Property-Based Tests (fast-check + Vitest):**
 - Todas las 33 correctness properties definidas arriba
 - Mínimo 100 iteraciones por property test
-- Cada test taggeado: `Feature: smart-finance-app, Property {N}: {title}`
+- Cada test taggeado: `Feature: homeledger-app, Property {N}: {title}`
 - Focus en funciones puras y lógica de servicio
 
 **Integration Tests (Vitest + better-sqlite3 in-memory):**
@@ -2123,7 +2123,7 @@ export default defineConfig({
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 
-// Feature: smart-finance-app, Property 1: Balance Calculation Invariant
+// Feature: homeledger-app, Property 1: Balance Calculation Invariant
 describe('Property 1: Balance Calculation Invariant', () => {
   it('balance equals formula for any transaction history', () => {
     fc.assert(
@@ -2151,7 +2151,7 @@ describe('Property 1: Balance Calculation Invariant', () => {
   });
 });
 
-// Feature: smart-finance-app, Property 5: Transfer Preserves Total Balance
+// Feature: homeledger-app, Property 5: Transfer Preserves Total Balance
 describe('Property 5: Transfer Preserves Total Balance', () => {
   it('total balance is conserved for any transfer', () => {
     fc.assert(
@@ -2178,7 +2178,7 @@ describe('Property 5: Transfer Preserves Total Balance', () => {
   });
 });
 
-// Feature: smart-finance-app, Property 19: Currency Formatting
+// Feature: homeledger-app, Property 19: Currency Formatting
 describe('Property 19: Currency Formatting', () => {
   it('format matches pattern for any amount', () => {
     fc.assert(
@@ -2206,7 +2206,7 @@ describe('Property 19: Currency Formatting', () => {
   });
 });
 
-// Feature: smart-finance-app, Property 28: Transaction Split Sum Invariant
+// Feature: homeledger-app, Property 28: Transaction Split Sum Invariant
 describe('Property 28: Transaction Split Sum Invariant', () => {
   it('split amounts sum to parent amount', () => {
     fc.assert(
@@ -2228,7 +2228,7 @@ describe('Property 28: Transaction Split Sum Invariant', () => {
   });
 });
 
-// Feature: smart-finance-app, Property 26: Rules Engine Priority Ordering
+// Feature: homeledger-app, Property 26: Rules Engine Priority Ordering
 describe('Property 26: Rules Engine Priority Ordering', () => {
   it('first matching rule by priority wins', () => {
     fc.assert(

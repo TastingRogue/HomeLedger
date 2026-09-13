@@ -163,7 +163,7 @@ describe('RulesEngineService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-rules-engine/smart-finance.db');
+    const dbPath = path.resolve('./data/test-rules-engine/homeledger.db');
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const walPath = dbPath + '-wal';
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);

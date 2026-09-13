@@ -24,7 +24,29 @@ function getDatabasePath(): string {
     fs.mkdirSync(resolvedDir, { recursive: true });
   }
 
-  return path.join(resolvedDir, 'smart-finance.db');
+  const dbPath = path.join(resolvedDir, 'homeledger.db');
+
+  // Migrate installs created before the rename: the DB used to be
+  // `smart-finance.db`. If the new file doesn't exist yet but the legacy one
+  // does, rename it (and its WAL/SHM sidecars) in place so existing data
+  // survives the upgrade. Best-effort and idempotent — once renamed, or on a
+  // fresh install, this is a no-op.
+  const legacyPath = path.join(resolvedDir, 'smart-finance.db');
+  if (!fs.existsSync(dbPath) && fs.existsSync(legacyPath)) {
+    try {
+      fs.renameSync(legacyPath, dbPath);
+      for (const suffix of ['-wal', '-shm']) {
+        const legacySidecar = legacyPath + suffix;
+        if (fs.existsSync(legacySidecar)) fs.renameSync(legacySidecar, dbPath + suffix);
+      }
+    } catch {
+      // If the rename fails (permissions, cross-device), fall back to the
+      // legacy file so we never strand the user's data on a fresh empty DB.
+      if (fs.existsSync(legacyPath)) return legacyPath;
+    }
+  }
+
+  return dbPath;
 }
 
 /**

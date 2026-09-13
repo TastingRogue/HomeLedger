@@ -1,8 +1,8 @@
-# Implementation Plan: Smart Finance
+# Implementation Plan: HomeLedger
 
 ## Overview
 
-Implementation of Smart Finance as a self-hosted personal finance management application using a monorepo architecture with SvelteKit frontend, Fastify backend API, SQLite database (via Drizzle ORM), and Docker deployment. The implementation follows an incremental approach: project setup → shared types → data layer → business logic services → API routes → frontend → infrastructure (scheduler, PWA, Docker).
+Implementation of HomeLedger as a self-hosted personal finance management application using a monorepo architecture with SvelteKit frontend, Fastify backend API, SQLite database (via Drizzle ORM), and Docker deployment. The implementation follows an incremental approach: project setup → shared types → data layer → business logic services → API routes → frontend → infrastructure (scheduler, PWA, Docker).
 
 ## Tasks
 
@@ -529,7 +529,7 @@ Implementation of Smart Finance as a self-hosted personal finance management app
 - [x] 28. Implement PWA and infrastructure
   - [x] 28.1 Implement PWA support
     - Create `service-worker.ts` with Workbox for offline caching
-    - Create `manifest.json` with app metadata (name: Smart Finance, lang: es)
+    - Create `manifest.json` with app metadata (name: HomeLedger, lang: es)
     - Configure caching strategies: network-first for API, cache-first for static assets
     - _Requirements: 14.2_
 
