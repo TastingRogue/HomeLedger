@@ -299,4 +299,46 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       data: subcategory,
     });
   });
+
+  /**
+   * DELETE /api/v1/categories/:id/subcategories/:subId
+   * Delete a subcategory. Verifies the parent category is accessible by the user
+   * and the subcategory belongs to it. Transactions referencing it have their
+   * subcategoryId set to null (FK onDelete: 'set null').
+   */
+  app.delete('/:id/subcategories/:subId', async (
+    request: FastifyRequest<{ Params: { id: string; subId: string } }>,
+    reply: FastifyReply,
+  ) => {
+    const user = request.user as TokenPayload;
+    const categoryId = parseInt(request.params.id, 10);
+    const subId = parseInt(request.params.subId, 10);
+    if (isNaN(categoryId) || isNaN(subId)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'ID inválido' } });
+    }
+
+    const db = getDb();
+    // Parent category must be accessible (system or owned by the user).
+    const category = db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.id, categoryId), or(eq(categories.isSystem, true), eq(categories.userId, user.userId))))
+      .get();
+    if (!category) {
+      return reply.status(404).send({ success: false, error: { code: 'CATEGORY_NOT_FOUND', message: 'Categoría no encontrada' } });
+    }
+
+    // Subcategory must belong to that category.
+    const sub = db
+      .select({ id: subcategories.id })
+      .from(subcategories)
+      .where(and(eq(subcategories.id, subId), eq(subcategories.categoryId, categoryId)))
+      .get();
+    if (!sub) {
+      return reply.status(404).send({ success: false, error: { code: 'SUBCATEGORY_NOT_FOUND', message: 'Subcategoría no encontrada' } });
+    }
+
+    db.delete(subcategories).where(eq(subcategories.id, subId)).run();
+    return reply.status(200).send({ success: true, data: { message: 'Subcategoría eliminada' } });
+  });
 }

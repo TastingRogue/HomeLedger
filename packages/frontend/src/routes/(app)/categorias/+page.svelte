@@ -6,7 +6,10 @@
     createCategory,
     updateCategory,
     deleteCategory,
+    createSubcategory,
+    deleteSubcategory,
     type Category,
+    type Subcategory,
     type CategoryAnalysisItem,
   } from '$lib/api/categories';
   import { ApiError } from '$lib/api/client';
@@ -43,6 +46,11 @@
 
   // Delete
   let deletingId = $state<number | null>(null);
+
+  // Subcategory management (inside the edit modal)
+  let subInput = $state('');
+  let subError = $state<string | null>(null);
+  let subBusy = $state(false);
 
   // ─── Computed ───
   let userCategories = $derived(categories.filter((c) => !c.isSystem));
@@ -131,6 +139,9 @@
     editError = null;
     editSubmitting = false;
     editDeleting = false;
+    subInput = '';
+    subError = null;
+    subBusy = false;
     showEditModal = true;
   }
 
@@ -173,6 +184,46 @@
       editError = e instanceof ApiError ? e.message : $t('categories.error_deleting');
     } finally {
       editDeleting = false;
+    }
+  }
+
+  // ─── Subcategory management (edit modal) ───
+  // After a change, reload categories and re-point editCat at the fresh copy so
+  // its `subcategories` array reflects the update.
+  async function refreshEditCat() {
+    const id = editCat?.id;
+    await loadData();
+    if (id != null) editCat = categories.find((c) => c.id === id) ?? editCat;
+  }
+
+  async function handleAddSubcategory() {
+    if (!editCat) return;
+    const name = subInput.trim();
+    if (!name) return;
+    subBusy = true;
+    subError = null;
+    try {
+      await createSubcategory(editCat.id, name);
+      subInput = '';
+      await refreshEditCat();
+    } catch (e) {
+      subError = e instanceof ApiError ? e.message : $t('categories.error_creating');
+    } finally {
+      subBusy = false;
+    }
+  }
+
+  async function handleDeleteSubcategory(sub: Subcategory) {
+    if (!editCat) return;
+    subBusy = true;
+    subError = null;
+    try {
+      await deleteSubcategory(editCat.id, sub.id);
+      await refreshEditCat();
+    } catch (e) {
+      subError = e instanceof ApiError ? e.message : $t('categories.error_deleting');
+    } finally {
+      subBusy = false;
     }
   }
 
@@ -358,6 +409,36 @@
           </select>
         </div>
 
+        <!-- Subcategory management -->
+        <div class="form-field">
+          <span class="subcats-label">{$t('categories.subcategories')}</span>
+          {#if editCat.subcategories.length > 0}
+            <ul class="subcat-list">
+              {#each editCat.subcategories as sub (sub.id)}
+                <li class="subcat-item">
+                  <span>{sub.name}</span>
+                  <button type="button" class="subcat-del" onclick={() => handleDeleteSubcategory(sub)} disabled={subBusy} aria-label={$t('common.delete')}>&times;</button>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="subcat-empty">{$t('categories.subcategories_empty')}</p>
+          {/if}
+          <div class="subcat-add">
+            <input
+              type="text"
+              bind:value={subInput}
+              maxlength={50}
+              placeholder={$t('categories.subcategory_placeholder')}
+              onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubcategory(); } }}
+            />
+            <button type="button" class="subcat-add-btn" onclick={handleAddSubcategory} disabled={subBusy || !subInput.trim()}>
+              {$t('categories.subcategory_add')}
+            </button>
+          </div>
+          {#if subError}<p class="modal-error">{subError}</p>{/if}
+        </div>
+
         {#if editError}
           <p class="modal-error">{editError}</p>
         {/if}
@@ -480,4 +561,18 @@
   .btn-modal-submit:disabled { opacity: 0.5; }
   .btn-modal-delete { padding: 0.35rem 0.6rem; font-size: 0.7rem; background: var(--tag-red-bg); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: var(--radius-sm); cursor: pointer; }
   .btn-modal-delete:hover { background: var(--accent-red); color: #fff; }
+
+  /* Subcategory management */
+  .subcats-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .subcat-list { list-style: none; margin: 0.35rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+  .subcat-item { display: flex; align-items: center; justify-content: space-between; padding: 0.3rem 0.55rem; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 0.8rem; }
+  .subcat-del { background: none; border: none; color: var(--text-muted); font-size: 1.05rem; line-height: 1; cursor: pointer; padding: 0 0.25rem; border-radius: var(--radius-sm); transition: color var(--transition-fast); }
+  .subcat-del:hover { color: var(--accent-red); }
+  .subcat-empty { font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0; }
+  .subcat-add { display: flex; gap: 0.4rem; margin-top: 0.35rem; }
+  .subcat-add input { flex: 1; }
+  .subcat-add-btn { padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 500; color: var(--accent-blue); background: var(--tag-blue-bg); border: none; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; transition: transform var(--transition-fast); }
+  .subcat-add-btn:active:not(:disabled) { transform: scale(0.97); }
+  .subcat-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  @media (prefers-reduced-motion: reduce) { .subcat-add-btn:active { transform: none; } }
 </style>

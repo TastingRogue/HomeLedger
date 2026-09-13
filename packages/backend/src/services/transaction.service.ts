@@ -1,6 +1,6 @@
 import { eq, and, or, desc, gte, lte, count } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { transactions, transactionSplits, accounts, categories } from '../db/schema.js';
+import { transactions, transactionSplits, accounts, categories, subcategories } from '../db/schema.js';
 import type { CreateTransactionSchema, UpdateTransactionSchema, QuickTransactionInput } from '../validators/transaction.schema.js';
 import type { TransactionFilters, PaginatedResult } from '@homeledger/shared';
 import { TransactionType } from '@homeledger/shared';
@@ -72,6 +72,11 @@ export class TransactionService {
       );
     }
 
+    // If a subcategory is provided, it must belong to the chosen category.
+    if (input.subcategoryId != null) {
+      TransactionService.assertSubcategoryBelongs(input.subcategoryId, input.categoryId);
+    }
+
     const now = new Date().toISOString();
 
     // Atomic operation: insert transaction + update account balance
@@ -83,6 +88,7 @@ export class TransactionService {
           userId,
           accountId: input.accountId,
           categoryId: input.categoryId,
+          subcategoryId: input.subcategoryId ?? null,
           name: input.name,
           amount: input.amount,
           type: input.type,
@@ -97,6 +103,25 @@ export class TransactionService {
     })();
 
     return result;
+  }
+
+  /**
+   * Ensures a subcategory exists and belongs to the given category.
+   * @throws TransactionError SUBCATEGORY_NOT_FOUND otherwise.
+   */
+  private static assertSubcategoryBelongs(subcategoryId: number, categoryId: number): void {
+    const db = getDb();
+    const sub = db
+      .select({ id: subcategories.id })
+      .from(subcategories)
+      .where(and(eq(subcategories.id, subcategoryId), eq(subcategories.categoryId, categoryId)))
+      .get();
+    if (!sub) {
+      throw new TransactionError(
+        'La subcategoría no existe o no pertenece a la categoría seleccionada',
+        'SUBCATEGORY_NOT_FOUND',
+      );
+    }
   }
 
   /**
@@ -155,6 +180,25 @@ export class TransactionService {
       }
     }
 
+    // Resolve subcategory changes. The effective category is the new one if
+    // provided, else the existing one. Rules:
+    //  - subcategoryId provided (non-null): validate it belongs to the effective category.
+    //  - subcategoryId === null: clear it.
+    //  - subcategoryId omitted but category changed: clear it (avoid orphaning to a
+    //    subcategory of the old category).
+    const effectiveCategoryId = input.categoryId ?? existing.categoryId;
+    let subcategoryUpdate: { subcategoryId: number | null } | undefined;
+    if (input.subcategoryId !== undefined) {
+      if (input.subcategoryId === null) {
+        subcategoryUpdate = { subcategoryId: null };
+      } else {
+        TransactionService.assertSubcategoryBelongs(input.subcategoryId, effectiveCategoryId);
+        subcategoryUpdate = { subcategoryId: input.subcategoryId };
+      }
+    } else if (input.categoryId !== undefined && input.categoryId !== existing.categoryId) {
+      subcategoryUpdate = { subcategoryId: null };
+    }
+
     const now = new Date().toISOString();
 
     const result = sqlite.transaction(() => {
@@ -166,6 +210,7 @@ export class TransactionService {
           ...(input.accountId !== undefined && { accountId: input.accountId }),
           ...(input.date !== undefined && { date: input.date }),
           ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
+          ...(subcategoryUpdate !== undefined && subcategoryUpdate),
           ...(input.amount !== undefined && { amount: input.amount }),
           ...(input.type !== undefined && { type: input.type }),
           updatedAt: now,
@@ -444,6 +489,25 @@ export class TransactionService {
     })();
 
     return result;
+  }
+
+  /**
+   * Elimina todos los splits de una transacción (la transacción vuelve a usar
+   * únicamente su categoría principal). No-op si no tenía splits.
+   *
+   * @throws TransactionError si la transacción no existe o no pertenece al usuario
+   */
+  static clearSplits(id: number, userId: number): void {
+    const db = getDb();
+    const parent = db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .get();
+    if (!parent) {
+      throw new TransactionError('La transacción no existe o no pertenece al usuario', 'TRANSACTION_NOT_FOUND');
+    }
+    db.delete(transactionSplits).where(eq(transactionSplits.transactionId, id)).run();
   }
 
   /**

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
+  import { getTransactionById, splitTransaction, clearSplits, type TransactionSplit } from '$lib/api/transactions';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -38,6 +39,23 @@
   // Detail popup
   let selectedTransaction = $state<Transaction | null>(null);
 
+  // Split editor
+  interface SplitRow { categoryId: string; amount: string; note: string }
+  let showSplitModal = $state(false);
+  let splitTx = $state<Transaction | null>(null);
+  let splitRows = $state<SplitRow[]>([]);
+  let splitError = $state('');
+  let splitSubmitting = $state(false);
+  let existingSplitCount = $state(0);
+
+  // Live sum of the split rows and how much is left to allocate.
+  let splitSum = $derived(
+    splitRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+  );
+  let splitRemaining = $derived(
+    splitTx ? Math.round((splitTx.amount - splitSum) * 100) / 100 : 0
+  );
+
   // Collapsible month groups
   let collapsedMonths = $state<Set<string>>(new Set());
 
@@ -51,11 +69,17 @@
   let formName = $state('');
   let formAccountId = $state('');
   let formCategoryId = $state('');
+  let formSubcategoryId = $state('');
   let formAmount = $state('');
   let formType = $state<'Ingreso' | 'Gasto'>('Gasto');
   let formDate = $state('');
   let formErrors = $state<Record<string, string>>({});
   let formSubmitting = $state(false);
+
+  // Subcategories available for the category currently selected in the form.
+  let formSubcategories = $derived(
+    categories.find((c) => String(c.id) === formCategoryId)?.subcategories ?? []
+  );
 
   let isEditing = $derived(editingTransaction !== null);
 
@@ -211,6 +235,7 @@
     editingTransaction = null;
     formName = ''; formAccountId = accounts.length > 0 ? String(accounts[0].id) : '';
     formCategoryId = categories.length > 0 ? String(categories[0].id) : '';
+    formSubcategoryId = '';
     formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal(); formErrors = {};
     showFormModal = true;
   }
@@ -218,6 +243,7 @@
   function openEditForm(tx: Transaction) {
     editingTransaction = tx;
     formName = tx.name; formAccountId = String(tx.accountId); formCategoryId = String(tx.categoryId);
+    formSubcategoryId = tx.subcategoryId != null ? String(tx.subcategoryId) : '';
     formAmount = String(tx.amount); formType = tx.type as 'Ingreso' | 'Gasto'; formDate = toDatetimeLocal(tx.date);
     formErrors = {}; showFormModal = true;
   }
@@ -247,6 +273,7 @@
         name: String(formName ?? '').trim(),
         accountId: parseInt(formAccountId, 10),
         categoryId: parseInt(formCategoryId, 10),
+        subcategoryId: formSubcategoryId ? parseInt(formSubcategoryId, 10) : null,
         amount: parseFloat(parseFloat(String(formAmount ?? '')).toFixed(2)),
         type: formType,
         date: new Date(formDate).toISOString()
@@ -305,10 +332,78 @@
     }
   }
 
+  // --- Split editor ---
+  async function openSplitModal() {
+    if (!selectedTransaction) return;
+    splitTx = selectedTransaction;
+    splitError = '';
+    existingSplitCount = 0;
+    // Load any existing splits for this transaction.
+    try {
+      const detail = await getTransactionById(splitTx.id);
+      const existing: TransactionSplit[] = detail.splits ?? [];
+      existingSplitCount = existing.length;
+      splitRows = existing.length > 0
+        ? existing.map((s) => ({ categoryId: String(s.categoryId), amount: String(s.amount), note: s.note ?? '' }))
+        : [
+            { categoryId: String(splitTx.categoryId), amount: '', note: '' },
+            { categoryId: String(splitTx.categoryId), amount: '', note: '' },
+          ];
+    } catch {
+      splitRows = [
+        { categoryId: String(splitTx.categoryId), amount: '', note: '' },
+        { categoryId: String(splitTx.categoryId), amount: '', note: '' },
+      ];
+    }
+    closePanel();
+    showSplitModal = true;
+  }
+  function closeSplitModal() { showSplitModal = false; splitTx = null; }
+  function handleSplitKeydown(e: KeyboardEvent) { if (e.key === 'Escape' && showSplitModal) closeSplitModal(); }
+  function addSplitRow() { splitRows = [...splitRows, { categoryId: splitTx ? String(splitTx.categoryId) : '', amount: '', note: '' }]; }
+  function removeSplitRow(i: number) { splitRows = splitRows.filter((_, idx) => idx !== i); }
+
+  async function saveSplits() {
+    if (!splitTx) return;
+    splitError = '';
+    if (splitRows.length === 0) { splitError = $t('transactions.split_min'); return; }
+    if (Math.abs(splitRemaining) > 0.001) { splitError = $t('transactions.split_mismatch'); return; }
+    const splits = splitRows.map((r) => ({
+      categoryId: parseInt(r.categoryId, 10),
+      amount: parseFloat(parseFloat(r.amount).toFixed(2)),
+      note: r.note.trim() || undefined,
+    }));
+    splitSubmitting = true;
+    try {
+      await splitTransaction(splitTx.id, splits);
+      closeSplitModal();
+      await loadTransactions();
+    } catch (e) {
+      splitError = e instanceof ApiError ? e.message : $t('transactions.error_saving');
+    } finally {
+      splitSubmitting = false;
+    }
+  }
+
+  async function removeSplits() {
+    if (!splitTx) return;
+    splitSubmitting = true;
+    try {
+      await clearSplits(splitTx.id);
+      closeSplitModal();
+      await loadTransactions();
+    } catch (e) {
+      splitError = e instanceof ApiError ? e.message : $t('transactions.error_saving');
+    } finally {
+      splitSubmitting = false;
+    }
+  }
+
   onMount(async () => { await Promise.all([loadAccounts(), loadCategories()]); await loadTransactions(); });
 </script>
 
 <svelte:head><title>{$t('transactions.title')} | HomeLedger</title></svelte:head>
+<svelte:window onkeydown={handleSplitKeydown} />
 
 <div class="page">
   <header class="page-header">
@@ -544,6 +639,7 @@
       </div>
       <footer class="modal-footer-actions">
         <button class="btn-edit" onclick={handlePanelEditClick}>✎ {$t('common.edit')}</button>
+        <button class="btn-edit" onclick={openSplitModal}>◧ {$t('transactions.split')}</button>
         <button class="btn-delete" onclick={handlePanelDeleteClick}>✕ {$t('common.delete')}</button>
       </footer>
     </div>
@@ -604,11 +700,20 @@
           </div>
           <div class="field">
             <label for="fm-cat">{$t('transactions.form_category')}</label>
-            <select id="fm-cat" bind:value={formCategoryId} class:invalid={!!formErrors.categoryId}>
+            <select id="fm-cat" bind:value={formCategoryId} onchange={() => (formSubcategoryId = '')} class:invalid={!!formErrors.categoryId}>
               <option value="">—</option>{#each categories as c}<option value={String(c.id)}>{c.name}</option>{/each}
             </select>
           </div>
         </div>
+        {#if formSubcategories.length > 0}
+          <div class="field">
+            <label for="fm-subcat">{$t('transactions.form_subcategory')}</label>
+            <select id="fm-subcat" bind:value={formSubcategoryId}>
+              <option value="">{$t('transactions.no_subcategory')}</option>
+              {#each formSubcategories as sub (sub.id)}<option value={String(sub.id)}>{sub.name}</option>{/each}
+            </select>
+          </div>
+        {/if}
         <div class="field-row">
           <div class="field">
             <label for="fm-amount">{$t('transactions.form_amount')}</label>
@@ -652,6 +757,53 @@
         <button class="btn-cancel" onclick={closeDeleteModal}>{$t('common.cancel')}</button>
         <button class="btn-danger-solid" onclick={confirmDelete}>{$t('common.delete')}</button>
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Split Editor Modal -->
+{#if showSplitModal && splitTx}
+  <div class="overlay" role="presentation" onclick={closeSplitModal}>
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e) => e.stopPropagation()}>
+      <header class="modal-header">
+        <h2>{$t('transactions.split_title')}</h2>
+        <button class="close-btn" onclick={closeSplitModal} aria-label={$t('common.close')}>×</button>
+      </header>
+      <div class="split-body">
+        <p class="split-total">{$t('transactions.split_total')}: <strong>{formatCurrency(splitTx.amount)}</strong></p>
+        {#if splitError}<p class="form-alert">{splitError}</p>{/if}
+
+        {#each splitRows as row, i}
+          <div class="split-row">
+            <select bind:value={row.categoryId} aria-label={$t('transactions.form_category')}>
+              {#each categories as c}<option value={String(c.id)}>{c.name}</option>{/each}
+            </select>
+            <input type="number" step="0.01" min="0" placeholder="0.00" bind:value={row.amount} class="split-amount" />
+            <input type="text" placeholder={$t('transactions.split_note')} bind:value={row.note} maxlength={200} class="split-note" />
+            {#if splitRows.length > 1}
+              <button type="button" class="split-remove" onclick={() => removeSplitRow(i)} aria-label={$t('common.delete')}>&times;</button>
+            {/if}
+          </div>
+        {/each}
+
+        <button type="button" class="split-add" onclick={addSplitRow}>+ {$t('transactions.split_add')}</button>
+
+        <div class="split-summary" class:ok={Math.abs(splitRemaining) < 0.001} class:bad={Math.abs(splitRemaining) >= 0.001}>
+          {$t('transactions.split_remaining')}: <strong>{formatCurrency(splitRemaining)}</strong>
+        </div>
+      </div>
+      <footer class="modal-footer-actions split-actions">
+        {#if existingSplitCount > 0}
+          <button type="button" class="btn-danger-solid" onclick={removeSplits} disabled={splitSubmitting}>{$t('transactions.split_clear')}</button>
+        {:else}
+          <span></span>
+        {/if}
+        <div class="split-actions-right">
+          <button type="button" class="btn-cancel" onclick={closeSplitModal}>{$t('common.cancel')}</button>
+          <button type="button" class="btn-submit" onclick={saveSplits} disabled={splitSubmitting || Math.abs(splitRemaining) >= 0.001}>{$t('common.save')}</button>
+        </div>
+      </footer>
     </div>
   </div>
 {/if}
@@ -801,11 +953,32 @@
   .btn-danger-solid { padding: 0.3rem 0.6rem; background: var(--accent-red); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; cursor: pointer; }
   .confirm-text { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
 
+  /* --- Split editor modal --- */
+  .split-body { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto; }
+  .split-total { font-size: 0.82rem; color: var(--text-secondary); margin: 0; }
+  .split-row { display: flex; gap: 0.4rem; align-items: center; }
+  .split-row select { flex: 1.2; min-width: 0; }
+  .split-row .split-amount { flex: 0.8; min-width: 0; }
+  .split-row .split-note { flex: 1; min-width: 0; }
+  .split-remove { background: none; border: none; color: var(--text-muted); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 0.3rem; border-radius: var(--radius-sm); transition: color var(--transition-fast); }
+  .split-remove:hover { color: var(--accent-red); }
+  .split-add { align-self: flex-start; font-size: 0.75rem; color: var(--accent-blue); background: var(--tag-blue-bg); border: none; border-radius: var(--radius-sm); padding: 0.25rem 0.55rem; cursor: pointer; transition: transform var(--transition-fast); }
+  .split-add:active { transform: scale(0.97); }
+  .split-summary { font-size: 0.82rem; margin-top: 0.25rem; padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); }
+  .split-summary.ok { background: var(--color-success-subtle); color: var(--accent-green); }
+  .split-summary.bad { background: var(--tag-orange-bg); color: var(--accent-orange); }
+  .split-actions { display: flex; align-items: center; justify-content: space-between; }
+  .split-actions-right { display: flex; gap: 0.5rem; }
+
   /* --- Responsive --- */
   @media (max-width: 768px) {
     .split-view { grid-template-columns: 1fr; }
     .filters-bar { flex-direction: column; align-items: stretch; }
     .split-grid { grid-template-columns: 1fr; }
     .field-row { grid-template-columns: 1fr; }
+    .split-row { flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .split-add:active { transform: none; }
   }
 </style>

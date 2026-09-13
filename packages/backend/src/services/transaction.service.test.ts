@@ -2,7 +2,7 @@
 import { TransactionService, TransactionError } from './transaction.service.js';
 import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
-import { users, accounts, categories, transactions, transactionSplits, transfers } from '../db/schema.js';
+import { users, accounts, categories, subcategories, transactions, transactionSplits, transfers } from '../db/schema.js';
 import { TransactionType } from '@homeledger/shared';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,6 +61,13 @@ describe('TransactionService', () => {
         created_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS subcategories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -106,6 +113,7 @@ describe('TransactionService', () => {
     db.delete(transactions).run();
     db.delete(transfers).run();
     db.delete(accounts).run();
+    db.delete(subcategories).run();
     db.delete(categories).run();
     db.delete(users).run();
 
@@ -678,6 +686,70 @@ describe('TransactionService', () => {
     it('debe retornar null si la transacción no existe', () => {
       const result = TransactionService.getById(99999, testUserId);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('subcategoryId (P2.3)', () => {
+    function seedSub(categoryId: number, name: string): number {
+      return getDb().insert(subcategories).values({ categoryId, name, createdAt: new Date().toISOString() }).returning().get().id;
+    }
+
+    it('persists a subcategory that belongs to the category on create', () => {
+      const subId = seedSub(testCategoryId, 'Sub A');
+      const tx = TransactionService.create(testUserId, {
+        name: 'Con subcat', accountId: testAccountId, categoryId: testCategoryId, subcategoryId: subId,
+        amount: 100, type: TransactionType.Gasto, date: '2024-01-01T00:00:00.000Z',
+      });
+      expect(tx.subcategoryId).toBe(subId);
+    });
+
+    it('rejects a subcategory that belongs to a DIFFERENT category', () => {
+      const otherSub = seedSub(testCategory2Id, 'Other Sub');
+      expect(() => TransactionService.create(testUserId, {
+        name: 'Bad subcat', accountId: testAccountId, categoryId: testCategoryId, subcategoryId: otherSub,
+        amount: 100, type: TransactionType.Gasto, date: '2024-01-01T00:00:00.000Z',
+      })).toThrow(TransactionError);
+    });
+
+    it('clears the subcategory when the category changes and no new subcategory is given', () => {
+      const subId = seedSub(testCategoryId, 'Sub B');
+      const tx = TransactionService.create(testUserId, {
+        name: 'Switch cat', accountId: testAccountId, categoryId: testCategoryId, subcategoryId: subId,
+        amount: 100, type: TransactionType.Gasto, date: '2024-01-01T00:00:00.000Z',
+      });
+      const updated = TransactionService.update(tx.id, testUserId, { categoryId: testCategory2Id });
+      expect(updated.subcategoryId).toBeNull();
+    });
+
+    it('clears the subcategory when explicitly set to null', () => {
+      const subId = seedSub(testCategoryId, 'Sub C');
+      const tx = TransactionService.create(testUserId, {
+        name: 'Explicit clear', accountId: testAccountId, categoryId: testCategoryId, subcategoryId: subId,
+        amount: 100, type: TransactionType.Gasto, date: '2024-01-01T00:00:00.000Z',
+      });
+      const updated = TransactionService.update(tx.id, testUserId, { subcategoryId: null });
+      expect(updated.subcategoryId).toBeNull();
+    });
+  });
+
+  describe('clearSplits (P2.3)', () => {
+    it('removes all splits for a transaction', () => {
+      const tx = TransactionService.create(testUserId, {
+        name: 'Splittable', accountId: testAccountId, categoryId: testCategoryId,
+        amount: 100, type: TransactionType.Gasto, date: '2024-01-01T00:00:00.000Z',
+      });
+      TransactionService.split(tx.id, testUserId, [
+        { categoryId: testCategoryId, amount: 60 },
+        { categoryId: testCategory2Id, amount: 40 },
+      ]);
+      expect(TransactionService.getById(tx.id, testUserId)!.splits).toHaveLength(2);
+
+      TransactionService.clearSplits(tx.id, testUserId);
+      expect(TransactionService.getById(tx.id, testUserId)!.splits).toHaveLength(0);
+    });
+
+    it('throws for a transaction that is not the user\'s', () => {
+      expect(() => TransactionService.clearSplits(99999, testUserId)).toThrow(TransactionError);
     });
   });
 });

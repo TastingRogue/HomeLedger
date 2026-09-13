@@ -40,6 +40,13 @@ export const createTransactionSchema = z.object({
     .int('El ID de categoría debe ser un número entero')
     .positive('El ID de categoría debe ser un número positivo'),
 
+  subcategoryId: z
+    .number()
+    .int('El ID de subcategoría debe ser un número entero')
+    .positive('El ID de subcategoría debe ser un número positivo')
+    .nullable()
+    .optional(),
+
   amount: z
     .number({ error: 'El monto es obligatorio y debe ser un número' })
     .positive('El monto debe ser mayor a 0')
@@ -86,6 +93,13 @@ export const updateTransactionSchema = z.object({
     .number({ error: 'El ID de categoría debe ser un número' })
     .int('El ID de categoría debe ser un número entero')
     .positive('El ID de categoría debe ser un número positivo')
+    .optional(),
+
+  subcategoryId: z
+    .number()
+    .int('El ID de subcategoría debe ser un número entero')
+    .positive('El ID de subcategoría debe ser un número positivo')
+    .nullable()
     .optional(),
 
   amount: z

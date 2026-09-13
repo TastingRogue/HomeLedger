@@ -329,9 +329,16 @@ These have backend support but no frontend UI, or are incomplete.
 - [x] i18n es/en: `nav.loans`, `page_title.loans`, full `loans.*` namespace. Parity **917 keys each**, 0 mismatches.
 - [x] Verified: backend + frontend typecheck 0/0, full suite **440/440** (added 2 loan-delete tests), build clean.
 
-### P2.3 — Subcategories & splits in the UI
-- [ ] Subcategory management UI (currently schema-only, indirect)
-- [ ] Transaction split editor UI (service `split()` exists, no dedicated UI)
+### P2.3 — Subcategories & splits in the UI ✅ (done)
+Backend seams that were missing are now added:
+- [x] `DELETE /categories/:id/subcategories/:subId` (ownership-checked; transactions' `subcategoryId` set null via FK) + `deleteSubcategory` client. (Create already existed.)
+- [x] `subcategoryId` now accepted by transaction **create + update** (schema + `TransactionService`), validated to belong to the chosen category; cleared automatically when the category changes or explicitly set to null. (Previously only the rules engine could set it.)
+- [x] `DELETE /transactions/:id/split` (clear splits) + `TransactionService.clearSplits`; `splitTransaction`/`clearSplits` clients; `Transaction.splits`/`subcategoryId` types (shared + api client).
+- [x] **Subcategory management UI** in the categories Edit modal: list existing, add, delete.
+- [x] **Subcategory picker** in the transaction create/edit form (appears when the selected category has subcategories; resets on category change).
+- [x] **Split editor** modal from the transaction detail: dynamic category+amount+note rows, live "remaining" indicator (green at 0, warns otherwise), Save disabled until it balances (mirrors backend `SPLITS_SUM_MISMATCH`), loads existing splits, and Clear-splits.
+- [x] i18n es/en (parity **932 keys**), press feedback + `prefers-reduced-motion`, Escape-close.
+- [x] Verified: backend + frontend typecheck 0/0, full suite **446/446** (added 6 tests: subcategory persist/reject/clear ×2 + clearSplits ×2), shared rebuilt, build clean.
 
 ### P2.4 — Recurring transactions (decide: implement or remove)
 - [ ] Table exists but there's NO service/route/scheduler — either build it (service + route + scheduler consumer + UI) or remove the schema to avoid dead surface
