@@ -1,11 +1,28 @@
 import { apiGet, apiPost, apiPut, apiDelete } from './client';
 
+/** Lifecycle status of an asset. */
+export type AssetStatus = 'active' | 'sold' | 'disposed';
+
 export interface Asset {
 	id: number;
 	userId: number;
 	name: string;
-	value: number;
+	/** Current estimated value (renamed from `value` in P4). */
+	currentValue: number;
 	type: string;
+	// ── P4 first-class fields (all optional) ──
+	brand: string | null;
+	model: string | null;
+	serialNumber: string | null;
+	category: string | null;
+	purchaseDate: string | null;
+	purchasePrice: number | null;
+	location: string | null;
+	status: AssetStatus;
+	/** Optional link to the transaction that recorded the purchase. */
+	purchaseTransactionId: number | null;
+	/** Optional link to a receipt/invoice attachment. */
+	receiptAttachmentId: number | null;
 	notes: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -34,8 +51,18 @@ export interface NetWorthSummary {
 
 export interface AssetInput {
 	name: string;
-	value: number;
+	currentValue: number;
 	type: string;
+	brand?: string | null;
+	model?: string | null;
+	serialNumber?: string | null;
+	category?: string | null;
+	purchaseDate?: string | null;
+	purchasePrice?: number | null;
+	location?: string | null;
+	status?: AssetStatus;
+	purchaseTransactionId?: number | null;
+	receiptAttachmentId?: number | null;
 	notes?: string | null;
 }
 

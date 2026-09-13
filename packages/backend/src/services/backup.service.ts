@@ -33,8 +33,16 @@ const DATA_DIR = process.env['DATA_DIR']
   : path.resolve(process.cwd(), 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
 
-/** Application version used in backup metadata */
-export const APP_VERSION = '1.0.0';
+/**
+ * Application version used in backup metadata.
+ * Only the MAJOR version gates import compatibility (see validateBackup).
+ * Bumped to 1.1.0 with P4 (assets as a first-class entity): assets gained
+ * currentValue (renamed from value) + brand/model/serialNumber/category/
+ * purchaseDate/purchasePrice/location/status and the purchaseTransactionId /
+ * receiptAttachmentId FKs. Older 1.0.x backups remain importable (value →
+ * currentValue remap on restore).
+ */
+export const APP_VERSION = '1.1.0';
 
 /**
  * Error personalizado para operaciones de respaldo.
@@ -602,16 +610,6 @@ export class BackupService {
         }).run();
       }
 
-      // Assets (no cross-FK; drop id)
-      for (const asset of backupData.assets ?? []) {
-        const rec = asset as Record<string, unknown>;
-        const { id: _drop, ...rest } = rec;
-        db.insert(assets).values({
-          ...(rest as typeof assets.$inferInsert),
-          userId,
-        }).run();
-      }
-
       // Liabilities (no cross-FK; drop id)
       for (const liability of backupData.liabilities ?? []) {
         const rec = liability as Record<string, unknown>;
@@ -709,6 +707,30 @@ export class BackupService {
         }).returning({ id: attachments.id }).get();
         const prev = oldId(rec);
         if (prev != null) attMap.set(prev, inserted.id);
+      }
+
+      // Assets (P4: first-class). Inserted AFTER transactions + attachments so
+      // the optional purchaseTransactionId / receiptAttachmentId FKs can be
+      // remapped to the freshly-imported ids. Backward compat: older backups
+      // stored the estimated value under `value` — remap it to `currentValue`.
+      for (const asset of backupData.assets ?? []) {
+        const rec = asset as Record<string, unknown>;
+        const {
+          id: _drop,
+          value: legacyValue,
+          purchaseTransactionId: _pt,
+          receiptAttachmentId: _ra,
+          ...rest
+        } = rec;
+        const currentValue =
+          rec['currentValue'] != null ? rec['currentValue'] : (legacyValue ?? null);
+        db.insert(assets).values({
+          ...(rest as typeof assets.$inferInsert),
+          currentValue: currentValue as number,
+          purchaseTransactionId: remap(txMap, fk(rec, 'purchaseTransactionId')),
+          receiptAttachmentId: remap(attMap, fk(rec, 'receiptAttachmentId')),
+          userId,
+        }).run();
       }
 
       // Receipt analyses + items live in raw-SQL tables. Guard by existence, and

@@ -800,11 +800,15 @@ tolerate unknown arrays; the major-version gate stays intact).
 
 ### Phased roadmap (by value/effort; each phase ships independently)
 
-- [ ] **P4 — Assets as a first-class entity** (foundational). Extend `assets`;
-  migrate the current flat net-worth assets in place; UI to create/edit an asset
-  with brand/model/serial/purchase/value/location; optional link to a transaction
-  and a receipt/attachment; net worth uses `currentValue`. Inventory-by-location is
-  a *view* over assets, not a new module. **This is the backbone — do it first.**
+- [x] **P4 — Assets as a first-class entity** (foundational). ✅ Done. Extended `assets`
+  (renamed `value`→`currentValue`; added brand/model/serial/category/purchaseDate/
+  purchasePrice/location/status + optional `purchaseTransactionId` and
+  `receiptAttachmentId` FKs), migrated the flat net-worth assets in place
+  (migration `0008`, 12-step rebuild), UI to create/edit an asset with all fields
+  + optional link to a transaction and a receipt/attachment; net worth uses
+  `currentValue`. Inventory-by-location is a *view* over assets (list ↔ by-location
+  toggle), not a new module. Backups bumped to 1.1.0 with backward-compatible
+  `value`→`currentValue` remap on import.
 - [ ] **P5 — Warranty + the Upcoming view** (the differentiator, low effort — reuses
   alerts + scheduler). Warranty = asset + purchase date + duration → expiry →
   reminders (90/30/7, configurable) via the existing alerts engine. Build the

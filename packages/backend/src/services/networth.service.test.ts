@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { NetWorthService, NetWorthError } from './networth.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, transfers, assets, liabilities, networthSnapshots } from '../db/schema.js';
@@ -76,8 +76,18 @@ describe('NetWorthService', () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        value REAL NOT NULL,
+        current_value REAL NOT NULL,
         type TEXT NOT NULL,
+        brand TEXT,
+        model TEXT,
+        serial_number TEXT,
+        category TEXT,
+        purchase_date TEXT,
+        purchase_price REAL,
+        location TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        purchase_transaction_id INTEGER,
+        receipt_attachment_id INTEGER,
         notes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -169,7 +179,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Santander',
-        type: 'Débito',
+        type: 'D�bito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -191,7 +201,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Inactiva',
-        type: 'Débito',
+        type: 'D�bito',
         initialBalance: 5000,
         status: 'Inactivo',
         currency: 'MXN',
@@ -208,7 +218,7 @@ describe('NetWorthService', () => {
     it('should add asset values to totalAssets', async () => {
       NetWorthService.createAsset(userId, {
         name: 'Casa',
-        value: 500000,
+        currentValue: 500000,
         type: 'Propiedad',
       });
 
@@ -240,7 +250,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Banco',
-        type: 'Débito',
+        type: 'D�bito',
         initialBalance: 10000,
         status: 'Activo',
         currency: 'MXN',
@@ -251,15 +261,15 @@ describe('NetWorthService', () => {
       // Asset worth 50000
       NetWorthService.createAsset(userId, {
         name: 'Auto',
-        value: 50000,
-        type: 'Veh�culo',
+        currentValue: 50000,
+        type: 'Veh?culo',
       });
 
       // Liability of 20000
       NetWorthService.createLiability(userId, {
-        name: 'Pr�stamo auto',
+        name: 'Pr?stamo auto',
         balance: 20000,
-        type: 'Pr�stamo',
+        type: 'Pr?stamo',
       });
 
       const result = await NetWorthService.getCurrent(userId);
@@ -313,14 +323,14 @@ describe('NetWorthService', () => {
     it('should create an asset', () => {
       const result = NetWorthService.createAsset(userId, {
         name: 'Casa',
-        value: 1000000,
+        currentValue: 1000000,
         type: 'Propiedad',
         notes: 'Casa en CDMX',
       });
 
       expect(result.id).toBeDefined();
       expect(result.name).toBe('Casa');
-      expect(result.value).toBe(1000000);
+      expect(result.currentValue).toBe(1000000);
       expect(result.type).toBe('Propiedad');
       expect(result.notes).toBe('Casa en CDMX');
     });
@@ -329,7 +339,7 @@ describe('NetWorthService', () => {
       expect(() =>
         NetWorthService.createAsset(userId, {
           name: '',
-          value: 1000,
+          currentValue: 1000,
           type: 'Otro',
         })
       ).toThrow(NetWorthError);
@@ -338,29 +348,29 @@ describe('NetWorthService', () => {
     it('should update an asset', () => {
       const asset = NetWorthService.createAsset(userId, {
         name: 'Auto',
-        value: 200000,
-        type: 'Veh�culo',
+        currentValue: 200000,
+        type: 'Veh?culo',
       });
 
       const updated = NetWorthService.updateAsset(asset.id, userId, {
-        value: 180000,
+        currentValue: 180000,
       });
 
-      expect(updated!.value).toBe(180000);
+      expect(updated!.currentValue).toBe(180000);
       expect(updated!.name).toBe('Auto');
     });
 
     it('should throw error when updating non-existent asset', () => {
       expect(() =>
-        NetWorthService.updateAsset(999, userId, { value: 100 })
+        NetWorthService.updateAsset(999, userId, { currentValue: 100 })
       ).toThrow(NetWorthError);
     });
 
     it('should delete an asset', () => {
       const asset = NetWorthService.createAsset(userId, {
         name: 'Laptop',
-        value: 25000,
-        type: 'Electr�nica',
+        currentValue: 25000,
+        type: 'Electr?nica',
       });
 
       const result = NetWorthService.deleteAsset(asset.id, userId);
@@ -377,8 +387,8 @@ describe('NetWorthService', () => {
     });
 
     it('should list all assets for a user', () => {
-      NetWorthService.createAsset(userId, { name: 'Casa', value: 500000, type: 'Propiedad' });
-      NetWorthService.createAsset(userId, { name: 'Auto', value: 200000, type: 'Veh�culo' });
+      NetWorthService.createAsset(userId, { name: 'Casa', currentValue: 500000, type: 'Propiedad' });
+      NetWorthService.createAsset(userId, { name: 'Auto', currentValue: 200000, type: 'Veh?culo' });
 
       const list = NetWorthService.listAssets(userId);
       expect(list).toHaveLength(2);
@@ -413,9 +423,9 @@ describe('NetWorthService', () => {
 
     it('should update a liability', () => {
       const liability = NetWorthService.createLiability(userId, {
-        name: 'Pr�stamo auto',
+        name: 'Pr?stamo auto',
         balance: 150000,
-        type: 'Pr�stamo',
+        type: 'Pr?stamo',
       });
 
       const updated = NetWorthService.updateLiability(liability.id, userId, {
@@ -423,7 +433,7 @@ describe('NetWorthService', () => {
       });
 
       expect(updated!.balance).toBe(140000);
-      expect(updated!.name).toBe('Pr�stamo auto');
+      expect(updated!.name).toBe('Pr?stamo auto');
     });
 
     it('should throw error when updating non-existent liability', () => {
@@ -436,7 +446,7 @@ describe('NetWorthService', () => {
       const liability = NetWorthService.createLiability(userId, {
         name: 'Tarjeta',
         balance: 5000,
-        type: 'Tarjeta de Cr�dito',
+        type: 'Tarjeta de Cr?dito',
       });
 
       const result = NetWorthService.deleteLiability(liability.id, userId);
@@ -454,7 +464,7 @@ describe('NetWorthService', () => {
 
     it('should list all liabilities for a user', () => {
       NetWorthService.createLiability(userId, { name: 'Hipoteca', balance: 800000, type: 'Hipoteca' });
-      NetWorthService.createLiability(userId, { name: 'Pr�stamo', balance: 50000, type: 'Pr�stamo' });
+      NetWorthService.createLiability(userId, { name: 'Pr?stamo', balance: 50000, type: 'Pr?stamo' });
 
       const list = NetWorthService.listLiabilities(userId);
       expect(list).toHaveLength(2);
@@ -469,7 +479,7 @@ describe('NetWorthService', () => {
       db.insert(accounts).values({
         userId,
         name: 'Banco',
-        type: 'Débito',
+        type: 'D�bito',
         initialBalance: 25000,
         status: 'Activo',
         currency: 'MXN',
@@ -477,8 +487,8 @@ describe('NetWorthService', () => {
         updatedAt: now,
       }).run();
 
-      NetWorthService.createAsset(userId, { name: 'Auto', value: 100000, type: 'Veh�culo' });
-      NetWorthService.createLiability(userId, { name: 'Pr�stamo', balance: 30000, type: 'Pr�stamo' });
+      NetWorthService.createAsset(userId, { name: 'Auto', currentValue: 100000, type: 'Veh?culo' });
+      NetWorthService.createLiability(userId, { name: 'Pr?stamo', balance: 30000, type: 'Pr?stamo' });
 
       const snapshot = await NetWorthService.createSnapshot(userId);
 

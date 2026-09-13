@@ -3,7 +3,7 @@
 // Output: homeledger-demo-backup.json at the repo root.
 //
 // Import it via the app: Settings -> Data & Backup -> Import (confirm replace).
-// It matches the BackupService format (version 1.0.0, data.* arrays). IDs are
+// It matches the BackupService format (version 1.1.0, data.* arrays). IDs are
 // preserved on import and userId is overwritten with the importing user's id.
 
 import { writeFileSync } from 'node:fs';
@@ -190,10 +190,14 @@ const budgetCategories = [
 ];
 
 // ─── Assets & Liabilities (Net worth / Patrimonio) ───
+// Assets are first-class (P4): `currentValue` (was `value`) plus optional
+// inventory metadata. purchaseTransactionId / receiptAttachmentId are left null
+// here (the demo has no matching tx/receipt to link).
 const assets = [
-  { id: 1, name: 'Departamento', value: 1850000, type: 'Propiedad', notes: 'Depto 2 recámaras', createdAt: CREATED, updatedAt: CREATED },
-  { id: 2, name: 'Automóvil', value: 265000, type: 'Vehículo', notes: 'Sedán 2021', createdAt: CREATED, updatedAt: CREATED },
-  { id: 3, name: 'Portafolio inversión', value: 62000, type: 'Inversión', notes: null, createdAt: CREATED, updatedAt: CREATED },
+  { id: 1, name: 'Departamento', currentValue: 1850000, type: 'Propiedad', brand: null, model: null, serialNumber: null, category: 'Inmueble', purchaseDate: '2019-06-15', purchasePrice: 1600000, location: null, status: 'active', purchaseTransactionId: null, receiptAttachmentId: null, notes: 'Depto 2 recámaras', createdAt: CREATED, updatedAt: CREATED },
+  { id: 2, name: 'Automóvil', currentValue: 265000, type: 'Vehículo', brand: 'Toyota', model: 'Corolla', serialNumber: null, category: 'Transporte', purchaseDate: '2021-03-10', purchasePrice: 380000, location: 'Cochera', status: 'active', purchaseTransactionId: null, receiptAttachmentId: null, notes: 'Sedán 2021', createdAt: CREATED, updatedAt: CREATED },
+  { id: 3, name: 'Portafolio inversión', currentValue: 62000, type: 'Inversión', brand: null, model: null, serialNumber: null, category: null, purchaseDate: null, purchasePrice: null, location: null, status: 'active', purchaseTransactionId: null, receiptAttachmentId: null, notes: null, createdAt: CREATED, updatedAt: CREATED },
+  { id: 4, name: 'Refrigerador', currentValue: 12000, type: 'Electrónica', brand: 'Samsung', model: 'RT38', serialNumber: 'SN-RT38-2022', category: 'Electrodoméstico', purchaseDate: '2022-11-20', purchasePrice: 18000, location: 'Cocina', status: 'active', purchaseTransactionId: null, receiptAttachmentId: null, notes: 'Garantía hasta 2027', createdAt: CREATED, updatedAt: CREATED },
 ];
 const liabilities = [
   { id: 1, name: 'Hipoteca', balance: 920000, type: 'Hipoteca', notes: 'Plazo 20 años', createdAt: CREATED, updatedAt: CREATED },
@@ -222,7 +226,7 @@ for (const l of liabilities) l.id = off(l.id);
 
 // ─── Assemble backup file ───
 const backup = {
-  version: '1.0.0',
+  version: '1.1.0',
   exportedAt: iso(now),
   userId: 1,
   data: {

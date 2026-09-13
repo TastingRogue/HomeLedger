@@ -1,4 +1,5 @@
-// Tipo de activo para patrimonio neto
+// Sugerencias de tipo de activo (el campo `type` en la BD es texto libre;
+// este enum solo documenta valores comunes).
 export enum AssetType {
   Propiedad = 'Propiedad',
   Vehiculo = 'Vehículo',
@@ -7,15 +8,29 @@ export enum AssetType {
   Otro = 'Otro',
 }
 
-// Entidad principal de Activo
+// Estado del ciclo de vida de un activo.
+export type AssetStatus = 'active' | 'sold' | 'disposed';
+
+// Entidad principal de Activo (P4: activo como entidad de primera clase).
+// Refleja la tabla `assets`: además del valor actual, guarda metadatos de
+// inventario (marca/modelo/serie/categoría/ubicación) y vínculos opcionales a
+// la transacción de compra y a un comprobante.
 export interface Asset {
   id: number;
   userId: number;
   name: string;
-  type: AssetType;
-  currentValue: number;              // valor actual estimado
-  purchaseValue: number | null;      // valor de compra original
+  type: string;
+  currentValue: number;              // valor actual estimado (antes `value`)
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  category: string | null;
   purchaseDate: string | null;
+  purchasePrice: number | null;      // precio de compra original
+  location: string | null;           // ubicación física (para inventario)
+  status: AssetStatus;
+  purchaseTransactionId: number | null; // FK opcional -> transactions
+  receiptAttachmentId: number | null;   // FK opcional -> attachments
   notes: string | null;
   createdAt: string;
   updatedAt: string;
