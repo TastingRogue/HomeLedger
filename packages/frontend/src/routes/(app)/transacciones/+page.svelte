@@ -869,16 +869,31 @@
   .toggle-btn { padding: 0.25rem 0.5rem; background: none; border: none; font-size: 0.8rem; cursor: pointer; color: var(--text-muted); transition: background 0.15s, color 0.15s; }
   .toggle-btn.active { background: var(--bg-surface); color: var(--text-primary); }
 
-  /* --- Filters --- */
+  /* --- Filters ---
+     All four filter controls (account/category dropdowns + from/to date
+     pickers) share one width and height so the row reads as a single group
+     (apple-design §16: controls in the same group should look alike). The
+     dropdown component defaults to a small inline chip, so it's normalized
+     here to match the date-picker trigger. */
   .filters-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem; }
-  .filter-item { display: flex; flex-direction: column; gap: 0.15rem; }
-  .filter-item :global(.datepicker) { width: 150px; }
+  .filter-item { display: flex; flex-direction: column; gap: 0.2rem; width: 150px; }
+  .filter-item :global(.datepicker) { width: 100%; }
+  /* Make the Dropdown fill its filter-item and match the date-picker size. */
+  .filter-item :global(.dropdown) { display: block; width: 100%; }
+  .filter-item :global(.dropdown-trigger) {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.8rem;
+  }
   .filter-label { font-size: 0.6rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .btn-filter { padding: 0.3rem 0.7rem; background: var(--accent-blue); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; cursor: pointer; align-self: flex-end; }
+  /* Buttons match the control height (same vertical padding as the triggers). */
+  .btn-filter { padding: 0.45rem 0.9rem; background: var(--accent-blue); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 500; cursor: pointer; align-self: flex-end; }
   .btn-filter:hover { opacity: 0.9; }
-  .btn-clear { padding: 0.3rem 0.5rem; background: none; color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: var(--radius-sm); font-size: 0.72rem; cursor: pointer; align-self: flex-end; }
+  /* Bordered buttons: subtract the 1px border so total height matches .btn-filter. */
+  .btn-clear { padding: calc(0.45rem - 1px) 0.8rem; background: none; color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: var(--radius-sm); font-size: 0.78rem; cursor: pointer; align-self: flex-end; }
   .btn-clear:hover { background: var(--tag-red-bg); }
-  .btn-export { padding: 0.3rem 0.6rem; background: none; color: var(--accent-green); border: 1px solid var(--accent-green); border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 500; cursor: pointer; align-self: flex-end; margin-left: auto; }
+  .btn-export { padding: calc(0.45rem - 1px) 0.8rem; background: none; color: var(--accent-green); border: 1px solid var(--accent-green); border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 500; cursor: pointer; align-self: flex-end; margin-left: auto; }
   .btn-export:hover:not(:disabled) { background: var(--tag-green-bg); }
   .btn-export:disabled { opacity: 0.45; cursor: not-allowed; }
 
