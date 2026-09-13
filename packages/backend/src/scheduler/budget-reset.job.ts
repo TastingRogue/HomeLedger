@@ -3,7 +3,9 @@ import { lt } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { budgets } from '../db/schema.js';
 import { BudgetService } from '../services/budget.service.js';
+import { registerJob, recordJobRun } from './status.js';
 
+const JOB_NAME = 'budget-reset';
 let task: ScheduledTask | null = null;
 
 /**
@@ -15,6 +17,8 @@ let task: ScheduledTask | null = null;
  * Requirements: 7.2
  */
 export function startBudgetResetJob(): ScheduledTask {
+  registerJob(JOB_NAME);
+
   // Cron: minuto 10, hora 0, día 1, todos los meses
   task = schedule('10 0 1 * *', () => {
     const startTime = Date.now();
@@ -47,9 +51,11 @@ export function startBudgetResetJob(): ScheduledTask {
 
       const elapsed = Date.now() - startTime;
       console.log(`[BudgetReset] Completado: ${processedCount} rollovers procesados, ${errorCount} omitidos, en ${elapsed}ms`);
+      recordJobRun(JOB_NAME, 'success', elapsed, `${processedCount} rollovers processed, ${errorCount} skipped`);
     } catch (error) {
       const elapsed = Date.now() - startTime;
       console.error(`[BudgetReset] Error después de ${elapsed}ms:`, error);
+      recordJobRun(JOB_NAME, 'error', elapsed, error instanceof Error ? error.message : String(error));
     }
   }, {
     timezone: 'America/Mexico_City',

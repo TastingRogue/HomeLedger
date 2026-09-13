@@ -222,10 +222,13 @@ returns `{ locale: 'es' }`), and there is no host-level setting.
 - [x] Verified: backend+frontend typecheck 0/0, build clean, full suite 429/429; config endpoint returns es/en correctly; a user's saved choice is never overridden (`localeWasStored` guard).
 
 ### P1.7 — Health & observability
-- [ ] Deepen `/api/v1/health` to include a DB connectivity check
-- [ ] Confirm consistent structured error responses across routes
-- [ ] Surface scheduler job status (auto-charge, alert evaluation, budget reset) so a silently-failed cron job is visible to the user/admin
-- [ ] Consistent, configurable structured logging levels
+- [x] Deepened `GET /api/v1/health` with a real DB probe (`SELECT 1`): returns `{ status, db, version, timestamp }` and **HTTP 503** when the DB is unreachable so Docker/HA healthchecks detect it (was a static `ok`).
+- [x] Confirmed consistent structured error responses: `middleware/error-handler.ts` already returns `{ success:false, error:{ code, message[, details] } }` for Zod (422), Auth (401/403), rate-limit (429), client (4xx), and the generic 500 fallback. No change needed.
+- [x] Surfaced scheduler job status via an in-memory registry (`scheduler/status.ts`): each of the 3 jobs (auto-charge, alert-evaluation, budget-reset) reports `lastRunAt / lastStatus / lastDurationMs / lastMessage` (including their startup catch-up runs). Exposed at **admin-only** `GET /api/v1/health/scheduler` (`requireRole(['admin'])`) → `{ startedAt, healthy, jobs[] }`. A silently-failed cron run is now visible. (This is the first live use of `requireRole` — leads into P1.10.)
+- [x] Configurable logging: `LOG_LEVEL` (pino) is honored in `server.ts`; now documented in `.env.example` + README env table. Jobs keep `console.*` (they run outside request context) but also report structured status to the registry.
+- [x] Verified: backend typecheck 0/0, full suite 429/429, build clean; `app.inject` smoke test → `/health` 200 `db:ok`, `/health/scheduler` 401 without auth (guard wired), registry records job runs correctly.
+
+Note: intentionally did **not** add a metrics/Prometheus stack — out of scope for a local-first v1. In-memory status resets on restart, which is the right scope for single-process operational telemetry.
 
 ### P1.8 — Automated backups with retention
 Manual JSON export exists, but a finance app needs scheduled backups so a DB

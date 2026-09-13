@@ -1,11 +1,13 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
-import { initializeDatabase, closeDatabase } from './db/connection.js';
+import { initializeDatabase, closeDatabase, getSqlite } from './db/connection.js';
 import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
 import { getDefaultLocale } from './config/locale.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
+import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
+import { getSchedulerStatus } from './scheduler/status.js';
 import { authRoutes } from './routes/v1/auth.routes.js';
 import { accountRoutes } from './routes/v1/accounts.routes.js';
 import { transactionRoutes } from './routes/v1/transactions.routes.js';
@@ -61,10 +63,32 @@ export async function buildApp() {
   await registerRateLimitMiddleware(app);
   registerAuthMiddleware(app);
   registerErrorHandler(app);
-  app.get('/api/v1/health', async () => ({ status: 'ok', version: '0.1.0', timestamp: new Date().toISOString() }));
+  // Liveness/readiness probe with a real DB connectivity check. Returns 503 when
+  // the database can't be reached so Docker/HA healthchecks can detect it.
+  app.get('/api/v1/health', async (_request, reply) => {
+    let dbOk = true;
+    try {
+      getSqlite().prepare('SELECT 1').get();
+    } catch (error) {
+      dbOk = false;
+      app.log.error({ error }, 'Health check DB probe failed');
+    }
+    const payload = {
+      status: dbOk ? 'ok' : 'error',
+      db: dbOk ? 'ok' : 'error',
+      version: '0.1.0',
+      timestamp: new Date().toISOString(),
+    };
+    return reply.code(dbOk ? 200 : 503).send(payload);
+  });
   // Public runtime config for the frontend (no auth). Exposes the host's chosen
   // primary language so the UI can default to it before any user preference.
   app.get('/api/v1/config', async () => ({ defaultLocale: getDefaultLocale() }));
+  // Admin-only scheduler status: makes a silently-failed cron job visible.
+  app.get('/api/v1/health/scheduler', { preHandler: [requireRole(['admin'])] }, async () => ({
+    success: true,
+    data: getSchedulerStatus(),
+  }));
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(accountRoutes, { prefix: '/api/v1/accounts' });
   await app.register(transactionRoutes, { prefix: '/api/v1/transactions' });

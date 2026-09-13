@@ -230,6 +230,7 @@ Override these in production.
 | `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
 | `DEFAULT_LOCALE` | Primary language for the install (system category names on first run, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language. | `en` (falls back to English if unset/invalid) |
+| `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
 | `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |
