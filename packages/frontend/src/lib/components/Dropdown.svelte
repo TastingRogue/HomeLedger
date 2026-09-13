@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { popover } from '$lib/motion';
+
   let { value = $bindable(), options }: {
     value: string;
     options: { value: string; label: string }[];
@@ -31,7 +33,7 @@
   </button>
   {#if open}
     <div class="dropdown-backdrop" onclick={() => open = false} role="presentation"></div>
-    <ul class="dropdown-menu" role="listbox">
+    <ul class="dropdown-menu" role="listbox" transition:popover>
       {#each options as opt}
         <li>
           <button
@@ -73,6 +75,9 @@
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
+    /* Scale out of the trigger's bottom-right corner (matches top/right anchor)
+       so the menu grows from the control that opened it (apple-design §7). */
+    transform-origin: top right;
     z-index: 100;
     min-width: 120px;
     background: var(--bg-card, #161e2a);

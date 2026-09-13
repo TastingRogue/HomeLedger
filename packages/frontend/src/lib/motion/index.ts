@@ -30,6 +30,8 @@ export const MOTION = {
   modalDuration: 260,
   /** Backdrop scrim fade — a hair faster so the dim leads the panel slightly. */
   scrimDuration: 200,
+  /** Popover/menu present/dismiss — snappier than a modal (small, local surface). */
+  popoverDuration: 170,
   /** Reduced-motion cross-fade — short, purely informational. */
   reducedDuration: 140,
   easing: cubicOut,
@@ -74,5 +76,28 @@ export function scrim(_node: Element, _params?: unknown): TransitionConfig {
     duration: reduced ? MOTION.reducedDuration : MOTION.scrimDuration,
     easing: MOTION.easing,
     css: (t) => `opacity: ${t};`,
+  };
+}
+
+/**
+ * Popover / menu entrance/exit: a snappy scale-from-trigger + fade. The scale
+ * origin is NOT set here — the element sets `transform-origin` in CSS to the
+ * corner nearest its trigger, so the surface grows out of the control that
+ * opened it (apple-design §7 anchored origins). Symmetric via Svelte's css
+ * reversal; collapses to a plain opacity cross-fade under reduced motion.
+ */
+export function popover(_node: Element, params?: { duration?: number }): TransitionConfig {
+  const reduced = prefersReducedMotion.current;
+  if (reduced) {
+    return {
+      duration: MOTION.reducedDuration,
+      easing: MOTION.easing,
+      css: (t) => `opacity: ${t};`,
+    };
+  }
+  return {
+    duration: params?.duration ?? MOTION.popoverDuration,
+    easing: MOTION.easing,
+    css: (t) => `opacity: ${t}; transform: scale(${0.92 + 0.08 * t});`,
   };
 }
