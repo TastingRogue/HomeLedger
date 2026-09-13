@@ -28,6 +28,14 @@ function getDatabasePath(): string {
 }
 
 /**
+ * Public accessor for the SQLite database file path (used by the backup/snapshot
+ * service). Resolves the same `DATA_DIR`-based path the connection uses.
+ */
+export function getDatabaseFilePath(): string {
+  return getDatabasePath();
+}
+
+/**
  * Returns the path to the migrations directory.
  */
 function getMigrationsPath(): string {

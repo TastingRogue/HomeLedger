@@ -55,6 +55,11 @@ ENV DATA_DIR=/data
 # Primary language for the install (system categories + default UI language).
 # 'es' or 'en'; falls back to English if unset/invalid. Users can still switch.
 ENV DEFAULT_LOCALE=en
+# Automated backups: gzip whole-DB snapshots under $DATA_DIR/backups, keeping the
+# newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.
+ENV BACKUP_ENABLED=true
+ENV BACKUP_RETENTION=7
+ENV BACKUP_CRON="0 3 * * *"
 
 # Default runtime config so the image runs out of the box (e.g. Docker Desktop
 # "Run" with no extra settings): it boots, creates an admin user and lets you

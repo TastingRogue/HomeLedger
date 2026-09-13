@@ -27,6 +27,11 @@ services:
       # Primary language for the install (system categories + default UI
       # language): 'es' or 'en'. Falls back to English. Users can still switch.
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
+      # Automated backups: gzip whole-DB snapshots under /data/backups, keeping
+      # the newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+      BACKUP_RETENTION: ${BACKUP_RETENTION:-7}
+      BACKUP_CRON: ${BACKUP_CRON:-0 3 * * *}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
       interval: 15s

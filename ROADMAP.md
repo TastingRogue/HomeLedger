@@ -235,11 +235,15 @@ Manual JSON export exists, but a finance app needs scheduled backups so a DB
 corruption isn't catastrophic. Keep storage bounded — a fixed number of backups,
 rotating out the oldest.
 
-- [ ] Scheduled automatic backups (cron job; interval configurable, e.g. daily)
-- [ ] **Retention/rotation:** keep a fixed maximum number of backups (configurable, e.g. keep last 7); when a new one is created, delete the oldest so backups never pile up
-- [ ] Store backups under `DATA_DIR` (e.g. `/data/backups`) so they persist with the volume
-- [ ] Restore from an automatic backup via the UI
-- [ ] Verify: backups rotate correctly at the limit; restore works
+**Decision (user-confirmed):** minimize disk use → **gzip-compressed whole-DB snapshots** (SQLite files compress ~70–90%, beating both raw `.db` copies and uncompressed per-user JSON, while capturing everything in one consistent file). The per-user JSON export/import stays as the user-facing "export my data" feature; these snapshots are the separate disaster-recovery mechanism.
+
+- [x] Scheduled automatic backups: new `scheduler/backup.job.ts` (4th cron job, reports into the P1.7 status registry). Schedule via `BACKUP_CRON` (default daily 03:00), toggle via `BACKUP_ENABLED`.
+- [x] **Retention/rotation:** `SnapshotService.applyRetention()` keeps the newest `BACKUP_RETENTION` (env, default 7, min 1) and deletes the oldest after each run. Verified: with retention=2, creating 3 snapshots rotates out exactly 1, oldest deleted.
+- [x] Snapshots stored under `DATA_DIR/backups` (persists with the volume). `SnapshotService.createSnapshot()` uses better-sqlite3's online backup API (WAL-safe, consistent) → gzip → `homeledger-<ISO-ts>.db.gz`. Verified gzip magic bytes.
+- [x] Backend restore API (admin-only, `requireRole(['admin'])`): `GET /api/v1/backup/snapshots` (list), `POST /api/v1/backup/snapshots` (create now), `POST /api/v1/backup/snapshots/:name/restore` (requires `confirmed:true`). Restore validates the SQLite header, writes a `.pre-restore` safety copy of the current DB, clears stale WAL/SHM sidecars, swaps the file, and reopens the connection. Verified: full restore round-trip; path-traversal/invalid names rejected; `.pre-restore` written.
+- [x] Env + docs: `BACKUP_ENABLED`/`BACKUP_RETENTION`/`BACKUP_CRON` in `.env.example`, README, Dockerfile, docker-compose.yml, and the HA add-on (config.yaml options+schema, run.sh, DOCS.md, translations). `data/` (incl. `data/backups`) is gitignored.
+- [x] Verified: backend typecheck 0/0, full suite 429/429, frontend build clean; real snapshot→rotate→restore cycle + safety/validation paths.
+- [ ] (Follow-up) Frontend UI for snapshots: an admin panel to list snapshots and trigger restore. The backend API is done; this is a thin UI layer that can pair with the P1.10 admin views.
 
 ### P1.9 — Restore safety (dry-run / validation)
 Import currently wipes all data on confirm. Make it safer.

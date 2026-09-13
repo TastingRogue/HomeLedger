@@ -234,6 +234,9 @@ Override these in production.
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
 | `DATA_DIR` | Persistent data directory: SQLite database **and** uploaded attachments (`$DATA_DIR/attachments`) | `/data` (Docker) · `./data` (local) |
+| `BACKUP_ENABLED` | Enable the scheduled backup job (gzip whole-DB snapshots under `$DATA_DIR/backups`) | `true` |
+| `BACKUP_RETENTION` | How many snapshots to keep; older ones are rotated out | `7` |
+| `BACKUP_CRON` | Cron schedule for automated backups (server timezone) | `0 3 * * *` (daily 03:00) |
 
 > :floppy_disk: **Data persistence.** Everything under `DATA_DIR` — the database
 > and receipt/invoice attachments — lives on the `homeledger-data` volume, so it

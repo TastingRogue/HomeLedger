@@ -28,6 +28,8 @@ panel_title: "HomeLedger"
 options:
   TZ: "America/Mexico_City"
   DEFAULT_LOCALE: "en"
+  BACKUP_ENABLED: true
+  BACKUP_RETENTION: 7
   JWT_SECRET: ""
   ADMIN_EMAIL: "admin@homeledger.local"
   ADMIN_PASSWORD: ""
@@ -36,6 +38,8 @@ options:
 schema:
   TZ: str
   DEFAULT_LOCALE: "list(es|en)"
+  BACKUP_ENABLED: bool
+  BACKUP_RETENTION: "int(1,)"
   JWT_SECRET: str
   ADMIN_EMAIL: email
   ADMIN_PASSWORD: password
