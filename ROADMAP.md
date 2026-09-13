@@ -188,19 +188,25 @@ Problems: English users see Spanish names; the list contains personal/legacy
 junk (`MX-5`); and the rules engine depends on the magic name `Corrección` for
 uncategorized transactions.
 
-**Goal:** a clean, sensible default category set that appears in the user's
-language, chosen when the app/user is first set up, and English when nothing
-else applies.
+**Goal:** a clean, sensible default category set that appears in the host's
+primary language, seeded once at launch, with English when nothing else applies.
 
-- [ ] Define a curated default category set (name + type Gasto/Ingreso/Ambos + suggested icon/color), with **English and Spanish** names; drop legacy junk like `MX-5`
-- [ ] Decide the mechanism (record the choice here):
-  - **Option A** — store a stable language-independent *key* per system category and translate the display name via `$t()` (works per-user, cleanest)
-  - **Option B** — on first setup / user registration, seed a **per-user** copy of the defaults in that user's chosen language
-- [ ] Replace the magic-string dependency on `Corrección` in the rules engine with a stable key/flag so it survives translation
-- [ ] Ensure the seed is idempotent and doesn't duplicate categories across languages
-- [ ] Migration/backfill plan for existing installs that already have the old Spanish global categories
-- [ ] i18n keys for all default category names (es/en parity)
-- [ ] Verify: first launch in English → English categories; in Spanish → Spanish; switching language behaves per the chosen option
+**Decision (user-confirmed):** The admin/host picks ONE primary language at
+launch (`DEFAULT_LOCALE`). System categories are seeded **once, globally, in that
+language** — they are shared, fixed text. If an individual user switches their
+own UI language, category names do **not** change. Users can delete the system
+categories and create their own. This means we did **not** need Option A's
+per-category i18n display layer — the category name is just real text in the
+host language. We added one stable `key` per system category purely so backend
+logic (default/"uncategorized" lookup) is language-independent.
+
+- [x] Curated default set of **16** categories with es/en names + correct `type`: 1 Ingreso (`income`), 10 Gasto (housing, groceries, dining, transportation, utilities, health, entertainment, shopping, personal, education), 5 Ambos (`savings`, `debt`, `gifts`, `other`, `uncategorized`). Dropped legacy junk (`MX-5`, `ISP`, `Vales`, `Limpieza`, `Comida`); folded `Luz`/`ISP`/`Telefonía` → Utilities, `Gasolina` → Transportation, `Nómina`/`Dividendos` → Income, `Renta` → Housing, `Préstamo` → Debt. Default set researched against mainstream budgeting guidance (Ramsey/SoFi/WalletHub/Monarch).
+- [x] Added a stable `key` column to `categories` (schema.ts) via **migration `0003_add_category_key.sql`** (+ `categories_key_idx`); null for user categories. Chose a real migration (not the connection.ts reconcile pattern) since `key` is brand-new and no install has it yet — this also fixes the migration-only test setups.
+- [x] Replaced BOTH magic-string `Corrección` lookups with `key = 'uncategorized'`: `ImportService.getDefaultCategoryId()` and `RulesEngineService.applyToUncategorized()`. `UNCATEGORIZED_KEY` exported from seed.ts.
+- [x] Seed is idempotent by `key` (skips keys already present); one-time legacy backfill adopts a pre-existing `Corrección` row as `key='uncategorized'` so upgrades don't lose the default and don't duplicate. Existing user data preserved (FKs are `restrict`).
+- [x] Seed reads `DEFAULT_LOCALE` (see P1.6) and inserts the name for that language.
+- [x] Updated all 9 backend test suites (7 inline `CREATE TABLE` + 2 `Corrección` fixtures) for the new column/key.
+- [x] Verified: full suite **429/429**; end-to-end seed run with `DEFAULT_LOCALE=en` → 16 cats, `Uncategorized`/`Income`; with `=es` → `Sin categoría`/`Ingresos`; `key` column present; all 16 keys seeded.
 
 ### P1.6 — Host-configurable default language
 Let the person deploying the app choose the default UI language; fall back to
@@ -208,12 +214,15 @@ Let the person deploying the app choose the default UI language; fall back to
 Spanish in `packages/frontend/src/lib/stores/preferences.ts` (`loadFromStorage`
 returns `{ locale: 'es' }`), and there is no host-level setting.
 
-- [ ] Add a `DEFAULT_LOCALE` env var (backend), validated against `SupportedLocale`; default to `en` when unset/invalid
-- [ ] Expose the configured default to the frontend (e.g. small public endpoint or value injected at page load) so SSR and first paint use it
-- [ ] Change the preferences fallback chain to: **stored user choice → host `DEFAULT_LOCALE` → English (`en`)** (replace the hardcoded `'es'` default)
+- [x] Added a `DEFAULT_LOCALE` env var (backend) via `packages/backend/src/config/locale.ts` — `getDefaultLocale()` validates against supported locales, normalizes `en-US`→`en`, defaults to **English** when unset/invalid. Consumed by the category seed.
+- [x] Documented `DEFAULT_LOCALE` in `.env.example`.
+- [ ] Expose the configured default to the frontend (small public endpoint or value injected at page load) so SSR and first paint use it
+- [ ] Change the **frontend** preferences fallback chain to: **stored user choice → host `DEFAULT_LOCALE` → English (`en`)** (frontend `preferences.ts` `DEFAULT_LOCALE` is still `'es'`; needs to consume the host value)
 - [ ] Do the same for the theme/pre-paint path so the login screen renders in the configured language before any user preference exists
-- [ ] Document `DEFAULT_LOCALE` in the README env table, `.env.example`, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
+- [ ] Document `DEFAULT_LOCALE` in the README env table, `Dockerfile`, `docker-compose.yml`, and the HA add-on options (`ha-addon/config.yaml`)
 - [ ] Verify: fresh install with no config → English; with `DEFAULT_LOCALE=es` → Spanish; a user's saved choice always wins
+
+Note: the **backend** half of P1.6 (seed language) is done here alongside P1.5. The remaining items are the **frontend** UI default-language wiring — a smaller, self-contained follow-up.
 
 ### P1.7 — Health & observability
 - [ ] Deepen `/api/v1/health` to include a DB connectivity check

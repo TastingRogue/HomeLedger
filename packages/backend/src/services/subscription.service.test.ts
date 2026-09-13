@@ -77,6 +77,7 @@ describe('SubscriptionService', () => {
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        key TEXT,
         name TEXT NOT NULL,
         icon TEXT,
         color TEXT,

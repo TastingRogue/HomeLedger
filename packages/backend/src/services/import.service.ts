@@ -12,6 +12,7 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { imports, transactions, accounts, categories } from '../db/schema.js';
+import { UNCATEGORIZED_KEY } from '../db/seed.js';
 import { TransactionType } from '@homeledger/shared';
 import { TransactionService } from './transaction.service.js';
 import { RulesEngineService } from './rules-engine.service.js';
@@ -548,7 +549,8 @@ export class ImportService {
   }
 
   /**
-   * Obtiene el ID de la categoría por defecto (Corrección) para transacciones sin categorizar.
+   * Resolves the default "uncategorized" category id for transactions without a
+   * rule match. Looked up by stable KEY so it works regardless of seed language.
    */
   private static getDefaultCategoryId(): number {
     const db = getDb();
@@ -556,7 +558,7 @@ export class ImportService {
     const defaultCat = db
       .select({ id: categories.id })
       .from(categories)
-      .where(eq(categories.name, 'Corrección'))
+      .where(and(eq(categories.isSystem, true), eq(categories.key, UNCATEGORIZED_KEY)))
       .get();
 
     if (defaultCat) {

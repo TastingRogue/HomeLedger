@@ -68,6 +68,9 @@ export const accounts = sqliteTable('accounts', {
 export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  // Stable identifier for system categories (e.g. 'uncategorized'), independent
+  // of the displayed name/language. Null for user-created categories.
+  key: text('key'),
   name: text('name').notNull(),
   icon: text('icon'),
   color: text('color'),
@@ -76,6 +79,7 @@ export const categories = sqliteTable('categories', {
   createdAt: text('created_at').notNull(),
 }, (table) => [
   index('categories_user_id_idx').on(table.userId),
+  index('categories_key_idx').on(table.key),
 ]);
 
 export const subcategories = sqliteTable('subcategories', {

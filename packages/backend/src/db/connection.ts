@@ -104,6 +104,9 @@ export function initializeDatabase(): void {
   }
   // Index declared in schema.ts but not present in migration 0000.
   sqlite.exec('CREATE INDEX IF NOT EXISTS attachments_transfer_id_idx ON attachments (transfer_id)');
+
+  // Note: `categories.key` is added by migration 0003_add_category_key (a clean
+  // new column, safe as a real migration since no prior install has it).
 }
 
 /**

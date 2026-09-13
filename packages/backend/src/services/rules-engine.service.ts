@@ -1,6 +1,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { rules, transactions, accounts, categories } from '../db/schema.js';
+import { UNCATEGORIZED_KEY } from '../db/seed.js';
 import type { CreateRuleInput, UpdateRuleSchema } from '../validators/rule.schema.js';
 
 /**
@@ -249,11 +250,11 @@ export class RulesEngineService {
   static applyToUncategorized(userId: number): ApplyResult {
     const db = getDb();
 
-    // Encontrar la categoría "Corrección" (categoría por defecto/genérica del sistema)
+    // Find the default/"uncategorized" system category by stable KEY (language-independent).
     const defaultCategory = db
       .select()
       .from(categories)
-      .where(and(eq(categories.isSystem, true), eq(categories.name, 'Corrección')))
+      .where(and(eq(categories.isSystem, true), eq(categories.key, UNCATEGORIZED_KEY)))
       .get();
 
     if (!defaultCategory) {
