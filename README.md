@@ -245,6 +245,38 @@ Override these in production.
 > survives `docker compose up --build --force-recreate` and container rebuilds.
 > Deleting the volume (`docker compose down -v`) is what wipes your data.
 
+## Account Recovery (locked out?)
+
+If you forget the admin password, disable the only admin, or somehow end up with
+no admin, use the built-in **admin recovery CLI**. It runs directly against the
+database (no email needed) and works headless, so you can always regain access
+**without wiping your data**.
+
+```bash
+# Docker (against a running container):
+docker exec -it homeledger node dist/cli/admin.js list-users
+docker exec -it homeledger node dist/cli/admin.js reset-password admin@homeledger.local
+# ^ prints a new strong password once. Or pass your own:
+docker exec -it homeledger node dist/cli/admin.js reset-password admin@homeledger.local 'MyNewPassw0rd'
+
+# Local (from the repo root):
+npm run admin -w packages/backend -- list-users
+npm run admin -w packages/backend -- reset-password admin@homeledger.local
+```
+
+Commands: `list-users`, `reset-password <email> [password]`,
+`create-admin <email> [password] [name]`, `promote <email>` (make a user admin),
+`enable <email>` (re-enable a disabled account). If you omit the password, a
+strong one is generated and printed once — copy it, then change it in-app.
+
+> An admin who **can** log in can also reset another user's password from the
+> app (admin user-management). The CLI is the fallback for when nobody can log in.
+>
+> :email: **Email-based reset (optional, not built in):** HomeLedger is
+> local-first and ships no SMTP dependency, so there is no "email me a reset
+> link" flow by default. The CLI above is the supported recovery path. An
+> optional SMTP flow could be added later for setups that want it.
+
 ## Upgrading
 
 Upgrades are designed to be safe: your data lives on the `homeledger-data`

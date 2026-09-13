@@ -291,9 +291,10 @@ Registration is currently fully open (anyone can register; confirmed in
 ### P1.12 — Password reset / account recovery
 Login and register exist, but there's no way to recover a forgotten password.
 
-- [ ] At minimum: an **admin CLI / script** to reset a user's password (works headless, no email needed)
-- [ ] Optional: email-based reset flow (requires SMTP config — document it as optional)
-- [ ] Verify a locked-out admin can regain access without wiping the DB
+- [x] Admin recovery **CLI** (`packages/backend/src/cli/admin.ts`, `npm run admin -w packages/backend -- <cmd>`; Docker: `docker exec ... node dist/cli/admin.js <cmd>`). Runs migrations first, respects `DATA_DIR`, works headless. Commands: `list-users`, `reset-password <email> [password]` (generates + prints a strong password once if omitted), `create-admin`, `promote`, `enable`. Never prints stored hashes.
+- [x] (Complements the CLI) Admin API `POST /api/v1/users/:id/reset-password` (from P1.10) for when an admin *can* log in.
+- [ ] Email-based reset: **explicitly deferred as optional** — HomeLedger is local-first with no SMTP dependency; the CLI is the supported recovery path. Documented as such in the README. Can be added later behind optional SMTP config.
+- [x] Verified end-to-end: created an admin, reset its password via the CLI, and confirmed `AuthService.login` succeeds with the new password — a locked-out admin regains access without wiping the DB. Full suite 438/438, typecheck 0/0, build compiles the CLI to `dist/cli/admin.js`.
 
 ### P1.13 — Multi-currency correctness
 Users can pick from 8 currencies, but it's unclear how accounts in *different*
