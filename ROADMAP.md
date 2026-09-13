@@ -81,12 +81,10 @@ the current user's rows, so restoring collided with other users' `categories.id`
 - [x] `npm run test` → 0 failing (410 passing); `typecheck` clean
 - [ ] Verify end-to-end in Docker (export → import with 2 users) — pending Docker run
 
-**Deferred to P2.6 (needs binary-file handling):** receipts (`receipt_analyses`
-/ `receipt_items`) and attachments are NOT in the backup export. Receipts
-reference attachments, which are binary files on disk not captured by the JSON
-backup. Exporting receipt metadata alone would leave dangling `attachment_id`
-references after restore — worse than the current honest behavior (import clears
-them). Proper fix = include attachment binaries (base64/zip) + receipts together.
+**Resolved in P2.6 ✅:** receipts (`receipt_analyses` / `receipt_items`) and
+attachments (binary files on disk) are now included in the backup and restore
+with remapped FKs. Attachment binaries are inlined as base64 in the JSON so the
+backup stays a single self-contained file. See P2.6 below for details.
 
 ### P0.3 — Safe upgrades & schema/migration integrity ✅ (done)
 Fresh installs built only from Drizzle migrations now match `schema.ts`, and
@@ -313,40 +311,67 @@ currencies are handled in aggregates.
 
 These have backend support but no frontend UI, or are incomplete.
 
-### P2.1 — Rules (auto-categorization) UI
-- [ ] Backend is complete (`RulesEngineService`, `rules.routes.ts`) ✅
-- [ ] Add frontend API client `lib/api/rules.ts`
-- [ ] Add `reglas` route + UI (list/create/edit/delete/test/apply)
-- [ ] i18n es/en
+### P2.1 — Rules (auto-categorization) UI ✅ (done)
+- [x] Backend was already complete (`RulesEngineService`, `rules.routes.ts`)
+- [x] Frontend API client `lib/api/rules.ts` (list/create/update/delete/test/apply + `Rule`/`RuleCondition`/`RuleAction` types mirroring the backend)
+- [x] `/reglas` route + UI: rules table (priority, name, condition/action chips, match count, inline enable toggle), create/edit modal with dynamic **condition** rows (field + operator + value; `between` shows min/max; numeric fields use number inputs) and **action** rows (setCategory → category picker, setType → Income/Expense, addTag → text), delete confirm, per-form **Test** (dry-run) and header **Apply to uncategorized**. Escape-to-close, backdrop dismiss, instant press feedback + `prefers-reduced-motion` guard (apple-design).
+- [x] Nav entry under Analysis (`zap` icon)
+- [x] i18n es/en: `nav.rules`, `page_title.rules`, full `rules.*` namespace (fields/operators/action-types included). Parity verified: **874 keys each**, 0 mismatches.
+- [x] Verified: frontend typecheck 0 errors / 0 warnings, build clean, full suite still 438/438.
 
-### P2.2 — Loans UI + delete
-- [ ] Add missing DELETE route + `LoanService.delete()`
-- [ ] Add GET single loan
-- [ ] Add frontend API client `lib/api/loans.ts`
-- [ ] Add `prestamos` route + UI (loans, payments, schedule)
-- [ ] i18n es/en
+### P2.2 — Loans UI + delete ✅ (done)
+- [x] Backend: added `LoanService.delete(id, userId)` (ownership-checked; `loan_payments` cascade via FK) + 2 tests (delete cascades payments; throws for non-existent). Exposed missing routes: `GET /loans/:id`, `GET /loans/:id/payments`, `DELETE /loans/:id` (getById/listPayments already existed in the service).
+- [x] Frontend API client `lib/api/loans.ts` (list/get/create/update/delete/recordPayment/getSchedule/getPayments + `Loan`/`LoanPayment`/`AmortizationRow` types).
+- [x] `/prestamos` route + UI: loan cards (name, rate, term, remaining vs principal, progress bar, active/paid status), create/edit modal (principal locked after creation), **record-payment** modal (principal/interest auto-sum to total, validated), **amortization schedule + payment-history** detail modal, delete confirm. Escape-close, press feedback + `prefers-reduced-motion` guard.
+- [x] Nav entry under Planning (`credit-card` icon).
+- [x] i18n es/en: `nav.loans`, `page_title.loans`, full `loans.*` namespace. Parity **917 keys each**, 0 mismatches.
+- [x] Verified: backend + frontend typecheck 0/0, full suite **440/440** (added 2 loan-delete tests), build clean.
 
-### P2.3 — Subcategories & splits in the UI
-- [ ] Subcategory management UI (currently schema-only, indirect)
-- [ ] Transaction split editor UI (service `split()` exists, no dedicated UI)
+### P2.3 — Subcategories & splits in the UI ✅ (done)
+Backend seams that were missing are now added:
+- [x] `DELETE /categories/:id/subcategories/:subId` (ownership-checked; transactions' `subcategoryId` set null via FK) + `deleteSubcategory` client. (Create already existed.)
+- [x] `subcategoryId` now accepted by transaction **create + update** (schema + `TransactionService`), validated to belong to the chosen category; cleared automatically when the category changes or explicitly set to null. (Previously only the rules engine could set it.)
+- [x] `DELETE /transactions/:id/split` (clear splits) + `TransactionService.clearSplits`; `splitTransaction`/`clearSplits` clients; `Transaction.splits`/`subcategoryId` types (shared + api client).
+- [x] **Subcategory management UI** in the categories Edit modal: list existing, add, delete.
+- [x] **Subcategory picker** in the transaction create/edit form (appears when the selected category has subcategories; resets on category change).
+- [x] **Split editor** modal from the transaction detail: dynamic category+amount+note rows, live "remaining" indicator (green at 0, warns otherwise), Save disabled until it balances (mirrors backend `SPLITS_SUM_MISMATCH`), loads existing splits, and Clear-splits.
+- [x] i18n es/en (parity **932 keys**), press feedback + `prefers-reduced-motion`, Escape-close.
+- [x] Verified: backend + frontend typecheck 0/0, full suite **446/446** (added 6 tests: subcategory persist/reject/clear ×2 + clearSplits ×2), shared rebuilt, build clean.
 
-### P2.4 — Recurring transactions (decide: implement or remove)
-- [ ] Table exists but there's NO service/route/scheduler — either build it (service + route + scheduler consumer + UI) or remove the schema to avoid dead surface
-- [ ] Note: subscriptions with `autoCharge` already cover most "recurring" needs
+### P2.4 — Recurring transactions ✅ (done — removed)
+**Decision (user-confirmed): removed.** The `recurring_transactions` table had no
+service, route, scheduler, or UI — pure dead schema — and subscriptions with
+`autoCharge` already cover recurring needs. Keeping it would be confusing unused surface.
+- [x] Migration `0005_drop_recurring_transactions.sql` (`DROP TABLE IF EXISTS`) + journal entry; verified end-to-end that a fresh DB ends with no `recurring_transactions` table after all migrations.
+- [x] Removed the table from `schema.ts` (and the "& RECURRING TRANSACTIONS" section header).
+- [x] Removed every reference from `backup.service.ts` (import, `BackupData` field, export select, delete-in-import, import re-insert loop, `validateBackup` expected fields + defaults, `previewImport` count) and `backup.service.test.ts` (inline table, cleanup, fixtures). Old backups that still contain a `recurringTransactions` key are simply ignored on import (extra keys aren't rejected) — no error.
+- [x] Verified: backend typecheck 0/0, full suite **446/446** (backup round-trip unaffected), build clean.
 
-### P2.5 — HA webhook processing
-- [ ] `POST /api/v1/ha/webhook` is a stub (only logs) — implement automation trigger processing, or document as intentionally minimal
-- [ ] Make HA sensors currency-aware (currently hardcoded `MXN`) and fix hardcoded `sensor.smart_finance_*` entity ids → `homeledger`
+### P2.5 — HA integration ✅ (done)
+Auditing this uncovered a bigger issue than the note implied: the HACS integration's
+sensors were effectively **broken** — the coordinator returned the raw `{ success, data }`
+envelope but `sensor.py` read keys off the top level, and it expected keys `/status`
+never returned. Fixed the whole contract:
+- [x] **Webhook decision: documented as intentionally minimal.** `POST /api/v1/ha/webhook` acknowledges + logs but does no automation processing (no concrete use case; local-first — building speculative event→action handling would be unused surface). To drive HomeLedger from HA, the integration's `create_transaction`/`create_quick_expense` services use the normal endpoints. Made the intent explicit in code + response (`processed: false`).
+- [x] **Fixed `/api/v1/ha/status` contract** so sensors actually work: added `currency` (from `getInstanceCurrency()`), `monthly_savings`, `net_worth` (NetWorthService), `total_balance`, `credit_card_utilization`, `remaining_budget` (BudgetService summary, null when no budget), `accounts[]` (id/name/balance), `top_categories[]` (top 5 for the month), and an `alerts{}` object (over_budget / high_credit_utilization / payment_due_soon / low_balance) for the binary sensors. Kept all original keys for back-compat.
+- [x] **Fixed the coordinator** to unwrap `{ data }` so `sensor.py`/`binary_sensor.py` read the right shape (this was the core "sensors show nothing" bug).
+- [x] **Currency-aware sensors:** Python monetary sensors (main + per-account + per-category) now take their unit from the payload `currency` (fallback MXN) instead of hardcoded `MXN`. Backend `/sensors` unit is `getInstanceCurrency()`.
+- [x] **Renamed** `sensor.smart_finance_*` → `sensor.homeledger_*` in the backend `/sensors` endpoint. (The Python integration derives its own entity ids, so no rename needed there; the folder/domain was already `homeledger`.)
+- [x] Verified: backend typecheck 0/0, full suite 446/446, build clean; `app.inject` on `/status` (authed) returns 200 with `currency`, all new keys, the `alerts` object, and per-account balances.
 
-### P2.6 — Include receipts & attachments in backup (deferred from P0.2)
+Note: HACS polls `/status`; the backend `/sensors` endpoint is a convenience/alt shape kept correct but not consumed by the integration.
+
+### P2.6 — Include receipts & attachments in backup (deferred from P0.2) ✅ (done)
 Attachments (binary files on disk) and receipts (`receipt_analyses` /
-`receipt_items`, which reference attachments) are not captured by the JSON
-backup, so a restore clears them. Fix requires bundling binary attachment files.
+`receipt_items`, which reference attachments) are now captured by the backup and
+survive a restore with fully remapped foreign keys.
 
-- [ ] Include attachment binaries in the backup (base64 inline, or a zip container alongside the JSON)
-- [ ] Export/import `receipt_analyses` + `receipt_items` with FK remapping (attachment_id, transaction_id) consistent with the P0.2 remap
-- [ ] Round-trip test covering an attachment + its receipt + linked transaction
-- [ ] Until done, document that restore does not preserve receipts/attachments
+- [x] Include attachment binaries in the backup — inlined as base64 in the single JSON (`data.attachments[].fileBase64`), keeping the existing single-file export/import format + frontend flow intact rather than introducing a zip container. Attachment volume for a personal finance app is modest, so base64 is the least-friction, self-contained choice.
+- [x] Export `attachments[]` (full row + `fileBase64` read from disk, `null` when the file is missing), `receiptAnalyses[]` (raw `SELECT * WHERE user_id`), `receiptItems[]` (scoped to the user's analyses via join). Receipt tables guarded by existence (raw-SQL `ensureTables`).
+- [x] Import re-inserts all three with FK remapping consistent with the P0.2 remap: added a `transferMap` (transfers now capture new ids since `attachments.transferId` references them); attachments remap `transactionId`/`transferId` and rewrite the base64 to disk under a fresh UUID filename + updated `path` (build `attMap`); `receipt_analyses` remap `attachment_id`→attMap (skip orphans; it's a NOT NULL UNIQUE FK) + `transaction_id`→txMap (build `analysisMap`); `receipt_items` remap `analysis_id`→analysisMap. Receipt inserts are column-aware (PRAGMA `table_info`) to tolerate schema drift, guarded by table existence.
+- [x] `validateBackup` (expected-array fields + defaults) and `previewImport` (`currentCounts`) extended for attachments/receiptAnalyses/receiptItems.
+- [x] Round-trip test: attachment + binary file on disk + receipt analysis + line item survive export → wipe → import, asserting remapped `transaction_id`, the rewritten file's bytes match, and the receipt/item FKs point at the fresh ids.
+- [x] Verified: backend typecheck 0/0, full suite **447 passing** (+1), backend build clean.
 
 ---
 
@@ -354,13 +379,36 @@ backup, so a restore clears them. Fix requires bundling binary attachment files.
 
 - [ ] Frontend test suite (currently ZERO tests) — at least smoke/e2e on critical flows (login, create tx, dashboard, backup)
 - [ ] Receipt OCR accuracy review (currently regex/heuristic best-effort)
-- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3)
+- [ ] Accessibility pass (WCAG basics: labels, contrast, keyboard nav) — includes translating the many hardcoded Spanish `aria-label`s across the app to `$t()` (deferred from P1.3). **Reduced-motion / transparency / contrast is broken out as P3.A below.**
 - [ ] Performance check with a large dataset (thousands of transactions)
 - [ ] End-to-end docs: deployment, backup/restore, upgrade, HA setup
 - [ ] Reverse-proxy deployment examples with HTTPS (Nginx / Traefik / Caddy)
 - [ ] `CONTRIBUTING.md` + issue/PR templates (supports community growth)
 - [ ] CSV export of transactions (spreadsheet-friendly, separate from the JSON backup)
 - [ ] (Optional) Real dashboard customization — the non-functional "Customize" button was removed; only revisit if it becomes a wanted feature
+
+### Design craft (from the `apple-design` skill)
+
+A UI audit against the vendored `apple-design` skill (`.kiro/skills/apple-design/`)
+found the app is functionally solid with a real token system, but motion is
+fixed-duration CSS (no springs, nothing interruptible), there's **no**
+reduced-motion/transparency/contrast handling, press feedback is inconsistent,
+surfaces are opaque (no translucent materials), modals just pop (no origin,
+no materialize, no symmetric enter/exit), and typography tracking is
+size-agnostic. Stack: **SvelteKit + Svelte 5** — use `svelte/motion`
+(`Spring`/`Tween`) + `svelte/transition` + CSS; no new heavy dependency needed.
+House spring style: critically damped `damping 1.0, response 0.3–0.4` by default;
+add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
+
+- [ ] **P3.A — Reduced-motion / transparency / contrast foundations (do first; a real 1.0 a11y gap).** Add global `@media (prefers-reduced-motion: reduce)` (cross-fade instead of slide/spring, drop overshoot), `prefers-reduced-transparency: reduce` (frostier/solid surfaces, drop blur), and `prefers-contrast: more` (near-solid backgrounds + defined borders). Currently **none** exist in the codebase. Fold in the deferred aria-label i18n here.
+- [ ] **P3.B — Spring-based motion primitives.** Add `svelte/motion`-based spring helpers + a house-style token set; convert modal enter/exit and the toggle switches from fixed CSS transitions to interruptible springs (animate from the current value, never lock input).
+- [ ] **P3.C — Consistent press feedback.** Shared instant `:active` highlight + `transform: scale(0.97)` on ALL interactive elements (buttons, cards, nav items, list rows), not just the quick-register keypad. Feedback on pointer-down, not release; respect reduced-motion.
+- [ ] **P3.D — Translucent materials & depth.** Convert sidebar / page headers / modals to `backdrop-filter` layers with content scrolling under; replace hard `border-bottom` dividers on sticky chrome with a scroll-edge blur/gradient fade; modal "materialize" (blur + scale together) on enter; size-aware shadows (bigger surface = deeper shadow). Guard everything behind `prefers-reduced-transparency`.
+- [ ] **P3.E — Modal/sheet spatial consistency.** Anchor modals/popovers to their trigger (`transform-origin`), enter and exit along the same path (mirror the easing), and add a reusable bottom-sheet (drag-to-dismiss with momentum projection + rubber-band) for mobile — reused by the deferred admin panels (P1.8/P1.9/P1.10/P1.11) and detail modals.
+- [ ] **P3.F — Typography scale (size-specific tracking/leading).** Add tracking/leading tokens: negative letter-spacing on display/large numbers, near-`0` on body, slightly positive on the uppercase micro-labels; tight leading on headings, looser on body. Verify layout scales with text (spacing already mostly in `rem`).
+- [ ] (Optional / post-1.0) **P3.G — Gesture layer.** Swipe-to-dismiss mobile sidebar, swipe actions on transaction/list rows, calendar swipe — 1:1 pointer tracking + velocity handoff + rubber-banding. Pure "feel" polish; explicitly a nice-to-have, not a 1.0 blocker.
+
+> Priority: **P3.A is 1.0-worthy** (reduced-motion is a genuine accessibility gap). P3.B–P3.F are 1.0-if-time / 1.1 craft. P3.G is post-1.0. All are additive polish on an already-functional UI.
 
 ---
 

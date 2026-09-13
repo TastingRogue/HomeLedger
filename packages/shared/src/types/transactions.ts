@@ -12,6 +12,7 @@ export interface Transaction {
   accountId: number;
   date: string;                      // ISO 8601 con zona horaria CST
   categoryId: number;
+  subcategoryId?: number | null;     // subcategoría opcional (debe pertenecer a la categoría)
   amount: number;                    // > 0, máximo 999,999,999.99, exactamente 2 decimales
   type: TransactionType;
   invoiceUrl: string | null;         // archivo de imagen adjunto (opcional)

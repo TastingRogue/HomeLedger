@@ -125,7 +125,10 @@ class HomeLedgerSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
         self._attr_icon = description["icon"]
         self._attr_device_class = description["device_class"]
         self._attr_state_class = description["state_class"]
-        self._attr_native_unit_of_measurement = description["unit"]
+        # Monetary sensors follow the instance currency reported by the API
+        # (falling back to the description's unit). Non-monetary units are fixed.
+        self._is_monetary = description["device_class"] == SensorDeviceClass.MONETARY
+        self._fallback_unit = description["unit"]
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry.entry_id)},
             "name": "HomeLedger",
@@ -133,6 +136,14 @@ class HomeLedgerSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEntity):
             "model": "Personal Finance Manager",
             "sw_version": "0.1.0",
         }
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Currency for monetary sensors comes from the API (instance currency)."""
+        if not self._is_monetary:
+            return self._fallback_unit
+        currency = (self.coordinator.data or {}).get("currency")
+        return currency or self._fallback_unit
 
     @property
     def native_value(self) -> float | None:
@@ -148,7 +159,11 @@ class HomeLedgerAccountSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEn
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
-    _attr_native_unit_of_measurement = "MXN"
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Currency from the API (instance currency), fallback MXN."""
+        return (self.coordinator.data or {}).get("currency") or "MXN"
 
     def __init__(
         self,
@@ -187,7 +202,11 @@ class HomeLedgerCategorySensor(CoordinatorEntity[HomeLedgerCoordinator], SensorE
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
-    _attr_native_unit_of_measurement = "MXN"
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Currency from the API (instance currency), fallback MXN."""
+        return (self.coordinator.data or {}).get("currency") or "MXN"
 
     def __init__(
         self,

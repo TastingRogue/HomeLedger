@@ -94,3 +94,10 @@ export async function deleteCategory(id: number): Promise<{ message: string }> {
 export async function createSubcategory(categoryId: number, name: string): Promise<Subcategory> {
   return apiPost<Subcategory>(`/categories/${categoryId}/subcategories`, { name });
 }
+
+/**
+ * Delete a subcategory of a category.
+ */
+export async function deleteSubcategory(categoryId: number, subId: number): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/categories/${categoryId}/subcategories/${subId}`);
+}

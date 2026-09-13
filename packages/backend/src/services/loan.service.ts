@@ -348,4 +348,26 @@ export class LoanService {
       .where(eq(loanPayments.loanId, id))
       .all();
   }
+
+  /**
+   * Elimina un préstamo del usuario. Los pagos asociados se eliminan en cascada
+   * (FK `loan_payments.loan_id` con onDelete: 'cascade').
+   *
+   * @throws LoanError si el préstamo no existe o no pertenece al usuario
+   */
+  static delete(id: number, userId: number): void {
+    const db = getDb();
+
+    const loan = db
+      .select({ id: loans.id })
+      .from(loans)
+      .where(and(eq(loans.id, id), eq(loans.userId, userId)))
+      .get();
+
+    if (!loan) {
+      throw new LoanError('Préstamo no encontrado', 'LOAN_NOT_FOUND');
+    }
+
+    db.delete(loans).where(and(eq(loans.id, id), eq(loans.userId, userId))).run();
+  }
 }

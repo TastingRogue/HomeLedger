@@ -2,6 +2,7 @@
 import { LoanService, LoanError } from './loan.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, loans, loanPayments } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -457,6 +458,26 @@ describe('LoanService', () => {
       expect(() =>
         LoanService.listPayments(99999, userId)
       ).toThrow(LoanError);
+    });
+  });
+
+  describe('delete()', () => {
+    it('should delete a loan and cascade its payments', () => {
+      const loan = LoanService.create(userId, {
+        name: 'To Delete', principal: 2000, interestRate: 0, term: 2, startDate: '2024-01-01',
+      });
+      LoanService.recordPayment(loan.id, userId, { amount: 1000, principal: 1000, interest: 0, date: '2024-02-01' });
+
+      LoanService.delete(loan.id, userId);
+
+      expect(() => LoanService.getById(loan.id, userId)).toThrow(LoanError);
+      // Payments cascaded away with the loan.
+      const remainingPayments = getDb().select().from(loanPayments).where(eq(loanPayments.loanId, loan.id)).all();
+      expect(remainingPayments).toHaveLength(0);
+    });
+
+    it('should throw for a non-existent loan', () => {
+      expect(() => LoanService.delete(99999, userId)).toThrow(LoanError);
     });
   });
 });

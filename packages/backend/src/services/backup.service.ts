@@ -1,4 +1,7 @@
 import { eq } from 'drizzle-orm';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import { getDb, getSqlite } from '../db/connection.js';
 import {
   accounts,
@@ -19,8 +22,16 @@ import {
   loanPayments,
   networthSnapshots,
   creditSubscriptions,
-  recurringTransactions,
+  attachments,
 } from '../db/schema.js';
+import { AttachmentService, type AttachmentRecord } from './attachment.service.js';
+
+// Attachment binaries live under DATA_DIR/attachments (same resolution as
+// AttachmentService). Used when re-writing files to disk during import.
+const DATA_DIR = process.env['DATA_DIR']
+  ? path.resolve(process.env['DATA_DIR'])
+  : path.resolve(process.cwd(), 'data');
+const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
 
 /** Application version used in backup metadata */
 const APP_VERSION = '0.1.0';
@@ -61,7 +72,16 @@ export interface BackupData {
   loanPayments: unknown[];
   networthSnapshots: unknown[];
   creditSubscriptions: unknown[];
-  recurringTransactions: unknown[];
+  /**
+   * Attachment rows. Each carries the file content inline as base64 in a
+   * `fileBase64` field (null when the file is missing on disk) so the backup is
+   * fully self-contained — no separate binary bundle. See P2.6.
+   */
+  attachments: unknown[];
+  /** Receipt analyses (raw-SQL table); one per attachment. */
+  receiptAnalyses: unknown[];
+  /** Receipt line items belonging to the user's analyses. */
+  receiptItems: unknown[];
 }
 
 /**
@@ -107,6 +127,35 @@ export class BackupService {
    */
   static export(userId: number): BackupFile {
     const db = getDb();
+    const sqlite = getSqlite();
+    const tableExists = (name: string): boolean =>
+      !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+
+    // Attachments: full row + the file content inline as base64 (null if the
+    // file is missing on disk) so the backup restores binaries with no separate
+    // bundle. See P2.6.
+    const attachmentRows = db.select().from(attachments).where(eq(attachments.userId, userId)).all() as unknown as AttachmentRecord[];
+    const attachmentData = attachmentRows.map((row) => {
+      let fileBase64: string | null = null;
+      try {
+        const filePath = AttachmentService.getFilePath(row);
+        if (fs.existsSync(filePath)) fileBase64 = fs.readFileSync(filePath).toString('base64');
+      } catch {
+        fileBase64 = null;
+      }
+      return { ...row, fileBase64 };
+    });
+
+    // Receipt analyses + items live in raw-SQL tables that may not exist on a
+    // fresh DB; guard by existence. Items are scoped to the user's analyses.
+    const receiptAnalyses = tableExists('receipt_analyses')
+      ? (sqlite.prepare('SELECT * FROM receipt_analyses WHERE user_id = ?').all(userId) as Record<string, unknown>[])
+      : [];
+    const receiptItems = tableExists('receipt_items') && tableExists('receipt_analyses')
+      ? (sqlite
+          .prepare('SELECT ri.* FROM receipt_items ri INNER JOIN receipt_analyses ra ON ra.id = ri.analysis_id WHERE ra.user_id = ?')
+          .all(userId) as Record<string, unknown>[])
+      : [];
 
     const data: BackupData = {
       accounts: db.select().from(accounts).where(eq(accounts.userId, userId)).all(),
@@ -181,11 +230,9 @@ export class BackupService {
         .innerJoin(accounts, eq(creditSubscriptions.accountId, accounts.id))
         .where(eq(accounts.userId, userId))
         .all(),
-      recurringTransactions: db
-        .select()
-        .from(recurringTransactions)
-        .where(eq(recurringTransactions.userId, userId))
-        .all(),
+      attachments: attachmentData,
+      receiptAnalyses,
+      receiptItems,
     };
 
     BackupService.recordHistory(userId, 'export');
@@ -312,7 +359,6 @@ export class BackupService {
       db.delete(transactions).where(eq(transactions.userId, userId)).run();
       db.delete(transfers).where(eq(transfers.userId, userId)).run();
       db.delete(subscriptions).where(eq(subscriptions.userId, userId)).run();
-      db.delete(recurringTransactions).where(eq(recurringTransactions.userId, userId)).run();
       db.delete(goals).where(eq(goals.userId, userId)).run();
       db.delete(budgets).where(eq(budgets.userId, userId)).run();
       db.delete(rules).where(eq(rules.userId, userId)).run();
@@ -358,9 +404,12 @@ export class BackupService {
       const subcatMap = new Map<number, number>();
       const acctMap = new Map<number, number>();
       const txMap = new Map<number, number>();
+      const transferMap = new Map<number, number>();
       const subMap = new Map<number, number>();
       const budgetMap = new Map<number, number>();
       const loanMap = new Map<number, number>();
+      const attMap = new Map<number, number>();
+      const analysisMap = new Map<number, number>();
 
       // Categories (parents of many; drop original id)
       for (const cat of backupData.categories ?? []) {
@@ -440,12 +489,14 @@ export class BackupService {
         const newDest = remap(acctMap, fk(rec, 'destinationAccountId'));
         if (newSource == null || newDest == null) continue;
         const { id: _drop, sourceAccountId: _s, destinationAccountId: _d, ...rest } = rec;
-        db.insert(transfers).values({
+        const inserted = db.insert(transfers).values({
           ...(rest as Omit<typeof transfers.$inferInsert, 'sourceAccountId' | 'destinationAccountId'>),
           userId,
           sourceAccountId: newSource,
           destinationAccountId: newDest,
-        }).run();
+        }).returning({ id: transfers.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) transferMap.set(prev, inserted.id);
       }
 
       // Subscriptions (accountId, categoryId remapped)
@@ -463,21 +514,6 @@ export class BackupService {
         }).returning({ id: subscriptions.id }).get();
         const prev = oldId(rec);
         if (prev != null) subMap.set(prev, inserted.id);
-      }
-
-      // Recurring transactions (accountId, categoryId remapped)
-      for (const rec2 of backupData.recurringTransactions ?? []) {
-        const rec = rec2 as Record<string, unknown>;
-        const newAccountId = remap(acctMap, fk(rec, 'accountId'));
-        const newCategoryId = remap(catMap, fk(rec, 'categoryId'));
-        if (newAccountId == null || newCategoryId == null) continue;
-        const { id: _drop, accountId: _a, categoryId: _c, ...rest } = rec;
-        db.insert(recurringTransactions).values({
-          ...(rest as Omit<typeof recurringTransactions.$inferInsert, 'accountId' | 'categoryId'>),
-          userId,
-          accountId: newAccountId,
-          categoryId: newCategoryId,
-        }).run();
       }
 
       // Goals (no cross-FK; drop id)
@@ -601,6 +637,88 @@ export class BackupService {
           subscriptionId: newSubscriptionId,
         }).run();
       }
+
+      // ---- Attachments + receipts (P2.6) --------------------------------
+      // Re-insert attachments with fresh ids, remapping their transaction /
+      // transfer links, and write the inlined base64 back to disk under a fresh
+      // stored filename (mirrors AttachmentService.save). Build attMap so
+      // receipt analyses can point at the new attachment ids.
+      if (!fs.existsSync(UPLOAD_DIR)) {
+        try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch { /* created on write */ }
+      }
+      for (const att of backupData.attachments ?? []) {
+        const rec = att as Record<string, unknown>;
+        // Remap links. Both are optional; an attachment may link to neither,
+        // one, or (never in practice) both. Drop a link whose target didn't
+        // survive the import rather than skip the whole attachment.
+        const newTransactionId = remap(txMap, fk(rec, 'transactionId'));
+        const newTransferId = remap(transferMap, fk(rec, 'transferId'));
+
+        // Write the file back to disk with a fresh stored name to avoid any
+        // collision with existing files. Keep the original extension.
+        const originalStored = typeof rec['filename'] === 'string' ? (rec['filename'] as string) : '';
+        const ext = path.extname(originalStored) || '.bin';
+        const storedName = `${crypto.randomUUID()}${ext}`;
+        const filePath = path.join(UPLOAD_DIR, storedName);
+        const fileBase64 = typeof rec['fileBase64'] === 'string' ? (rec['fileBase64'] as string) : null;
+        if (fileBase64 != null) {
+          try { fs.writeFileSync(filePath, Buffer.from(fileBase64, 'base64')); } catch { /* best effort */ }
+        }
+
+        const now = typeof rec['createdAt'] === 'string' ? (rec['createdAt'] as string) : new Date().toISOString();
+        const inserted = db.insert(attachments).values({
+          userId,
+          transactionId: newTransactionId,
+          transferId: newTransferId,
+          filename: storedName,
+          originalName: typeof rec['originalName'] === 'string' ? (rec['originalName'] as string) : null,
+          mimeType: typeof rec['mimeType'] === 'string' ? (rec['mimeType'] as string) : 'application/octet-stream',
+          size: typeof rec['size'] === 'number' ? (rec['size'] as number) : (fileBase64 ? Buffer.from(fileBase64, 'base64').length : 0),
+          path: filePath,
+          createdAt: now,
+        }).returning({ id: attachments.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) attMap.set(prev, inserted.id);
+      }
+
+      // Receipt analyses + items live in raw-SQL tables. Guard by existence, and
+      // insert column-by-column so we tolerate schema drift. Remap attachment_id
+      // (required — skip orphans) and transaction_id (optional).
+      const raExists = tableExists('receipt_analyses');
+      const riExists = tableExists('receipt_items');
+      if (raExists) {
+        const raCols = (sqlite.prepare('PRAGMA table_info(receipt_analyses)').all() as { name: string }[]).map(c => c.name);
+        const remappedCols = new Set(['id', 'user_id', 'attachment_id', 'transaction_id']);
+        const copyCols = raCols.filter(c => !remappedCols.has(c));
+        for (const ra of backupData.receiptAnalyses ?? []) {
+          const rec = ra as Record<string, unknown>;
+          const newAttachmentId = remap(attMap, fk(rec, 'attachment_id'));
+          if (newAttachmentId == null) continue; // attachment_id is NOT NULL + UNIQUE FK
+          const newTransactionId = remap(txMap, fk(rec, 'transaction_id'));
+          const cols = ['user_id', 'attachment_id', 'transaction_id', ...copyCols];
+          const values: unknown[] = [userId, newAttachmentId, newTransactionId, ...copyCols.map(c => rec[c] ?? null)];
+          const placeholders = cols.map(() => '?').join(', ');
+          const result = sqlite
+            .prepare(`INSERT INTO receipt_analyses (${cols.join(', ')}) VALUES (${placeholders})`)
+            .run(...values);
+          const prev = oldId(rec);
+          if (prev != null) analysisMap.set(prev, Number(result.lastInsertRowid));
+        }
+      }
+      if (riExists && raExists) {
+        const riCols = (sqlite.prepare('PRAGMA table_info(receipt_items)').all() as { name: string }[]).map(c => c.name);
+        const remappedCols = new Set(['id', 'analysis_id']);
+        const copyCols = riCols.filter(c => !remappedCols.has(c));
+        for (const item of backupData.receiptItems ?? []) {
+          const rec = item as Record<string, unknown>;
+          const newAnalysisId = remap(analysisMap, fk(rec, 'analysis_id'));
+          if (newAnalysisId == null) continue; // orphan
+          const cols = ['analysis_id', ...copyCols];
+          const values: unknown[] = [newAnalysisId, ...copyCols.map(c => rec[c] ?? null)];
+          const placeholders = cols.map(() => '?').join(', ');
+          sqlite.prepare(`INSERT INTO receipt_items (${cols.join(', ')}) VALUES (${placeholders})`).run(...values);
+        }
+      }
     })();
 
     BackupService.recordHistory(userId, 'import');
@@ -682,7 +800,8 @@ export class BackupService {
       'subscriptions', 'goals', 'budgets', 'budgetCategories',
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
-      'networthSnapshots', 'creditSubscriptions', 'recurringTransactions',
+      'networthSnapshots', 'creditSubscriptions',
+      'attachments', 'receiptAnalyses', 'receiptItems',
     ];
 
     for (const field of expectedArrayFields) {
@@ -717,7 +836,9 @@ export class BackupService {
         loanPayments: Array.isArray(data['loanPayments']) ? data['loanPayments'] : [],
         networthSnapshots: Array.isArray(data['networthSnapshots']) ? data['networthSnapshots'] : [],
         creditSubscriptions: Array.isArray(data['creditSubscriptions']) ? data['creditSubscriptions'] : [],
-        recurringTransactions: Array.isArray(data['recurringTransactions']) ? data['recurringTransactions'] : [],
+        attachments: Array.isArray(data['attachments']) ? data['attachments'] : [],
+        receiptAnalyses: Array.isArray(data['receiptAnalyses']) ? data['receiptAnalyses'] : [],
+        receiptItems: Array.isArray(data['receiptItems']) ? data['receiptItems'] : [],
       },
     };
   }
@@ -767,8 +888,20 @@ export class BackupService {
       liabilities: BackupService.countByUser('liabilities', userId),
       loans: BackupService.countByUser('loans', userId),
       networthSnapshots: BackupService.countByUser('networth_snapshots', userId),
-      recurringTransactions: BackupService.countByUser('recurring_transactions', userId),
     };
+
+    // Attachments + receipts (raw-SQL tables may be absent on a fresh DB).
+    const sqlite = getSqlite();
+    const tableExists = (name: string): boolean =>
+      !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+    if (tableExists('attachments')) currentCounts['attachments'] = BackupService.countByUser('attachments', userId);
+    if (tableExists('receipt_analyses')) currentCounts['receiptAnalyses'] = BackupService.countByUser('receipt_analyses', userId);
+    if (tableExists('receipt_items') && tableExists('receipt_analyses')) {
+      const row = sqlite
+        .prepare('SELECT COUNT(*) AS n FROM receipt_items ri INNER JOIN receipt_analyses ra ON ra.id = ri.analysis_id WHERE ra.user_id = ?')
+        .get(userId) as { n: number } | undefined;
+      currentCounts['receiptItems'] = row?.n ?? 0;
+    }
 
     // Warnings: mirror the import's skip logic so the user sees what won't survive.
     const warnings: string[] = [];

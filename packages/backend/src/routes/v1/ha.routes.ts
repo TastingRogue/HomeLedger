@@ -3,6 +3,10 @@ import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { getDb } from '../../db/connection.js';
 import { accounts, transactions, goals, alerts, subscriptions } from '../../db/schema.js';
 import { AccountService } from '../../services/account.service.js';
+import { NetWorthService } from '../../services/networth.service.js';
+import { BudgetService } from '../../services/budget.service.js';
+import { CategoryService } from '../../services/category.service.js';
+import { getInstanceCurrency } from '../../config/currency.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 
 /**
@@ -142,28 +146,88 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
       )
       .get();
 
+    const monthlyExpenses = expenseResult?.total ?? 0;
+    const monthlyIncome = incomeResult?.total ?? 0;
+    const roundedBalance = Math.round(consolidatedBalance * 100) / 100;
+    const roundedCreditUtil = Math.round(creditUtilization * 100) / 100;
+
+    // Net worth (accounts + assets - liabilities).
+    let netWorth = roundedBalance;
+    try {
+      const nw = await NetWorthService.getCurrent(user.userId);
+      netWorth = nw.netWorth;
+    } catch { /* fall back to consolidated balance */ }
+
+    // Remaining budget for the current period (null when no active budget).
+    let remainingBudget: number | null = null;
+    try {
+      const summary = BudgetService.getSummary(user.userId);
+      if (summary.totalAllocated > 0) remainingBudget = summary.totalRemaining;
+    } catch { /* no active budget */ }
+
+    // Per-account balances (for the dynamic account sensors).
+    const accountsData = await Promise.all(
+      activeAccounts.map(async (a) => ({
+        id: a.id,
+        name: a.name,
+        balance: await AccountService.calculateBalance(a.id),
+      })),
+    );
+
+    // Top expense categories for the current month (for the dynamic category sensors).
+    let topCategories: { id: number; name: string; total: number }[] = [];
+    try {
+      const analysis = await CategoryService.getAnalysis(user.userId, { startDate: monthStart, endDate: monthEnd });
+      topCategories = analysis.slice(0, 5).map((c) => ({ id: c.categoryId, name: c.categoryName, total: c.total }));
+    } catch { /* no analysis available */ }
+
+    // Boolean flags for the HA binary sensors.
+    const lowBalance = activeAccounts.some((a, i) => {
+      const bal = accountsData[i]?.balance ?? 0;
+      return a.balanceLimit != null && bal < a.balanceLimit;
+    });
+    const alertsFlags = {
+      over_budget: remainingBudget != null && remainingBudget < 0,
+      high_credit_utilization: roundedCreditUtil > 70,
+      payment_due_soon: nextPaymentDays != null && nextPaymentDays >= 0 && nextPaymentDays <= 3,
+      low_balance: lowBalance,
+    };
+
     return reply.status(200).send({
       success: true,
       data: {
-        monthly_expenses: expenseResult?.total ?? 0,
-        monthly_income: incomeResult?.total ?? 0,
-        consolidated_balance: Math.round(consolidatedBalance * 100) / 100,
+        currency: getInstanceCurrency(),
+        monthly_expenses: monthlyExpenses,
+        monthly_income: monthlyIncome,
+        monthly_savings: Math.round((monthlyIncome - monthlyExpenses) * 100) / 100,
+        consolidated_balance: roundedBalance,
+        total_balance: roundedBalance,
+        net_worth: netWorth,
+        remaining_budget: remainingBudget,
         active_accounts_count: activeAccounts.length,
-        credit_utilization: Math.round(creditUtilization * 100) / 100,
+        credit_utilization: roundedCreditUtil,
+        credit_card_utilization: roundedCreditUtil,
         next_payment_days: nextPaymentDays,
         active_goals_count: activeGoalsResult?.count ?? 0,
         alerts_count: alertsResult?.count ?? 0,
+        accounts: accountsData,
+        top_categories: topCategories,
+        alerts: alertsFlags,
       },
     });
   });
 
   /**
    * POST /api/v1/ha/webhook
-   * Receives webhook events from Home Assistant for future automation triggers.
+   * Acknowledges and logs an inbound event from Home Assistant.
    *
-   * Accepts arbitrary event payloads. Currently acknowledges receipt;
-   * future versions will process automation triggers (e.g., record expense
-   * when HA detects a purchase event).
+   * Intentionally minimal: it validates auth and records the event, but does NOT
+   * perform any automation processing. HomeLedger is local-first and has no
+   * concrete automation-trigger use case yet, so building speculative
+   * event→action handling here would be unused surface. To DRIVE HomeLedger from
+   * HA today, use the integration's `create_transaction` / `create_quick_expense`
+   * services (which call the normal transaction endpoints). This endpoint is a
+   * documented stub kept for forward compatibility.
    */
   app.post('/webhook', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as TokenPayload;
@@ -171,20 +235,19 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
 
     const event = {
       event_type: (body?.event_type as string) ?? 'unknown',
-      data: body?.data ?? {},
       received_at: new Date().toISOString(),
       user_id: user.userId,
     };
 
-    // Log the webhook event for debugging
-    request.log.info({ event }, 'HA webhook event received');
+    request.log.info({ event }, 'HA webhook event received (ack only; no processing)');
 
     return reply.status(200).send({
       success: true,
       data: {
-        message: 'Webhook recibido correctamente',
+        message: 'Evento recibido (registrado). Este endpoint es solo de acuse; no ejecuta automatizaciones.',
         event_type: event.event_type,
         received_at: event.received_at,
+        processed: false,
       },
     });
   });
@@ -315,11 +378,12 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
       )
       .get();
 
+    const currency = getInstanceCurrency();
     const sensors = [
       {
-        entity_id: 'sensor.smart_finance_monthly_expenses',
+        entity_id: 'sensor.homeledger_monthly_expenses',
         state: expenseResult?.total ?? 0,
-        unit_of_measurement: 'MXN',
+        unit_of_measurement: currency,
         device_class: 'monetary',
         attributes: {
           friendly_name: 'Gastos Mensuales',
@@ -327,9 +391,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_monthly_income',
+        entity_id: 'sensor.homeledger_monthly_income',
         state: incomeResult?.total ?? 0,
-        unit_of_measurement: 'MXN',
+        unit_of_measurement: currency,
         device_class: 'monetary',
         attributes: {
           friendly_name: 'Ingresos Mensuales',
@@ -337,9 +401,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_consolidated_balance',
+        entity_id: 'sensor.homeledger_consolidated_balance',
         state: Math.round(consolidatedBalance * 100) / 100,
-        unit_of_measurement: 'MXN',
+        unit_of_measurement: currency,
         device_class: 'monetary',
         attributes: {
           friendly_name: 'Balance Consolidado',
@@ -347,7 +411,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_active_accounts',
+        entity_id: 'sensor.homeledger_active_accounts',
         state: activeAccounts.length,
         unit_of_measurement: null,
         device_class: null,
@@ -357,7 +421,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_credit_utilization',
+        entity_id: 'sensor.homeledger_credit_utilization',
         state: Math.round(creditUtilization * 100) / 100,
         unit_of_measurement: '%',
         device_class: null,
@@ -367,7 +431,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_next_payment_days',
+        entity_id: 'sensor.homeledger_next_payment_days',
         state: nextPaymentDays,
         unit_of_measurement: 'días',
         device_class: null,
@@ -378,7 +442,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_active_goals',
+        entity_id: 'sensor.homeledger_active_goals',
         state: activeGoals.length,
         unit_of_measurement: null,
         device_class: null,
@@ -388,7 +452,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
         },
       },
       {
-        entity_id: 'sensor.smart_finance_alerts',
+        entity_id: 'sensor.homeledger_alerts',
         state: unreadAlerts?.count ?? 0,
         unit_of_measurement: null,
         device_class: null,

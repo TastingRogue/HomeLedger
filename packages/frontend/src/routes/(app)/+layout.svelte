@@ -53,6 +53,7 @@
       items: [
         { href: '/metas', label: $t('nav.goals'), icon: 'target' },
         { href: '/presupuestos', label: $t('nav.budgets'), icon: 'clipboard' },
+        { href: '/prestamos', label: $t('nav.loans'), icon: 'credit-card' },
       ],
     },
     {
@@ -60,6 +61,7 @@
       color: 'var(--accent-green)',
       items: [
         { href: '/categorias', label: $t('nav.categories'), icon: 'tag' },
+        { href: '/reglas', label: $t('nav.rules'), icon: 'zap' },
         { href: '/reportes', label: $t('nav.reports'), icon: 'bar-chart' },
         { href: '/patrimonio', label: $t('nav.networth'), icon: 'trending-up' },
         { href: '/recibos', label: $t('nav.receipts'), icon: 'receipt' },

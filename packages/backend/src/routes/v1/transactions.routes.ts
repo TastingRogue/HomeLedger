@@ -276,6 +276,27 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       throw error;
     }
   });
+
+  /**
+   * DELETE /api/v1/transactions/:id/split
+   * Clear all splits for a transaction (revert to its main category only).
+   */
+  app.delete('/:id/split', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID de la transacción debe ser un número válido' } });
+    }
+    try {
+      TransactionService.clearSplits(id, user.userId);
+      return reply.status(200).send({ success: true, data: { message: 'Splits eliminados' } });
+    } catch (error) {
+      if (error instanceof TransactionError) {
+        return handleTransactionError(error, reply);
+      }
+      throw error;
+    }
+  });
 }
 
 /**
