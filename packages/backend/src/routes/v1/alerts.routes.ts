@@ -87,7 +87,7 @@ export async function alertRoutes(app: FastifyInstance) {
       const result = await AlertService.evaluateAll(user.userId);
       const total = result.balanceLow.length + result.creditHigh.length + result.paymentDue.length + result.paymentOverdue.length + result.goalCompleted.length;
       return reply.send({ success: true, data: { generated: total } });
-    } catch (error) {
+    } catch {
       return reply.status(500).send({ success: false, error: { code: 'EVALUATION_ERROR', message: 'Error evaluating alerts' } });
     }
   });

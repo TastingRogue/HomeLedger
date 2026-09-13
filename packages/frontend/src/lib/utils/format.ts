@@ -20,7 +20,9 @@ export function formatCurrency(amount: number): string {
         const symbols: Record<string, string> = { MXN: 'MX$', USD: '$', EUR: '€', COP: 'COL$', ARS: 'AR$', CLP: 'CL$', PEN: 'S/', BRL: 'R$' };
         symbol = symbols[currency] ?? '$';
       }
-    } catch {}
+    } catch {
+      /* preferences unreadable — use MXN default */
+    }
   }
 
   const isNegative = amount < 0;

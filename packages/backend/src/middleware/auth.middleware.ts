@@ -111,7 +111,7 @@ export function registerAuthMiddleware(app: FastifyInstance): void {
             message: 'API key inválida',
           },
         });
-      } catch (_error) {
+      } catch {
         return reply.status(401).send({
           success: false,
           error: {

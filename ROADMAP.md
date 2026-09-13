@@ -43,10 +43,10 @@ Implications for the feature list:
 ## Status snapshot
 
 - Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **429 passing, 0 failing** ✅
-- **ALL P0 BLOCKERS DONE** (P0.1–P0.5) on branch `p0-stability-blockers`
-- Last audit: codebase-wide inventory completed (see phases below)
-- Next: P1 (release quality) — arm64, lint/CI, i18n, backups, multi-user, etc.
+- Test suite: **429 passing, 0 failing** ✅ · lint 0 errors · CI gates in place
+- **ALL P0 BLOCKERS DONE** (P0.1–P0.5), merged to `main`
+- P1 in progress on branch `p1-release-quality`: **P1.2 (lint + CI) done**
+- Next P1: P1.1 arm64, P1.3/P1.4 i18n, P1.8 backups, P1.10 multi-user, etc.
 
 ---
 
@@ -137,10 +137,13 @@ The HA add-on advertises `aarch64`/`armv7`; the published image is amd64-only.
 - [ ] Verify the image actually runs on a Raspberry Pi / arm64 host
 - [ ] Update CHANGELOG/README to state real arch support
 
-### P1.2 — Lint clean
-- [ ] Resolve or intentionally scope the ~378 pre-existing ESLint problems
-- [ ] Extend lint to `.svelte` files
-- [ ] Add lint (and tests) to CI so regressions are caught
+### P1.2 — Lint clean + CI gates ✅ (done)
+- [x] Added a real CI workflow (`.github/workflows/ci.yml`): on push/PR to main/develop runs `npm ci` → build shared → typecheck (backend+frontend) → lint → test → build. This protects `main` (the Docker workflow only built the image; it never ran tests).
+- [x] Calibrated `eslint.config.js` to the project's conventions instead of blindly "fixing" 398 problems: `no-extraneous-class` off (services are intentional static-method classes), `no-non-null-assertion` → warn (off in tests), `no-explicit-any` → warn; tests relax `!`/`any`; `app.d.ts` empty ambient interfaces allowed (SvelteKit convention)
+- [x] Fixed the 32 real bugs the calibrated config surfaced: unused vars, empty catches (added intent comments), `no-useless-catch` wrapper, `require()`→ESM imports in tests, useless regex escapes, `no-case-declarations` (braced `addTag` case), and `void` generic args in frontend API clients (`apiDelete<void>` → `await apiDelete(...)`)
+- [x] `npm run lint` → **0 errors** (85 `any` warnings remain as tracked, non-blocking debt); typecheck 0/0; **429 tests passing**
+- [ ] (Follow-up) Extend lint to `.svelte` files — needs `eslint-plugin-svelte` + parser; deferred to avoid pulling a new dep + a fresh batch of findings mid-phase. `.ts` across backend + frontend (api/stores/utils) is linted and gated.
+- [ ] (Follow-up) Chip away at the 85 `no-explicit-any` warnings over time
 
 ### P1.3 — i18n completeness
 - [ ] Byte-level parity check between `es.ts` and `en.ts`

@@ -23,10 +23,14 @@ export function startAlertEvaluationJob(): ScheduledTask {
         try {
           const result = await AlertService.evaluateAll(user.id);
           totalAlerts += result.balanceLow.length + result.creditHigh.length + result.paymentDue.length + result.paymentOverdue.length + result.goalCompleted.length;
-        } catch {}
+        } catch {
+          /* per-user evaluation failure shouldn't abort the whole run */
+        }
       }
       if (totalAlerts > 0) console.log(`[AlertEvaluation] Startup: ${totalAlerts} alertas generadas`);
-    } catch {}
+    } catch {
+      /* startup evaluation is best-effort */
+    }
   })();
 
   // Cron: minuto 0, cada hora

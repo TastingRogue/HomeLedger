@@ -16,7 +16,9 @@ function loadFromStorage(): UserPreferences {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return JSON.parse(stored);
-  } catch {}
+  } catch {
+    /* localStorage unavailable — fall back to defaults */
+  }
   return { locale: 'es', currency: 'MXN' };
 }
 

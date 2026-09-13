@@ -102,6 +102,6 @@ export function updateAccount(id: number, input: UpdateAccountPayload): Promise<
 }
 
 /** Deactivate an account */
-export function deactivateAccount(id: number): Promise<void> {
-  return apiPatch<void>(`/accounts/${id}/deactivate`);
+export async function deactivateAccount(id: number): Promise<void> {
+  await apiPatch(`/accounts/${id}/deactivate`);
 }

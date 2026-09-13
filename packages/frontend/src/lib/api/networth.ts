@@ -59,8 +59,8 @@ export function updateAsset(id: number, input: Partial<AssetInput>): Promise<Ass
 	return apiPut<Asset>(`/networth/assets/${id}`, input);
 }
 
-export function deleteAsset(id: number): Promise<void> {
-	return apiDelete<void>(`/networth/assets/${id}`);
+export async function deleteAsset(id: number): Promise<void> {
+	await apiDelete(`/networth/assets/${id}`);
 }
 
 // Liabilities
@@ -72,6 +72,6 @@ export function updateLiability(id: number, input: Partial<LiabilityInput>): Pro
 	return apiPut<Liability>(`/networth/liabilities/${id}`, input);
 }
 
-export function deleteLiability(id: number): Promise<void> {
-	return apiDelete<void>(`/networth/liabilities/${id}`);
+export async function deleteLiability(id: number): Promise<void> {
+	await apiDelete(`/networth/liabilities/${id}`);
 }

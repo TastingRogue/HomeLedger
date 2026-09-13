@@ -45,13 +45,13 @@ export function listAlerts(): Promise<AlertData[]> {
 }
 
 /** Mark a single alert as read */
-export function markAlertAsRead(id: number): Promise<void> {
-  return apiPatch<void>(`/alerts/${id}/read`);
+export async function markAlertAsRead(id: number): Promise<void> {
+  await apiPatch(`/alerts/${id}/read`);
 }
 
 /** Mark all alerts as read */
-export function markAllAlertsAsRead(): Promise<void> {
-  return apiPatch<void>('/alerts/read-all');
+export async function markAllAlertsAsRead(): Promise<void> {
+  await apiPatch('/alerts/read-all');
 }
 
 /** Get alert configuration settings */
@@ -65,8 +65,8 @@ export function updateAlertSettings(settings: AlertSettings): Promise<AlertSetti
 }
 
 /** Delete an alert */
-export function deleteAlert(id: number): Promise<void> {
-  return apiDelete<void>(`/alerts/${id}`);
+export async function deleteAlert(id: number): Promise<void> {
+  await apiDelete(`/alerts/${id}`);
 }
 
 /** Manually trigger alert evaluation */

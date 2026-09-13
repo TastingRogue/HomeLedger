@@ -3,6 +3,8 @@ import { AuthService, AuthError } from './auth.service.js';
 import { getDb, closeDatabase } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import jwt from 'jsonwebtoken';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Set test environment variables
 process.env['JWT_SECRET'] = 'test-secret-key-for-unit-tests-only';
@@ -58,8 +60,6 @@ describe('AuthService', () => {
   afterAll(() => {
     closeDatabase();
     // Clean up test database
-    const fs = require('fs');
-    const path = require('path');
     const dbPath = path.resolve('./data/test-auth/smart-finance.db');
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);

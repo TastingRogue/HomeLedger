@@ -708,7 +708,7 @@ export class RulesEngineService {
             .run();
           break;
 
-        case 'addTag':
+        case 'addTag': {
           // Tags se almacenan en el campo notes, separados por coma
           const txn = db
             .select({ notes: transactions.notes })
@@ -725,6 +725,7 @@ export class RulesEngineService {
             .where(eq(transactions.id, transactionId))
             .run();
           break;
+        }
       }
     }
   }
