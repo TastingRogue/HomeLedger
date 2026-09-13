@@ -762,6 +762,54 @@ describe('BackupService', () => {
       expect(otherCat).toHaveLength(1);
       expect(otherCat[0]!.name).toBe('OtherUserCategory');
     });
+
+    it('leaves a second user\'s data across multiple tables fully intact after another user imports', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+
+      // A second user with data spread across several tables (category, account,
+      // transaction, goal). None of it should be touched when `userId` imports.
+      const other = db.insert(users).values({
+        email: 'bystander@test.com', passwordHash: 'hashed', name: 'Bystander',
+        role: 'user', createdAt: now, updatedAt: now,
+      }).returning().get();
+
+      const otherCat = db.insert(categories).values({ userId: other.id, name: 'OtherCat', isSystem: false, createdAt: now }).returning().get();
+      const otherAcc = db.insert(accounts).values({ userId: other.id, name: 'OtherAcc', type: 'Débito', initialBalance: 1234, status: 'Activo', currency: 'MXN', createdAt: now, updatedAt: now }).returning().get();
+      db.insert(transactions).values({ userId: other.id, accountId: otherAcc.id, categoryId: otherCat.id, name: 'OtherTx', amount: 55, type: 'Gasto', date: now, createdAt: now, updatedAt: now }).run();
+      db.insert(goals).values({ userId: other.id, name: 'OtherGoal', targetAmount: 9000, savedAmount: 300, type: 'ListaDeseos', status: 'Activa', createdAt: now, updatedAt: now }).run();
+
+      // A fresh, unrelated backup for OUR user replaces our (empty) data.
+      const backup = {
+        version: '0.1.0', exportedAt: now, userId,
+        data: {
+          categories: [{ id: 1, userId, name: 'MyCat', isSystem: false, createdAt: now, icon: null, color: null, type: 'Gasto' }],
+          accounts: [{ id: 1, userId, name: 'MyAcc', type: 'Débito', initialBalance: 100, status: 'Activo', currency: 'MXN', bank: null, balanceLimit: null, creditLimit: null, createdAt: now, updatedAt: now }],
+          transactions: [], transactionSplits: [], transfers: [], subscriptions: [], goals: [],
+          budgets: [], budgetCategories: [], subcategories: [], rules: [], alerts: [],
+          assets: [], liabilities: [], loans: [], loanPayments: [], networthSnapshots: [], creditSubscriptions: [],
+        },
+      };
+
+      BackupService.import(userId, backup, true);
+
+      // Every one of the other user's rows survives, unchanged.
+      const oc = db.select().from(categories).where(eq(categories.userId, other.id)).all();
+      expect(oc).toHaveLength(1);
+      expect(oc[0]!.name).toBe('OtherCat');
+
+      const oa = db.select().from(accounts).where(eq(accounts.userId, other.id)).all();
+      expect(oa).toHaveLength(1);
+      expect(oa[0]!.initialBalance).toBe(1234);
+
+      const ot = db.select().from(transactions).where(eq(transactions.userId, other.id)).all();
+      expect(ot).toHaveLength(1);
+      expect(ot[0]!.name).toBe('OtherTx');
+
+      const og = db.select().from(goals).where(eq(goals.userId, other.id)).all();
+      expect(og).toHaveLength(1);
+      expect(og[0]!.savedAmount).toBe(300);
+    });
   });
 
   describe('validateBackup()', () => {
