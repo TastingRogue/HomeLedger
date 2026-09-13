@@ -241,7 +241,7 @@ rotating out the oldest.
 - [x] Backend restore API (admin-only, `requireRole(['admin'])`): `GET /api/v1/backup/snapshots` (list), `POST /api/v1/backup/snapshots` (create now), `POST /api/v1/backup/snapshots/:name/restore` (requires `confirmed:true`). Restore validates the SQLite header, writes a `.pre-restore` safety copy of the current DB, clears stale WAL/SHM sidecars, swaps the file, and reopens the connection. Verified: full restore round-trip; path-traversal/invalid names rejected; `.pre-restore` written.
 - [x] Env + docs: `BACKUP_ENABLED`/`BACKUP_RETENTION`/`BACKUP_CRON` in `.env.example`, README, Dockerfile, docker-compose.yml, and the HA add-on (config.yaml options+schema, run.sh, DOCS.md, translations). `data/` (incl. `data/backups`) is gitignored.
 - [x] Verified: backend typecheck 0/0, full suite 429/429, frontend build clean; real snapshot→rotate→restore cycle + safety/validation paths.
-- [ ] (Follow-up) Frontend UI for snapshots: an admin panel to list snapshots and trigger restore. The backend API is done; this is a thin UI layer that can pair with the P1.10 admin views.
+- [x] Frontend UI for snapshots ✅: admin-only **Backups** tab in `/configuracion` — lists snapshots (name, size, timestamp), a **Create backup now** button (shows how many old ones rotated out), and per-snapshot **Restore** with a destructive-action confirm modal (type `RESTORE`, warns it replaces the whole DB for all users, notes the `.pre-restore` copy, offers reload after). New `lib/api/backup.ts` fns `listSnapshots`/`createSnapshot`/`restoreSnapshot` + `SnapshotInfo` type.
 
 ### P1.9 — Restore safety (dry-run / validation)
 Import currently wipes all data on confirm. Make it safer.
@@ -250,7 +250,7 @@ Import currently wipes all data on confirm. Make it safer.
 - [x] Verified atomic rollback with a test: a validation-passing backup that fails mid-insert (NOT NULL `amount`) leaves the user's original data **fully intact** — no half-restore (the delete+insert are wrapped in one `sqlite.transaction`).
 - [x] Destructive-replace guard confirmed: `import` without `confirmed:true` throws `CONFIRMATION_REQUIRED` (409 at the route), covered by an existing test.
 - [x] Verified: backend typecheck 0/0, full suite **433/433** (added 4 tests: preview reports+no-writes, orphan warnings, invalid-backup throw, atomicity rollback), frontend build clean.
-- [ ] (Follow-up) Frontend: show the preview (counts + warnings) in the import UI before the user confirms the replace — pairs with the P1.8 snapshot admin UI.
+- [x] Frontend preview ✅: the `/respaldo` import flow now calls `POST /backup/preview` when a file is selected and shows a **dry-run** inside the confirm dialog — a per-entity table of "in backup" vs "current (to be replaced)" counts (zero-rows hidden, replaced counts highlighted) plus the `warnings[]` list — before the destructive confirm. A preview that fails validation surfaces the error and aborts instead of letting the user confirm a bad file. New `lib/api/backup.ts` `previewImport` + `ImportPreview` type.
 
 ### P1.10 — Multi-user hardening (decide the model)
 The app supports multiple users (first registrant becomes admin, rest become
@@ -273,7 +273,7 @@ principle (it's your household's server, not public SaaS).
   - **`AttachmentService` link** — `transactionId`/`transferId` are now verified to belong to the user before linking.
 - [x] Wired `requireRole` for admin actions: system-category edit/delete is now **admin-only** (users manage their own categories; only the admin curates the shared system set); plus the P1.7 scheduler status and P1.8 snapshot routes.
 - [x] Admin user-management **backend** (all `requireRole(['admin'])`): list users, enable/disable, delete, reset a user's password (`users.routes.ts` + `UserService`). First-admin safety: can't disable/delete/demote the last admin or yourself into lockout.
-- [ ] (Follow-up) Frontend admin user-management view — pairs with the deferred P1.8/P1.9 admin UI.
+- [x] Frontend admin user-management view ✅: admin-only **Users** tab in `/configuracion` — lists users (name, email, `admin`/`disabled` pills, created), with enable/disable toggle, a reset-password modal (min-8), and a delete-user confirm modal. Backend safety errors (`CANNOT_DISABLE_SELF`/`CANNOT_DELETE_SELF`/`LAST_ADMIN`) surface as inline messages. New `lib/api/users.ts` client. All admin tabs are gated on `userRole === 'admin'` (from `/auth/me`); non-admins never see them.
 
 ### P1.11 — Registration control (admin-managed + allowlist)
 Registration is currently fully open (anyone can register; confirmed in
@@ -284,7 +284,7 @@ Registration is currently fully open (anyone can register; confirmed in
 - [x] **Safe default on fresh install:** `first_user_only` — an exposed instance can't be registered on by randoms out of the box. New error codes `REGISTRATION_CLOSED` / `EMAIL_NOT_ALLOWED` (403).
 - [x] Controls surfaced both ways: **env bootstrap** `REGISTRATION_MODE` / `REGISTRATION_ALLOWLIST` seeds settings on first run (never overrides a later admin change), and **admin API** `GET/PUT /api/v1/users/registration` (`requireRole(['admin'])`) to read/update at runtime. Documented across `.env.example`/README/Dockerfile/compose/HA.
 - [x] Verified: 4 policy tests (first-user allowed + second blocked under `first_user_only`; `closed` blocks; `open`+allowlist enforces listed-only, case-insensitive; `open` w/o allowlist allows any). Full suite 438/438, typecheck 0/0, build clean.
-- [ ] (Follow-up) Frontend admin settings UI for registration — pairs with the deferred admin UI.
+- [x] Frontend admin settings UI for registration ✅: admin-only **Registration** tab in `/configuracion` — a radio group for the mode (`first_user_only` / `open` / `closed`) each with a description, plus an allowlist editor (one email per line, split on newline/comma → `string[]`) shown only in `open` mode, saved via `PUT /users/registration`. The same tab also makes the **instance currency** admin-editable (a `<select>` of supported currencies → `PUT /users/currency`, applied to the UI immediately) — this upgrades the P1.13 read-only picker to editable for admins (regular users still see it read-only in their profile tab).
 
 ### P1.12 — Password reset / account recovery
 Login and register exist, but there's no way to recover a forgotten password.

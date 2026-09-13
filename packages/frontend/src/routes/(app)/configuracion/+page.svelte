@@ -4,16 +4,27 @@
   import Icon from '$lib/components/Icon.svelte';
   import Dropdown from '$lib/components/Dropdown.svelte';
   import { get } from 'svelte/store';
-  import { preferences, setLocale, currencyConfig, type SupportedLocale } from '$lib/stores/preferences';
+  import { preferences, setLocale, setCurrency as applyLocalCurrency, currencyConfig, type SupportedLocale, type SupportedCurrency } from '$lib/stores/preferences';
   import { localeOptions as registryLocaleOptions } from '$lib/i18n/registry';
   import { theme, setTheme, type Theme } from '$lib/stores/theme';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
+  import { ApiError } from '$lib/api/client';
+  import {
+    listUsers, setUserDisabled, resetUserPassword, deleteUser,
+    getRegistration, setRegistration, getInstanceCurrency, setInstanceCurrency,
+    type AdminUser, type RegistrationMode,
+  } from '$lib/api/users';
+  import {
+    listSnapshots, createSnapshot, restoreSnapshot,
+    type SnapshotInfo,
+  } from '$lib/api/backup';
 
   // User profile
   let userName = $state('');
   let userEmail = $state('');
   let userRole = $state('');
+  let isAdmin = $derived(userRole === 'admin');
   let profileLoading = $state(true);
   let profileSaving = $state(false);
   let profileMsg = $state('');
@@ -34,6 +45,202 @@
 
   // Active tab
   let activeTab = $state('perfil');
+
+  // ─── Admin: user management (P1.10) ───
+  let users = $state<AdminUser[]>([]);
+  let usersLoading = $state(false);
+  let usersError = $state('');
+  let usersLoaded = false;
+  // reset-password modal
+  let resetTarget = $state<AdminUser | null>(null);
+  let resetPw = $state('');
+  let resetSaving = $state(false);
+  let resetError = $state('');
+  let resetDone = $state('');
+  // delete-user modal
+  let deleteTarget = $state<AdminUser | null>(null);
+  let deleteSaving = $state(false);
+  let deleteError = $state('');
+
+  async function loadUsers() {
+    usersLoading = true; usersError = '';
+    try {
+      users = await listUsers();
+      usersLoaded = true;
+    } catch (e) {
+      usersError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { usersLoading = false; }
+  }
+
+  async function toggleDisabled(u: AdminUser) {
+    usersError = '';
+    try {
+      const updated = await setUserDisabled(u.id, !u.disabled);
+      users = users.map((x) => (x.id === updated.id ? updated : x));
+    } catch (e) {
+      usersError = e instanceof ApiError ? e.message : $t('common.error');
+    }
+  }
+
+  function openReset(u: AdminUser) { resetTarget = u; resetPw = ''; resetError = ''; resetDone = ''; }
+  async function submitReset() {
+    if (!resetTarget) return;
+    if (resetPw.length < 8) { resetError = $t('admin.password_min'); return; }
+    resetSaving = true; resetError = '';
+    try {
+      await resetUserPassword(resetTarget.id, resetPw);
+      resetDone = $t('admin.reset_done');
+      setTimeout(() => { resetTarget = null; }, 1400);
+    } catch (e) {
+      resetError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { resetSaving = false; }
+  }
+
+  function openDelete(u: AdminUser) { deleteTarget = u; deleteError = ''; }
+  async function submitDelete() {
+    if (!deleteTarget) return;
+    deleteSaving = true; deleteError = '';
+    try {
+      await deleteUser(deleteTarget.id);
+      users = users.filter((x) => x.id !== deleteTarget!.id);
+      deleteTarget = null;
+    } catch (e) {
+      deleteError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { deleteSaving = false; }
+  }
+
+  // ─── Admin: registration policy (P1.11) ───
+  let regMode = $state<RegistrationMode>('first_user_only');
+  let regAllowlistText = $state('');
+  let regLoading = $state(false);
+  let regSaving = $state(false);
+  let regMsg = $state('');
+  let regMsgSuccess = $state(false);
+  let regLoaded = false;
+  const regModes: RegistrationMode[] = ['first_user_only', 'open', 'closed'];
+
+  async function loadRegistration() {
+    regLoading = true; regMsg = '';
+    try {
+      const data = await getRegistration();
+      regMode = data.mode;
+      regAllowlistText = data.allowlist.join('\n');
+      regLoaded = true;
+    } catch (e) {
+      regMsg = e instanceof ApiError ? e.message : $t('common.error'); regMsgSuccess = false;
+    } finally { regLoading = false; }
+  }
+
+  async function saveRegistration() {
+    regSaving = true; regMsg = '';
+    try {
+      const allowlist = regAllowlistText.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+      const data = await setRegistration({ mode: regMode, allowlist });
+      regMode = data.mode;
+      regAllowlistText = data.allowlist.join('\n');
+      regMsg = $t('admin.saved'); regMsgSuccess = true;
+      setTimeout(() => { regMsg = ''; }, 3000);
+    } catch (e) {
+      regMsg = e instanceof ApiError ? e.message : $t('common.error'); regMsgSuccess = false;
+    } finally { regSaving = false; }
+  }
+
+  // ─── Admin: instance currency (P1.13 — admin-editable) ───
+  let currencyValue = $state('');
+  let currencySupported = $state<string[]>([]);
+  let currencySaving = $state(false);
+  let currencyMsg = $state('');
+  let currencyLoaded = false;
+
+  async function loadCurrency() {
+    try {
+      const data = await getInstanceCurrency();
+      currencyValue = data.currency;
+      currencySupported = data.supported;
+      currencyLoaded = true;
+    } catch { /* non-admins never call this; ignore */ }
+  }
+
+  async function saveCurrency() {
+    currencySaving = true; currencyMsg = '';
+    try {
+      const data = await setInstanceCurrency(currencyValue);
+      currencyValue = data.currency;
+      // Reflect instance-wide currency immediately in the UI display.
+      applyLocalCurrency(data.currency as SupportedCurrency);
+      currencyMsg = $t('admin.saved');
+      setTimeout(() => { currencyMsg = ''; }, 3000);
+    } catch (e) {
+      currencyMsg = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { currencySaving = false; }
+  }
+
+  // ─── Admin: whole-DB snapshots (P1.8) ───
+  let snapshots = $state<SnapshotInfo[]>([]);
+  let snapsLoading = $state(false);
+  let snapsError = $state('');
+  let snapsMsg = $state('');
+  let creatingSnap = $state(false);
+  let snapsLoaded = false;
+  // restore modal
+  let restoreTarget = $state<SnapshotInfo | null>(null);
+  let restoreConfirmText = $state('');
+  let restoring = $state(false);
+  let restoreError = $state('');
+  let restoreDone = $state('');
+
+  async function loadSnapshots() {
+    snapsLoading = true; snapsError = '';
+    try {
+      snapshots = await listSnapshots();
+      snapsLoaded = true;
+    } catch (e) {
+      snapsError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { snapsLoading = false; }
+  }
+
+  async function handleCreateSnapshot() {
+    creatingSnap = true; snapsError = ''; snapsMsg = '';
+    try {
+      const res = await createSnapshot();
+      snapsMsg = res.rotatedOut > 0
+        ? $t('admin.snap_created_rotated', { n: res.rotatedOut })
+        : $t('admin.snap_created');
+      await loadSnapshots();
+      setTimeout(() => { snapsMsg = ''; }, 4000);
+    } catch (e) {
+      snapsError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { creatingSnap = false; }
+  }
+
+  function openRestore(s: SnapshotInfo) { restoreTarget = s; restoreConfirmText = ''; restoreError = ''; restoreDone = ''; }
+  async function submitRestore() {
+    if (!restoreTarget) return;
+    restoring = true; restoreError = '';
+    try {
+      await restoreSnapshot(restoreTarget.name, true);
+      restoreDone = $t('admin.restore_done');
+    } catch (e) {
+      restoreError = e instanceof ApiError ? e.message : $t('common.error');
+    } finally { restoring = false; }
+  }
+
+  function fmtBytes(n: number): string {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  // Lazy-load each admin dataset the first time its tab is opened.
+  $effect(() => {
+    if (!isAdmin) return;
+    if (activeTab === 'usuarios' && !usersLoaded) loadUsers();
+    if (activeTab === 'registro') {
+      if (!regLoaded) loadRegistration();
+      if (!currencyLoaded) loadCurrency();
+    }
+    if (activeTab === 'respaldos' && !snapsLoaded) loadSnapshots();
+  });
 
   // Preferences (reactive). Initialize synchronously from the persisted store
   // so the sync $effect below never fires with a stale default that would
@@ -147,6 +354,17 @@
       <button class="tab-item" class:active={activeTab === 'datos'} onclick={() => activeTab = 'datos'}>
         <Icon name="save" size={15} /> {$t('settings.data')}
       </button>
+      {#if isAdmin}
+        <button class="tab-item" class:active={activeTab === 'usuarios'} onclick={() => activeTab = 'usuarios'}>
+          <Icon name="building" size={15} /> {$t('admin.tab_users')}
+        </button>
+        <button class="tab-item" class:active={activeTab === 'registro'} onclick={() => activeTab = 'registro'}>
+          <Icon name="settings" size={15} /> {$t('admin.tab_registration')}
+        </button>
+        <button class="tab-item" class:active={activeTab === 'respaldos'} onclick={() => activeTab = 'respaldos'}>
+          <Icon name="save" size={15} /> {$t('admin.tab_snapshots')}
+        </button>
+      {/if}
     </nav>
 
     <!-- Content -->
@@ -281,6 +499,127 @@
             <span class="pref-value">0.1.0</span>
           </div>
         </div>
+
+      {:else if activeTab === 'usuarios' && isAdmin}
+        <!-- ─── Admin: User management (P1.10) ─── -->
+        <div class="card">
+          <h3 class="card-title">{$t('admin.users_title')}</h3>
+          {#if usersError}<div class="form-alert" role="alert">{usersError}</div>{/if}
+          {#if usersLoading}
+            <div class="loading-state">{$t('common.loading')}</div>
+          {:else if users.length === 0}
+            <div class="loading-state">{$t('admin.no_users')}</div>
+          {:else}
+            <div class="admin-table" role="table">
+              {#each users as u (u.id)}
+                <div class="admin-row" role="row">
+                  <div class="admin-user">
+                    <span class="admin-name">{u.name}
+                      {#if u.role === 'admin'}<span class="role-pill">{$t('settings.role_admin')}</span>{/if}
+                      {#if u.disabled}<span class="disabled-pill">{$t('admin.disabled')}</span>{/if}
+                    </span>
+                    <span class="admin-email">{u.email}</span>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="btn-action-sm" onclick={() => toggleDisabled(u)}>
+                      {u.disabled ? $t('admin.enable') : $t('admin.disable')}
+                    </button>
+                    <button class="btn-action-sm" onclick={() => openReset(u)}>{$t('admin.reset_password')}</button>
+                    <button class="btn-action-sm danger" onclick={() => openDelete(u)}>{$t('common.delete')}</button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+      {:else if activeTab === 'registro' && isAdmin}
+        <!-- ─── Admin: Registration policy (P1.11) ─── -->
+        <div class="card">
+          <h3 class="card-title">{$t('admin.registration_title')}</h3>
+          {#if regLoading}
+            <div class="loading-state">{$t('common.loading')}</div>
+          {:else}
+            <div class="reg-modes">
+              {#each regModes as m}
+                <label class="reg-mode" class:selected={regMode === m}>
+                  <input type="radio" name="reg-mode" value={m} bind:group={regMode} />
+                  <span class="reg-mode-label">{$t(`admin.mode_${m}`)}</span>
+                  <span class="reg-mode-desc">{$t(`admin.mode_${m}_desc`)}</span>
+                </label>
+              {/each}
+            </div>
+
+            {#if regMode === 'open'}
+              <div class="form-field allowlist-field">
+                <label for="reg-allowlist">{$t('admin.allowlist_label')}</label>
+                <textarea id="reg-allowlist" rows="4" bind:value={regAllowlistText} placeholder={$t('admin.allowlist_placeholder')}></textarea>
+                <span class="pref-desc">{$t('admin.allowlist_desc')}</span>
+              </div>
+            {/if}
+
+            <div class="card-footer">
+              {#if regMsg}<span class="msg" class:success={regMsgSuccess}>{regMsg}</span>{/if}
+              <button class="btn-save" onclick={saveRegistration} disabled={regSaving}>
+                {regSaving ? $t('common.saving') : $t('settings.save_changes')}
+              </button>
+            </div>
+          {/if}
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">{$t('admin.currency_title')}</h3>
+          <div class="pref-row">
+            <div class="pref-info">
+              <span class="pref-label">{$t('settings.currency')}</span>
+              <span class="pref-desc">{$t('admin.currency_desc')}</span>
+            </div>
+            <select bind:value={currencyValue} class="currency-select">
+              {#each currencySupported as c}
+                <option value={c}>{currencyConfig[c as SupportedCurrency]?.symbol ?? ''} — {c}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="card-footer">
+            {#if currencyMsg}<span class="msg success">{currencyMsg}</span>{/if}
+            <button class="btn-save" onclick={saveCurrency} disabled={currencySaving || !currencyValue}>
+              {currencySaving ? $t('common.saving') : $t('settings.save_changes')}
+            </button>
+          </div>
+        </div>
+
+      {:else if activeTab === 'respaldos' && isAdmin}
+        <!-- ─── Admin: DB snapshots (P1.8) ─── -->
+        <div class="card">
+          <div class="snap-head">
+            <h3 class="card-title" style="margin:0">{$t('admin.snapshots_title')}</h3>
+            <button class="btn-save" onclick={handleCreateSnapshot} disabled={creatingSnap}>
+              {creatingSnap ? $t('common.saving') : $t('admin.create_snapshot')}
+            </button>
+          </div>
+          <p class="pref-desc snap-desc">{$t('admin.snapshots_desc')}</p>
+          {#if snapsMsg}<div class="card-msg">{snapsMsg}</div>{/if}
+          {#if snapsError}<div class="form-alert" role="alert">{snapsError}</div>{/if}
+          {#if snapsLoading}
+            <div class="loading-state">{$t('common.loading')}</div>
+          {:else if snapshots.length === 0}
+            <div class="loading-state">{$t('admin.no_snapshots')}</div>
+          {:else}
+            <div class="admin-table">
+              {#each snapshots as s (s.name)}
+                <div class="admin-row">
+                  <div class="admin-user">
+                    <span class="admin-name snap-name">{s.name}</span>
+                    <span class="admin-email">{new Date(s.createdAt).toLocaleString()} · {fmtBytes(s.size)}</span>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="btn-action-sm danger" onclick={() => openRestore(s)}>{$t('admin.restore')}</button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
       {/if}
     </div>
   </div>
@@ -319,6 +658,96 @@
             </button>
           </div>
         </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Admin: reset user password (P1.10) -->
+{#if resetTarget}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (resetTarget = null)} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('admin.reset_title')}</h3>
+        <button class="modal-close" onclick={() => (resetTarget = null)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      {#if resetDone}
+        <div class="modal-success">{resetDone}</div>
+      {:else}
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitReset(); }}>
+          <p class="pref-desc">{$t('admin.reset_for', { name: resetTarget.name })}</p>
+          <div class="form-field">
+            <label for="admin-reset-pw">{$t('admin.new_password')}</label>
+            <input id="admin-reset-pw" type="password" bind:value={resetPw} required minlength={8} autocomplete="new-password" />
+          </div>
+          {#if resetError}<p class="modal-error">{resetError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={() => (resetTarget = null)}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit" disabled={resetSaving}>{resetSaving ? '...' : $t('admin.reset_password')}</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Admin: delete user (P1.10) -->
+{#if deleteTarget}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (deleteTarget = null)} role="presentation" transition:scrim>
+    <div class="modal-content modal-sm" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('admin.delete_title')}</h3>
+        <button class="modal-close" onclick={() => (deleteTarget = null)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <div class="modal-form">
+        <p class="confirm-text">{$t('admin.delete_confirm', { name: deleteTarget.name })}</p>
+        {#if deleteError}<p class="modal-error">{deleteError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (deleteTarget = null)}>{$t('common.cancel')}</button>
+          <button type="button" class="btn-danger-solid" onclick={submitDelete} disabled={deleteSaving}>
+            {deleteSaving ? '...' : $t('common.delete')}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Admin: restore DB snapshot (P1.8) — DESTRUCTIVE -->
+{#if restoreTarget}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (restoreTarget = null)} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('admin.restore_title')}</h3>
+        <button class="modal-close" onclick={() => (restoreTarget = null)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      {#if restoreDone}
+        <div class="modal-form">
+          <div class="modal-success">{restoreDone}</div>
+          <p class="pref-desc">{$t('admin.restore_reload_hint')}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-submit" onclick={() => window.location.reload()}>{$t('admin.reload')}</button>
+          </div>
+        </div>
+      {:else}
+        <div class="modal-form">
+          <p class="confirm-text danger-text">{$t('admin.restore_warning')}</p>
+          <p class="file-info">{restoreTarget.name}</p>
+          <div class="form-field">
+            <label for="restore-confirm">{$t('admin.restore_type_confirm')}</label>
+            <input id="restore-confirm" type="text" bind:value={restoreConfirmText} placeholder="RESTORE" autocomplete="off" />
+          </div>
+          {#if restoreError}<p class="modal-error">{restoreError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={() => (restoreTarget = null)}>{$t('common.cancel')}</button>
+            <button type="button" class="btn-danger-solid" onclick={submitRestore} disabled={restoring || restoreConfirmText !== 'RESTORE'}>
+              {restoring ? '...' : $t('admin.restore')}
+            </button>
+          </div>
+        </div>
       {/if}
     </div>
   </div>
@@ -378,4 +807,35 @@
     .form-grid { grid-template-columns: 1fr; }
     .pref-row { flex-direction: column; align-items: flex-start; }
   }
+
+  /* ─── Admin panels ─── */
+  .form-alert { font-size: 0.78rem; color: var(--accent-red); background: var(--tag-red-bg); padding: 0.4rem 0.65rem; border-radius: var(--radius-sm); margin-bottom: 0.75rem; }
+
+  .admin-table { display: flex; flex-direction: column; }
+  .admin-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border-subtle); }
+  .admin-row:last-child { border-bottom: none; }
+  .admin-user { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .admin-name { font-size: 0.82rem; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .admin-email { font-size: 0.7rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+  .snap-name { font-family: var(--font-mono); font-size: 0.72rem; word-break: break-all; }
+  .role-pill { font-size: 0.6rem; font-weight: 600; padding: 0.1rem 0.35rem; border-radius: var(--radius-full); background: var(--tag-purple-bg); color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.03em; }
+  .disabled-pill { font-size: 0.6rem; font-weight: 600; padding: 0.1rem 0.35rem; border-radius: var(--radius-full); background: var(--tag-red-bg); color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.03em; }
+  .admin-actions { display: flex; gap: 0.35rem; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* Registration modes */
+  .reg-modes { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+  .reg-mode { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 0.6rem; align-items: center; padding: 0.65rem 0.8rem; border: 1px solid var(--border-default); border-radius: var(--radius-md); cursor: pointer; }
+  .reg-mode.selected { border-color: var(--accent-purple); background: var(--sidebar-active-bg); }
+  .reg-mode input { grid-row: 1 / 3; width: auto; }
+  .reg-mode-label { font-size: 0.82rem; font-weight: 500; color: var(--text-primary); }
+  .reg-mode-desc { font-size: 0.68rem; color: var(--text-muted); grid-column: 2; }
+  .allowlist-field { margin-bottom: 0.5rem; }
+  .allowlist-field textarea { font-family: var(--font-mono); font-size: 0.78rem; resize: vertical; }
+  .currency-select { max-width: 220px; }
+
+  .snap-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem; }
+  .snap-desc { margin-bottom: 0.75rem; }
+  .danger-text { color: var(--accent-red); font-weight: 500; }
+  .confirm-text { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; }
+  .file-info { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); word-break: break-all; margin: 0.25rem 0 0.5rem; }
 </style>

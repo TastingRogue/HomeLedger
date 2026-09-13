@@ -4,8 +4,9 @@
     exportBackup,
     importBackup,
     getBackupHistory,
-    type BackupFile,
+    previewImport,
     type BackupHistoryEntry,
+    type ImportPreview,
   } from '$lib/api/backup';
   import { ApiError } from '$lib/api/client';
   import { t } from '$lib/i18n';
@@ -27,6 +28,34 @@
   let showConfirmDialog = $state(false);
   let selectedFile: File | null = $state(null);
   let parsedBackup: unknown = $state(null);
+  // Dry-run preview (P1.9): shown in the confirm dialog before the destructive
+  // replace so the user sees what will be restored vs. replaced, and what the
+  // import would skip.
+  let preview = $state<ImportPreview | null>(null);
+  let previewLoading = $state(false);
+
+  // Entities to surface in the preview table, in a sensible order. Anything in
+  // the backup/current counts that isn't listed still shows via the union below.
+  const PREVIEW_ORDER = [
+    'accounts', 'categories', 'subcategories', 'transactions', 'transactionSplits',
+    'transfers', 'subscriptions', 'goals', 'budgets', 'budgetCategories', 'rules',
+    'alerts', 'assets', 'liabilities', 'loans', 'loanPayments', 'networthSnapshots',
+    'creditSubscriptions', 'attachments', 'receiptAnalyses', 'receiptItems',
+  ];
+
+  // Union of entity keys present in either count map, ordered by PREVIEW_ORDER
+  // (known keys first) then any extras, dropping all-zero rows to keep it short.
+  let previewRows = $derived.by(() => {
+    if (!preview) return [] as { key: string; backup: number; current: number }[];
+    const keys = new Set<string>([...Object.keys(preview.backupCounts), ...Object.keys(preview.currentCounts)]);
+    const ordered = [
+      ...PREVIEW_ORDER.filter((k) => keys.has(k)),
+      ...[...keys].filter((k) => !PREVIEW_ORDER.includes(k)),
+    ];
+    return ordered
+      .map((key) => ({ key, backup: preview!.backupCounts[key] ?? 0, current: preview!.currentCounts[key] ?? 0 }))
+      .filter((r) => r.backup > 0 || r.current > 0);
+  });
 
   // ─── Data Loading ───
   async function loadHistory() {
@@ -81,24 +110,44 @@
     selectedFile = file;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         parsedBackup = JSON.parse(content);
-        showConfirmDialog = true;
       } catch {
         importError = $t('backup.invalid_json');
         selectedFile = null;
         parsedBackup = null;
+        return;
+      }
+      // Open the dialog immediately, then load the non-destructive preview so the
+      // user reviews counts + warnings before confirming the replace.
+      showConfirmDialog = true;
+      preview = null;
+      previewLoading = true;
+      try {
+        preview = await previewImport(parsedBackup);
+      } catch (err: unknown) {
+        // A validation failure here means the file isn't a usable backup — surface
+        // it and close the dialog rather than letting the user confirm a bad import.
+        importError = err instanceof ApiError ? err.message : $t('backup.invalid_json');
+        showConfirmDialog = false;
+        selectedFile = null;
+        parsedBackup = null;
+      } finally {
+        previewLoading = false;
       }
     };
     reader.readAsText(file);
+    // Allow re-selecting the same file later (onchange won't fire otherwise).
+    input.value = '';
   }
 
   function cancelImport() {
     showConfirmDialog = false;
     selectedFile = null;
     parsedBackup = null;
+    preview = null;
     importError = null;
   }
 
@@ -113,6 +162,7 @@
       showConfirmDialog = false;
       selectedFile = null;
       parsedBackup = null;
+      preview = null;
       await loadHistory();
     } catch (e: unknown) {
       if (e instanceof ApiError) {
@@ -187,9 +237,44 @@
         {#if selectedFile}
           <p class="file-info">{$t('backup.file_label', { name: selectedFile.name })}</p>
         {/if}
+
+        <!-- Dry-run preview (P1.9): what will be restored vs. replaced. -->
+        {#if previewLoading}
+          <p class="preview-loading">{$t('backup.preview_loading')}</p>
+        {:else if preview}
+          <div class="preview">
+            <div class="preview-head">
+              <span class="preview-title">{$t('backup.preview_title')}</span>
+              <span class="preview-cols"><span>{$t('backup.preview_in_backup')}</span><span>{$t('backup.preview_current')}</span></span>
+            </div>
+            {#if previewRows.length === 0}
+              <p class="preview-empty">{$t('backup.preview_empty')}</p>
+            {:else}
+              <div class="preview-rows">
+                {#each previewRows as row (row.key)}
+                  <div class="preview-row">
+                    <span class="preview-entity">{$t(`backup.entity.${row.key}`)}</span>
+                    <span class="preview-nums">
+                      <span class="preview-backup">{row.backup}</span>
+                      <span class="preview-current" class:replaced={row.current > 0}>{row.current}</span>
+                    </span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+            {#if preview.warnings.length > 0}
+              <ul class="preview-warnings">
+                {#each preview.warnings as w}
+                  <li>⚠ {w}</li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        {/if}
+
         <div class="form-buttons">
           <button class="btn btn-secondary" onclick={cancelImport} disabled={importing}>{$t('common.cancel')}</button>
-          <button class="btn btn-danger" onclick={confirmImport} disabled={importing}>
+          <button class="btn btn-danger" onclick={confirmImport} disabled={importing || previewLoading}>
             {importing ? $t('backup.confirming') : $t('common.confirm')}
           </button>
         </div>
@@ -283,7 +368,7 @@
   .modal {
     background: var(--bg-surface); border: 1px solid var(--border-default);
     border-radius: var(--radius-lg); padding: var(--spacing-lg);
-    max-width: 400px; width: 100%;
+    max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto;
   }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-md); }
   .modal-header h2 { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
@@ -305,4 +390,29 @@
   .btn-danger:hover:not(:disabled) { background: #b33a36; }
 
   .form-buttons { display: flex; gap: var(--spacing-sm); justify-content: flex-end; margin-top: var(--spacing-md); }
+
+  /* Import preview (P1.9) */
+  .preview-loading { font-size: 0.78rem; color: var(--text-muted); padding: 0.5rem 0; }
+  .preview {
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+    padding: 0.5rem 0.65rem; margin-bottom: var(--spacing-md); background: var(--bg-elevated);
+  }
+  .preview-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 0.35rem; margin-bottom: 0.35rem; border-bottom: 1px solid var(--border-subtle);
+  }
+  .preview-title { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .preview-cols { display: flex; gap: 1rem; }
+  .preview-cols span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); width: 3.5rem; text-align: right; }
+  .preview-rows { display: flex; flex-direction: column; max-height: 34vh; overflow-y: auto; }
+  .preview-row { display: flex; align-items: center; justify-content: space-between; padding: 0.18rem 0; font-size: 0.76rem; }
+  .preview-entity { color: var(--text-secondary); }
+  .preview-nums { display: flex; gap: 1rem; font-variant-numeric: tabular-nums; }
+  .preview-nums span { width: 3.5rem; text-align: right; }
+  .preview-backup { color: var(--text-primary); font-weight: 600; }
+  .preview-current { color: var(--text-muted); }
+  .preview-current.replaced { color: var(--accent-orange); }
+  .preview-empty { font-size: 0.76rem; color: var(--text-muted); padding: 0.35rem 0; }
+  .preview-warnings { list-style: none; margin: 0.5rem 0 0; padding: 0.5rem 0 0; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 0.25rem; }
+  .preview-warnings li { font-size: 0.72rem; color: var(--accent-orange); line-height: 1.35; }
 </style>
