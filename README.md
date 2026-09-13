@@ -152,15 +152,27 @@ docker run -d \
   --name homeledger \
   irving1flores/homeledger:latest
 
-# App + API available at http://localhost:3000
+# Then open http://localhost:3000 and log in with the email/password above.
 ```
 
-> :globe_with_meridians: **Language & currency at first run.** `DEFAULT_LOCALE`
-> (`en` or `es`, default `en`) sets the interface language and the language your
-> default categories are seeded in; `DISPLAY_CURRENCY` (default `MXN`) sets the
-> install's currency. Both are optional — omit them to take the defaults. **Each
-> user can switch their own language afterwards** in **Settings**, and an admin
-> can change the currency in-app; see [Environment Variables](#environment-variables).
+**What each flag does** (only `JWT_SECRET` and `ADMIN_PASSWORD` are required — omit the rest to take the defaults):
+
+| Flag | What it does | Your options |
+|------|--------------|--------------|
+| `-p 3000:3000` | Publishes the app + API on host port 3000. Without it the container runs but you can't reach it. | Any `HOST:3000` (e.g. `-p 8080:3000` to use `localhost:8080`) |
+| `-v homeledger-data:/data` | Persists the SQLite DB + attachments in a named volume, so data survives rebuilds. | A named volume, or a host path (`-v /my/folder:/data`) |
+| `-e JWT_SECRET=…` | **Required.** Random secret (≥32 chars) used to sign login tokens. | Any long random string |
+| `-e ADMIN_EMAIL=…` | Email for the first admin user, created on first run. | Any email (default `admin@homeledger.local`) |
+| `-e ADMIN_PASSWORD=…` | **Required.** Password for that admin. | A strong password |
+| `-e DEFAULT_LOCALE=…` | Starting UI language + the language your default categories are seeded in. Each user can change their own later in **Settings**. | `en` or `es` (default `en`) |
+| `-e DISPLAY_CURRENCY=…` | The install's single currency (symbol + unit for all amounts; no conversion). Admin can change it in-app. | `MXN` `USD` `EUR` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
+
+> :bulb: The `\` at the end of each line is a **bash** line-continuation. On
+> **Windows PowerShell**, use a backtick `` ` `` instead, or put the whole
+> `docker run` on a single line.
+>
+> The first account created becomes the admin. `DEFAULT_LOCALE` / `DISPLAY_CURRENCY`
+> are optional — see the full [Environment Variables](#environment-variables) table.
 
 ### Run from Docker Desktop (no command line)
 
@@ -201,7 +213,9 @@ Log in with the demo credentials:
 git clone https://github.com/TastingRogue/HomeLedger.git
 cd HomeLedger
 cp .env.example .env
-# Edit .env with secure values
+# Edit .env: set JWT_SECRET + ADMIN_PASSWORD (required), and optionally
+# DEFAULT_LOCALE (en|es) and DISPLAY_CURRENCY (MXN|USD|…). Compose reads .env,
+# so this file — not -e flags — is where you configure this deployment.
 
 # Start with Docker Compose (backend on 3000, frontend on 5173)
 docker compose up -d
