@@ -163,8 +163,10 @@
   // Attachment Modal
   let showAttachModal = $state(false);
   let attachFile = $state<File | null>(null);
-  let attachTxId = $state<number | null>(null);
-  let attachTfId = $state<number | null>(null);
+  // Single "associate to" control: pick a target TYPE, then one id — so the user
+  // can never select a transaction AND a transfer at the same time.
+  let attachTargetType = $state<'transaction' | 'transfer'>('transaction');
+  let attachTargetId = $state<number | null>(null);
   let attachSubmitting = $state(false);
   let attachError = $state<string | null>(null);
   let attachSuccess = $state(false);
@@ -619,11 +621,19 @@
   // ─── Attachment Modal ───
   function openAttachModal() {
     attachFile = null;
-    attachTxId = transactions.length > 0 ? transactions[0].id : null;
-    attachTfId = null;
+    // Default to whichever target type has data; don't preselect a specific row
+    // (avoids silently attaching to the wrong item).
+    attachTargetType = transactions.length > 0 || transfers.length === 0 ? 'transaction' : 'transfer';
+    attachTargetId = null;
     attachError = null;
     attachSuccess = false;
     showAttachModal = true;
+  }
+
+  // Switching the target type clears the selected id so the two can never mix.
+  function setAttachTarget(type: 'transaction' | 'transfer') {
+    attachTargetType = type;
+    attachTargetId = null;
   }
 
   function closeAttachModal() { showAttachModal = false; }
@@ -635,13 +645,12 @@
 
   async function submitAttachment() {
     if (!attachFile) { attachError = $t('dashboard.select_file'); return; }
-    if (!attachTxId && !attachTfId) { attachError = $t('dashboard.select_tx_or_tf'); return; }
+    if (!attachTargetId) { attachError = $t('dashboard.select_tx_or_tf'); return; }
     attachSubmitting = true; attachError = null;
     try {
-      await uploadAttachment(attachFile, {
-        transactionId: attachTxId ?? undefined,
-        transferId: attachTfId ?? undefined,
-      });
+      await uploadAttachment(attachFile, attachTargetType === 'transaction'
+        ? { transactionId: attachTargetId }
+        : { transferId: attachTargetId });
       attachSuccess = true;
       setTimeout(() => closeAttachModal(), 1500);
     } catch (e: unknown) { attachError = e instanceof Error ? e.message : 'Error al subir'; }
@@ -1388,18 +1397,30 @@
             {#if attachFile}<span class="attach-filename">{attachFile.name} ({(attachFile.size / 1024).toFixed(0)} KB)</span>{/if}
           </div>
           <div class="form-field">
-            <label for="attach-tx">{$t('dashboard.attach_to_tx')}</label>
-            <select id="attach-tx" bind:value={attachTxId}>
-              <option value={null}>{$t('dashboard.none_option')}</option>
-              {#each transactions as tx}<option value={tx.id}>{tx.name} ({tx.type === 'Gasto' ? '-' : '+'}{formatCurrency(tx.amount)})</option>{/each}
-            </select>
+            <span class="field-label">{$t('dashboard.attach_associate_to')}</span>
+            <div class="attach-mode" role="group" aria-label={$t('dashboard.attach_associate_to')}>
+              <button type="button" class:active={attachTargetType === 'transaction'} onclick={() => setAttachTarget('transaction')}>
+                {$t('dashboard.attach_type_tx')}
+              </button>
+              <button type="button" class:active={attachTargetType === 'transfer'} onclick={() => setAttachTarget('transfer')} disabled={transfers.length === 0}>
+                {$t('dashboard.attach_type_tf')}
+              </button>
+            </div>
           </div>
           <div class="form-field">
-            <label for="attach-tf">{$t('dashboard.attach_to_tf')}</label>
-            <select id="attach-tf" bind:value={attachTfId}>
-              <option value={null}>— Ninguna —</option>
-              {#each transfers as tf}<option value={tf.id}>{tf.name} ({formatCurrency(tf.amount)})</option>{/each}
-            </select>
+            {#if attachTargetType === 'transaction'}
+              <label for="attach-target">{$t('dashboard.attach_pick_tx')}</label>
+              <select id="attach-target" bind:value={attachTargetId}>
+                <option value={null}>{$t('dashboard.attach_pick_placeholder')}</option>
+                {#each transactions as tx}<option value={tx.id}>{tx.name} ({tx.type === 'Gasto' ? '-' : '+'}{formatCurrency(tx.amount)})</option>{/each}
+              </select>
+            {:else}
+              <label for="attach-target">{$t('dashboard.attach_pick_tf')}</label>
+              <select id="attach-target" bind:value={attachTargetId}>
+                <option value={null}>{$t('dashboard.attach_pick_placeholder')}</option>
+                {#each transfers as tf}<option value={tf.id}>{tf.name} ({formatCurrency(tf.amount)})</option>{/each}
+              </select>
+            {/if}
           </div>
           {#if attachError}<p class="modal-error">{attachError}</p>{/if}
           <div class="modal-actions">
@@ -1688,6 +1709,16 @@
   .btn-red { background: var(--accent-red); }
   .btn-green { background: var(--accent-green); }
   .btn-blue { background: var(--accent-blue); }
+
+  /* Segmented control for the attachment target type (transaction | transfer) */
+  .attach-mode { display: flex; gap: 0.4rem; }
+  .attach-mode button {
+    flex: 1; padding: 0.4rem 0.5rem; font-size: 0.78rem; font-weight: 500;
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .attach-mode button.active { background: var(--tag-blue-bg); color: var(--accent-blue); border-color: var(--accent-blue); }
+  .attach-mode button:disabled { opacity: 0.4; cursor: not-allowed; }
   .modal-success { padding: 2rem; text-align: center; color: var(--accent-green); font-weight: 500; font-size: 0.85rem; }
   .success-check { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; }
   .clickable { cursor: pointer; transition: background 0.1s; }
