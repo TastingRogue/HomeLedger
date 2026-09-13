@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiGet, apiPost, apiPut, apiDelete } from '$lib/api/client';
+  import { createTransfer } from '$lib/api/transfers';
+  import { createGoal, type GoalType } from '$lib/api/goals';
   import { uploadAttachment, downloadAttachment as apiDownloadAttachment } from '$lib/api/attachments';
   import { formatCurrency, formatDateShort, formatDaysRemaining } from '$lib/utils/format';
   import BarChart from '$lib/components/BarChart.svelte';
@@ -166,6 +168,25 @@
   let attachSubmitting = $state(false);
   let attachError = $state<string | null>(null);
   let attachSuccess = $state(false);
+
+  // Quick Transfer Modal
+  let showTransferModal = $state(false);
+  let tfName = $state('');
+  let tfAmount = $state('');
+  let tfSourceId = $state<number | null>(null);
+  let tfDestId = $state<number | null>(null);
+  let tfSubmitting = $state(false);
+  let tfError = $state<string | null>(null);
+  let tfSuccess = $state(false);
+
+  // Quick Goal Modal
+  let showGoalModal = $state(false);
+  let goalName = $state('');
+  let goalTarget = $state('');
+  let goalType = $state<GoalType>('Lista de Deseos');
+  let goalSubmitting = $state(false);
+  let goalError = $state<string | null>(null);
+  let goalSuccess = $state(false);
 
   // Attachments in edit modals
   interface Attachment { id: number; originalName: string | null; filename: string; mimeType: string; size: number; }
@@ -443,6 +464,72 @@
     finally { quickSubmitting = false; }
   }
 
+  // ─── Quick Transfer Modal ───
+  function openTransferModal() {
+    const usable = accounts;
+    tfName = '';
+    tfAmount = '';
+    tfSourceId = usable.length > 0 ? usable[0].id : null;
+    tfDestId = usable.length > 1 ? usable[1].id : null;
+    tfError = null;
+    tfSuccess = false;
+    showTransferModal = true;
+  }
+  function closeTransferModal() { showTransferModal = false; }
+
+  async function submitQuickTransfer() {
+    const amount = parseFloat(tfAmount);
+    if (!tfName.trim() || !amount || amount <= 0 || !tfSourceId || !tfDestId) {
+      tfError = $t('dashboard.fill_all_fields');
+      return;
+    }
+    if (tfSourceId === tfDestId) {
+      tfError = $t('transfers.must_differ');
+      return;
+    }
+    tfSubmitting = true;
+    tfError = null;
+    try {
+      await createTransfer({
+        name: tfName.trim(),
+        amount: Math.round(amount * 100) / 100,
+        sourceAccountId: tfSourceId,
+        destinationAccountId: tfDestId,
+        date: new Date().toISOString(),
+      });
+      tfSuccess = true;
+      setTimeout(() => { closeTransferModal(); loadAll(); }, 600);
+    } catch (e: unknown) { tfError = e instanceof Error ? e.message : 'Error'; }
+    finally { tfSubmitting = false; }
+  }
+
+  // ─── Quick Goal Modal ───
+  function openGoalModal() {
+    goalName = '';
+    goalTarget = '';
+    goalType = 'Lista de Deseos';
+    goalError = null;
+    goalSuccess = false;
+    showGoalModal = true;
+  }
+  function closeGoalModal() { showGoalModal = false; }
+
+  async function submitQuickGoal() {
+    const target = parseFloat(goalTarget);
+    if (!goalName.trim() || !target || target <= 0) {
+      goalError = $t('dashboard.fill_all_fields');
+      return;
+    }
+    goalSubmitting = true;
+    goalError = null;
+    try {
+      await createGoal({ name: goalName.trim(), targetAmount: Math.round(target * 100) / 100, type: goalType });
+      goalSuccess = true;
+      setTimeout(() => { closeGoalModal(); loadAll(); }, 600);
+    } catch (e: unknown) { goalError = e instanceof Error ? e.message : 'Error'; }
+    finally { goalSubmitting = false; }
+  }
+
   // ─── Edit Transaction from Dashboard ───
   function openEditTx(tx: Transaction) {
     editTx = tx;
@@ -600,6 +687,8 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
     if (showQuickModal) closeQuickModal();
+    else if (showTransferModal) closeTransferModal();
+    else if (showGoalModal) closeGoalModal();
     else if (showEditTxModal) closeEditTxModal();
     else if (showEditTfModal) closeEditTfModal();
     else if (showAttachModal) closeAttachModal();
@@ -762,8 +851,8 @@
         <div class="quick-actions">
           <button class="qa-btn qa-expense" onclick={() => openQuickModal('Gasto')} title={$t('dashboard.register_expense')}><Icon name="minus-circle" size={14} /> {$t('dashboard.add_expense')}</button>
           <button class="qa-btn qa-income" onclick={() => openQuickModal('Ingreso')} title={$t('dashboard.register_income')}><Icon name="plus-circle" size={14} /> {$t('dashboard.add_income')}</button>
-          <a href="/transferencias" class="qa-btn qa-transfer" title={$t('dashboard.move_money')}><Icon name="arrow-left-right" size={14} /> {$t('dashboard.transfer')}</a>
-          <a href="/metas" class="qa-btn qa-goal" title={$t('dashboard.create_goal')}><Icon name="target" size={14} /> {$t('dashboard.add_goal')}</a>
+          <button class="qa-btn qa-transfer" onclick={openTransferModal} title={$t('dashboard.move_money')}><Icon name="arrow-left-right" size={14} /> {$t('dashboard.transfer')}</button>
+          <button class="qa-btn qa-goal" onclick={openGoalModal} title={$t('dashboard.create_goal')}><Icon name="target" size={14} /> {$t('dashboard.add_goal')}</button>
           <button class="qa-btn" onclick={openAttachModal} title={$t('dashboard.upload_receipt')}><Icon name="paperclip" size={14} /> {$t('dashboard.attach_receipt')}</button>
         </div>
       </div>
@@ -1067,6 +1156,89 @@
             <button type="submit" class="btn-submit" class:btn-red={quickType === 'Gasto'} class:btn-green={quickType === 'Ingreso'} disabled={quickSubmitting}>
               {quickSubmitting ? '...' : $t('dashboard.register_type', { type: quickType })}
             </button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- QUICK TRANSFER MODAL -->
+{#if showTransferModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeTransferModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('dashboard.transfer')}</h3>
+        <button class="modal-close" onclick={closeTransferModal} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      {#if tfSuccess}
+        <div class="modal-success"><span class="success-check">✓</span> {$t('dashboard.registered_success')}</div>
+      {:else}
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitQuickTransfer(); }}>
+          <div class="form-field">
+            <label for="qtf-name">{$t('common.name')}</label>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input id="qtf-name" type="text" bind:value={tfName} required autofocus />
+          </div>
+          <div class="form-field">
+            <label for="qtf-amount">{$t('common.amount')}</label>
+            <input id="qtf-amount" type="number" step="0.01" min="0.01" placeholder="0.00" bind:value={tfAmount} required />
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label for="qtf-source">{$t('transfers.form_source')}</label>
+              <select id="qtf-source" bind:value={tfSourceId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            </div>
+            <div class="form-field">
+              <label for="qtf-dest">{$t('transfers.form_destination')}</label>
+              <select id="qtf-dest" bind:value={tfDestId}>{#each accounts as a}<option value={a.id}>{a.name}</option>{/each}</select>
+            </div>
+          </div>
+          {#if tfError}<p class="modal-error">{tfError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={closeTransferModal}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit btn-blue" disabled={tfSubmitting}>{tfSubmitting ? '...' : $t('common.create')}</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- QUICK GOAL MODAL -->
+{#if showGoalModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeGoalModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('dashboard.add_goal')}</h3>
+        <button class="modal-close" onclick={closeGoalModal} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      {#if goalSuccess}
+        <div class="modal-success"><span class="success-check">✓</span> {$t('dashboard.registered_success')}</div>
+      {:else}
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitQuickGoal(); }}>
+          <div class="form-field">
+            <label for="qg-name">{$t('common.name')}</label>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input id="qg-name" type="text" bind:value={goalName} required autofocus />
+          </div>
+          <div class="form-field">
+            <label for="qg-target">{$t('goals.form_target')}</label>
+            <input id="qg-target" type="number" step="0.01" min="0.01" placeholder="0.00" bind:value={goalTarget} required />
+          </div>
+          <div class="form-field">
+            <label for="qg-type">{$t('common.type')}</label>
+            <select id="qg-type" bind:value={goalType}>
+              <option value="Lista de Deseos">{$t('goals.type_wishlist')}</option>
+              <option value="Deuda">{$t('goals.type_debt')}</option>
+            </select>
+          </div>
+          {#if goalError}<p class="modal-error">{goalError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={closeGoalModal}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit btn-blue" disabled={goalSubmitting}>{goalSubmitting ? '...' : $t('common.create')}</button>
           </div>
         </form>
       {/if}

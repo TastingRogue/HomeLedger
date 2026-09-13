@@ -14,6 +14,9 @@
   let wrap: HTMLDivElement;
   let chart: any = null;
   let themeObserver: MutationObserver | null = null;
+  // Hide the center total while hovering a slice, so the tooltip (drawn on the
+  // canvas, under the HTML overlay) isn't covered by the center label.
+  let hovering = $state(false);
 
   // Read a CSS custom property off the wrapper so the chart follows the active
   // theme (light/dark) instead of hardcoded dark colors. Falls back to the dark
@@ -60,6 +63,9 @@
         responsive: true,
         maintainAspectRatio: false,
         cutout: '58%',
+        onHover: (_evt: unknown, elements: unknown[]) => {
+          hovering = elements.length > 0;
+        },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -100,12 +106,18 @@
 <!-- The wrap is a fixed-height square so the donut is drawn centered and the
      absolutely-positioned center label lands exactly on the donut's middle. -->
 <div class="doughnut-wrap" style="height: {height}px" bind:this={wrap}>
-  <div class="doughnut-canvas" style="height: {height}px; width: {height}px">
+  <div
+    class="doughnut-canvas"
+    style="height: {height}px; width: {height}px"
+    role="presentation"
+    onmouseleave={() => (hovering = false)}
+  >
     <canvas bind:this={canvas}></canvas>
     {#if centerText}
       <!-- Centered relative to the square canvas box (not the full-width wrap),
-           so the label lands on the donut hole regardless of card width. -->
-      <div class="center-text">
+           so the label lands on the donut hole regardless of card width.
+           Fades out while hovering a slice so the tooltip isn't covered. -->
+      <div class="center-text" class:hidden={hovering}>
         <span class="center-amount">{centerText}</span>
         <span class="center-label">Total</span>
       </div>
@@ -118,7 +130,9 @@
   /* Square canvas box centered in the wrap → the drawn donut is centered, so the
      center label (below) aligns with the hole instead of drifting. */
   .doughnut-canvas { position: relative; flex-shrink: 0; }
-  .center-text { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 0.05rem; }
+  .center-text { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 0.05rem; transition: opacity var(--transition-fast); }
+  /* While a slice is hovered, fade the center total so the canvas tooltip is legible. */
+  .center-text.hidden { opacity: 0; }
   .center-amount { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .center-label { font-size: 0.6rem; color: var(--text-muted); }
 </style>

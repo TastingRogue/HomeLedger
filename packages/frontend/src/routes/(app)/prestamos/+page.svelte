@@ -102,7 +102,7 @@
     const interestRate = Number(fRate);
     const term = parseInt(fTerm, 10);
     if (!name || !Number.isFinite(principal) || principal <= 0 || !Number.isFinite(interestRate) || !Number.isInteger(term) || term <= 0 || !fStart) {
-      formError = $t('common.error');
+      formError = $t('common.error_invalid_input');
       return;
     }
     submitting = true;
@@ -147,7 +147,7 @@
     const principal = Number(pPrincipal);
     const interest = Number(pInterest);
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(principal) || principal < 0 || !Number.isFinite(interest) || interest < 0 || !pDate) {
-      payError = $t('common.error');
+      payError = $t('common.error_invalid_input');
       return;
     }
     paySubmitting = true;
@@ -435,7 +435,7 @@
 {/if}
 
 <style>
-  .page { padding: 1.25rem 1.5rem; max-width: var(--content-max); margin: 0 auto; }
+  .page { width: 100%; margin: 0; }
   .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
   .eyebrow { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-orange); font-weight: 600; }
   .header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; margin: 0.1rem 0; }
