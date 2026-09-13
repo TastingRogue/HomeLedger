@@ -1493,7 +1493,7 @@
 
   /* MODAL */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(3px); }
-  .modal-content { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+  .modal-content { background: var(--surface-glass); backdrop-filter: var(--material-blur); -webkit-backdrop-filter: var(--material-blur); border: 1px solid var(--border-default); border-radius: var(--radius-lg); width: 100%; max-width: 480px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45); }
   .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.2rem; border-bottom: 1px solid var(--border-subtle); }
   .modal-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0; }
   .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; }

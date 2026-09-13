@@ -169,7 +169,12 @@
     left: -235px;
     width: 235px;
     height: 100vh;
-    background: var(--sidebar-bg);
+    /* Translucent structural chrome (P3.D, apple-design §12): a heavier material
+       for a structural region, with content/canvas showing faintly through.
+       Solidified under prefers-reduced-transparency by the global block in app.css. */
+    background: var(--sidebar-bg-glass);
+    backdrop-filter: var(--material-blur);
+    -webkit-backdrop-filter: var(--material-blur);
     border-right: 1px solid var(--sidebar-border);
     display: flex;
     flex-direction: column;

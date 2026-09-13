@@ -193,12 +193,15 @@
 }
 
 .sf-modal {
-  background: var(--bg-surface);
+  /* Subtle material (P3.D) — mirrors app.css. */
+  background: var(--surface-glass);
+  backdrop-filter: var(--material-blur);
+  -webkit-backdrop-filter: var(--material-blur);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 420px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -336,18 +339,22 @@
 /* Modal container */
 :global(.modal),
 :global(.modal-content) {
-  background: var(--bg-surface);
+  /* Subtle material (P3.D) — mirrors app.css. */
+  background: var(--surface-glass);
+  backdrop-filter: var(--material-blur);
+  -webkit-backdrop-filter: var(--material-blur);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 500px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
   max-height: 90vh;
   overflow-y: auto;
 }
 
-:global(.modal-sm) { max-width: 400px; }
+:global(.modal-sm) { max-width: 400px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4); }
 :global(.modal-detail) { max-width: 450px; }
+:global(.modal-wide) { box-shadow: 0 24px 68px rgba(0, 0, 0, 0.5); }
 
 /* Header */
 :global(.modal-header) {

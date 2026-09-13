@@ -544,7 +544,7 @@
 
   /* ─── Modal Styles ─── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(3px); }
-  .modal-content { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); width: 100%; max-width: 400px; box-shadow: var(--shadow-lg); }
+  .modal-content { background: var(--surface-glass); backdrop-filter: var(--material-blur); -webkit-backdrop-filter: var(--material-blur); border: 1px solid var(--border-default); border-radius: var(--radius-lg); width: 100%; max-width: 400px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4); }
   .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-subtle); }
   .modal-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0; }
   .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; }
