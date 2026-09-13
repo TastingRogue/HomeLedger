@@ -658,6 +658,14 @@ Keep these in sync (all currently `0.1.0`):
 > versioned backup without breaking Finance, and keeps the product's principles:
 > local-first, self-hosted, **no AI required**, deterministic logic, privacy-first.
 
+> ⚠️ **Naming — read before starting any work here.** The phases in THIS section are
+> **v2 / post-1.0** and are labeled **`L1…L5`** (L = Life-OS). They are a **separate
+> track** from the v1 phases labeled **`P0…P5`** (see `## Phase P0`…`## Phase P5`
+> above). A bare "P4"/"P5" ALWAYS means the **v1** phase of that number, never a
+> Life-OS phase. **Do not start any `L#` work unless the maintainer asks for it by its
+> `L#` name.** (This section previously reused `P4…P8`, which collided with v1's `P4`
+> and caused work to start on the wrong track — hence the `L#` renumber.)
+
 ### ⭐ Non-negotiable: Finance is the core; Home/Life are opt-in
 
 The maintainer's explicit position, and the hard constraint on every phase below:
@@ -676,8 +684,8 @@ The maintainer's explicit position, and the hard constraint on every phase below
 - **Simplicity outranks features** (`Privacy > Simplicity > Ownership > Reliability >
   Features`). If a phase makes the finance experience feel busier, it's wrong —
   redesign it or drop it.
-- **Ship incrementally and re-evaluate.** Treat P4+P5 as a candidate **1.1** and
-  test with real users whether the app still *feels* simple **before** doing P6+.
+- **Ship incrementally and re-evaluate.** Treat L1+L2 as a candidate **1.1** and
+  test with real users whether the app still *feels* simple **before** doing L3+.
   Stopping after net-worth-grade Assets (and never shipping full Life Admin) is a
   legitimate, on-brand outcome. Documenting the vision is **not** a commitment to
   build all of it.
@@ -800,24 +808,44 @@ tolerate unknown arrays; the major-version gate stays intact).
 
 ### Phased roadmap (by value/effort; each phase ships independently)
 
-- [ ] **P4 — Assets as a first-class entity** (foundational). Extend `assets`;
-  migrate the current flat net-worth assets in place; UI to create/edit an asset
-  with brand/model/serial/purchase/value/location; optional link to a transaction
-  and a receipt/attachment; net worth uses `currentValue`. Inventory-by-location is
-  a *view* over assets, not a new module. **This is the backbone — do it first.**
-- [ ] **P5 — Warranty + the Upcoming view** (the differentiator, low effort — reuses
+- [~] **L1 — Assets as a first-class entity** (foundational). 🌿 **Built on branch
+  `p4-assets`, NOT merged (parked for v2).** Extended `assets` (renamed
+  `value`→`currentValue`; added brand/model/serial/category/purchaseDate/
+  purchasePrice/location/status + optional `purchaseTransactionId` and
+  `receiptAttachmentId` FKs), migration `0008` (12-step rebuild), UI to create/edit
+  an asset with all fields + optional link to a transaction and a receipt/attachment;
+  net worth uses `currentValue`. Inventory-by-location is a *view* over assets (list ↔
+  by-location toggle). Backups bumped to 1.1.0 with backward-compatible
+  `value`→`currentValue` remap. **Status: complete + tests green on the branch; do
+  NOT merge to `main` until the v2 track officially starts.** See "Parked branches"
+  below.
+- [ ] **L2 — Warranty + the Upcoming view** (the differentiator, low effort — reuses
   alerts + scheduler). Warranty = asset + purchase date + duration → expiry →
   reminders (90/30/7, configurable) via the existing alerts engine. Build the
   aggregated **Upcoming** view here (unions warranties + subscription next charges +
   reminders + document expiries) — it's the visible payoff of the graph.
-- [ ] **P6 — Documents + Reminders (Life Admin core)**. Documents (file optional) with
+- [ ] **L3 — Documents + Reminders (Life Admin core)**. Documents (file optional) with
   expiry; generic reminders (renewals, important dates) with optional asset/document
   link. Both feed Upcoming. Subscriptions stay as-is and simply appear in Upcoming.
-- [ ] **P7 — Maintenance**. Records with cost + provider + optional "Create
+- [ ] **L4 — Maintenance**. Records with cost + provider + optional "Create
   transaction"; optional recurrence → scheduled maintenance feeds Upcoming. Links to
   an asset (car service) or a property (roof waterproofing).
-- [ ] **P8 — Global search (FTS5)**. Cross-entity search so "car" surfaces the asset,
+- [ ] **L5 — Global search (FTS5)**. Cross-entity search so "car" surfaces the asset,
   its receipt, warranty, transactions and maintenance in one result set.
+
+### 🌿 Parked branches (built ahead of schedule — do not lose, do not merge yet)
+
+Work that was implemented but belongs to a later track. Listed here so it stays
+**visible** and gets picked up when its track starts, instead of rotting as a
+forgotten branch:
+
+- **`p4-assets`** → implements **L1 (Assets as a first-class entity)**. Complete,
+  full test suite green on the branch, pushed to `origin/p4-assets`. **Not merged to
+  `main`** (it carries DB migration `0008` renaming `assets.value`→`current_value`
+  and bumps the backup format to 1.1.0 — v2-track changes). **Action when v2 starts:**
+  rebase on `main`, re-run the full verification (migration on a populated DB, backup
+  round-trip incl. legacy `value` import), then merge. Until then `main` must never
+  see migration `0008`.
 
 ### Explicitly deferred / out of scope (documented decisions)
 
