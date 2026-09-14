@@ -58,6 +58,18 @@
       color: '#c62828',
       bgColor: '#ffebee',
     },
+    budget_threshold: {
+      label: $t('alerts.type_budget_threshold'),
+      icon: '📊',
+      color: '#f9a825',
+      bgColor: '#fff8e1',
+    },
+    budget_exceeded: {
+      label: $t('alerts.type_budget_exceeded'),
+      icon: '🚨',
+      color: '#c62828',
+      bgColor: '#ffebee',
+    },
     goal_completed: {
       label: $t('alerts.type_goal_completed'),
       icon: '🎉',
@@ -259,6 +271,8 @@
       <option value="credit_high">{$t('alerts.filter_credit_high')}</option>
       <option value="payment_due">{$t('alerts.filter_payment_due')}</option>
       <option value="payment_overdue">{$t('alerts.filter_payment_overdue')}</option>
+      <option value="budget_threshold">{$t('alerts.filter_budget_threshold')}</option>
+      <option value="budget_exceeded">{$t('alerts.filter_budget_exceeded')}</option>
       <option value="goal_completed">{$t('alerts.filter_goal_completed')}</option>
     </select>
     <select bind:value={filterRead} aria-label={$t('common.filter')}>

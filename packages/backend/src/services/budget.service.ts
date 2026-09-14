@@ -561,13 +561,14 @@ export class BudgetService {
   }
 
   /**
-   * Evalúa alertas de presupuesto para el usuario.
-   * Genera alertas cuando:
-   * - El gasto excede el umbral de alerta (alertThreshold %) → alerta de advertencia
-   * - El gasto excede el 100% del presupuesto asignado → alerta crítica de exceso
+   * @deprecated Superseded by `AlertService.evaluateBudgetOverspend` (P4.3 Phase D),
+   * which uses the shared SHA-256 dedup helpers, auto-clears on recovery, covers
+   * tag lines too, and is wired into the hourly alert-evaluation scheduler job.
+   * This MD5-based, never-scheduled version is kept only for backward-compatible
+   * callers/tests and returns the same category-only overspend list without the
+   * recovery/auto-clear behavior. Prefer the AlertService method.
    *
-   * Usa deduplicación basada en hash para evitar alertas duplicadas.
-   *
+   * Evalúa alertas de presupuesto para el usuario (solo por categoría).
    * Requirements: 7.2
    */
   static evaluateAlerts(userId: number): BudgetAlert[] {

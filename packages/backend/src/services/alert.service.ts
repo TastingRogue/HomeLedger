@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { alerts, accounts, subscriptions, goals } from '../db/schema.js';
+import { alerts, accounts, subscriptions, goals, budgets, budgetCategories, budgetTags, transactions, transactionTags, categories, tags } from '../db/schema.js';
 import { AccountService } from './account.service.js';
 import { SubscriptionService } from './subscription.service.js';
 
@@ -26,7 +26,9 @@ export type AlertType =
   | 'credit_high'
   | 'payment_due'
   | 'payment_overdue'
-  | 'goal_completed';
+  | 'goal_completed'
+  | 'budget_threshold'   // P4.3 Phase D: spending crossed the budget's warning %
+  | 'budget_exceeded';   // P4.3 Phase D: spending exceeded 100% of a budget line
 
 /**
  * Severidades de alerta.
@@ -408,6 +410,120 @@ export class AlertService {
   }
 
   /**
+   * Evalúa alertas de sobregasto de presupuesto (P4.3 Fase D).
+   *
+   * Para cada línea de presupuesto ACTIVO (por categoría y por etiqueta):
+   *  - gasto > 100% del asignado (allocated + rollover) → alerta crítica `budget_exceeded`
+   *  - gasto > alertThreshold% (pero ≤100%)            → alerta de aviso `budget_threshold`
+   *  - gasto por debajo del umbral                      → limpia ambas alertas (recuperación)
+   *
+   * Reemplaza el antiguo `BudgetService.evaluateAlerts` (MD5, sin auto-clear y
+   * nunca conectado a un job). Usa los helpers SHA-256 + removeAlertByHash.
+   */
+  static evaluateBudgetOverspend(userId: number) {
+    const db = getDb();
+    const createdAlerts: unknown[] = [];
+    const today = new Date().toISOString().split('T')[0]!;
+
+    const activeBudgets = db
+      .select()
+      .from(budgets)
+      .where(and(eq(budgets.userId, userId), lte(budgets.startDate, today), gte(budgets.endDate, today)))
+      .all();
+
+    // Spent for a category within the budget period.
+    const spentByCategory = (categoryId: number, startDate: string, endDate: string): number => {
+      const row = db
+        .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.userId, userId),
+          eq(transactions.categoryId, categoryId),
+          eq(transactions.type, 'Gasto'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate),
+        ))
+        .get();
+      return Number(row?.total ?? 0);
+    };
+    // Spent for a tag within the budget period (join transaction_tags).
+    const spentByTag = (tagId: number, startDate: string, endDate: string): number => {
+      const row = db
+        .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+        .from(transactionTags)
+        .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
+        .where(and(
+          eq(transactionTags.tagId, tagId),
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'Gasto'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate),
+        ))
+        .get();
+      return Number(row?.total ?? 0);
+    };
+
+    // Evaluate one budget line (category or tag). `key` is the dedup identity.
+    const evaluateLine = (
+      budget: typeof budgets.$inferSelect,
+      lineKey: string,
+      lineName: string,
+      allocatedTotal: number,
+      spent: number,
+    ) => {
+      if (allocatedTotal <= 0) return;
+      const percentUsed = (spent / allocatedTotal) * 100;
+      const exceededHash = AlertService.generateHash(`budget_exceeded_${budget.id}_${lineKey}_${budget.startDate}`);
+      const thresholdHash = AlertService.generateHash(`budget_threshold_${budget.id}_${lineKey}_${budget.startDate}`);
+
+      if (percentUsed > 100) {
+        AlertService.removeAlertByHash(thresholdHash); // upgrade: drop the warning
+        const alert = AlertService.createAlert(
+          userId, 'budget_exceeded',
+          `Presupuesto excedido: ${lineName}`,
+          `El gasto en ${lineName} (MX$${spent.toFixed(2)}) superó lo asignado (MX$${allocatedTotal.toFixed(2)}) en ${budget.name}`,
+          'critical', exceededHash,
+          { budgetId: budget.id, budgetName: budget.name, line: lineName, allocated: allocatedTotal, spent, percentUsed: Math.round(percentUsed * 100) / 100 },
+        );
+        if (alert) createdAlerts.push(alert);
+      } else if (percentUsed > budget.alertThreshold) {
+        AlertService.removeAlertByHash(exceededHash); // recovered below 100%
+        const alert = AlertService.createAlert(
+          userId, 'budget_threshold',
+          `Presupuesto próximo a excederse: ${lineName}`,
+          `El gasto en ${lineName} alcanzó el ${Math.round(percentUsed)}% de lo asignado en ${budget.name}`,
+          'warning', thresholdHash,
+          { budgetId: budget.id, budgetName: budget.name, line: lineName, allocated: allocatedTotal, spent, percentUsed: Math.round(percentUsed * 100) / 100 },
+        );
+        if (alert) createdAlerts.push(alert);
+      } else {
+        // Below the warning threshold → clear any prior alerts (recovery).
+        AlertService.removeAlertByHash(exceededHash);
+        AlertService.removeAlertByHash(thresholdHash);
+      }
+    };
+
+    for (const budget of activeBudgets) {
+      // Category lines.
+      const cats = db.select().from(budgetCategories).where(eq(budgetCategories.budgetId, budget.id)).all();
+      for (const bc of cats) {
+        const cat = db.select({ name: categories.name }).from(categories).where(eq(categories.id, bc.categoryId)).get();
+        const name = cat?.name ?? `Categoría ${bc.categoryId}`;
+        evaluateLine(budget, `cat_${bc.categoryId}`, name, bc.allocated + bc.rollover, spentByCategory(bc.categoryId, budget.startDate, budget.endDate));
+      }
+      // Tag lines (P4.3 Phase C).
+      const bts = db.select().from(budgetTags).where(eq(budgetTags.budgetId, budget.id)).all();
+      for (const bt of bts) {
+        const tag = db.select({ name: tags.name }).from(tags).where(eq(tags.id, bt.tagId)).get();
+        const name = `#${tag?.name ?? bt.tagId}`;
+        evaluateLine(budget, `tag_${bt.tagId}`, name, bt.allocated + bt.rollover, spentByTag(bt.tagId, budget.startDate, budget.endDate));
+      }
+    }
+
+    return createdAlerts;
+  }
+
+  /**
    * Ejecuta todas las evaluaciones de alertas para un usuario.
    * Útil para el scheduler (cron) y evaluaciones manuales.
    */
@@ -417,6 +533,7 @@ export class AlertService {
     const paymentDue = AlertService.evaluatePaymentDue(userId);
     const paymentOverdue = AlertService.evaluatePaymentOverdue(userId);
     const goalCompleted = AlertService.evaluateGoalCompleted(userId);
+    const budgetOverspend = AlertService.evaluateBudgetOverspend(userId); // P4.3 Phase D
 
     return {
       balanceLow,
@@ -424,6 +541,7 @@ export class AlertService {
       paymentDue,
       paymentOverdue,
       goalCompleted,
+      budgetOverspend,
     };
   }
 

@@ -538,6 +538,86 @@ describe('AlertService', () => {
     });
   });
 
+  describe('evaluateBudgetOverspend() (P4.3 Phase D)', () => {
+    // Creates an active monthly budget with one category allocation and returns ids.
+    function seedActiveBudget(userId: number, categoryId: number, allocated: number, alertThreshold = 80) {
+      const now = new Date().toISOString();
+      const start = daysFromToday(-5);
+      const end = daysFromToday(20);
+      const budget = testDb.insert(schema.budgets).values({
+        userId, name: 'Mensual', period: 'monthly', startDate: start, endDate: end,
+        rolloverEnabled: false, alertThreshold, createdAt: now, updatedAt: now,
+      }).returning().get();
+      testDb.insert(schema.budgetCategories).values({
+        budgetId: budget.id, categoryId, allocated, rollover: 0,
+      }).run();
+      return budget;
+    }
+    function seedExpense(userId: number, accountId: number, categoryId: number, amount: number) {
+      const now = new Date().toISOString();
+      testDb.insert(schema.transactions).values({
+        userId, accountId, categoryId, name: 'Gasto', amount, type: 'Gasto',
+        date: daysFromToday(-1), createdAt: now, updatedAt: now,
+      }).run();
+    }
+
+    it('genera alerta de umbral cuando el gasto supera el alertThreshold %', () => {
+      const userId = seedTestUser();
+      const account = seedAccount(userId);
+      const catId = seedCategory(userId, 'Comida');
+      seedActiveBudget(userId, catId, 1000, 80);
+      seedExpense(userId, account.id, catId, 850); // 85% > 80%
+
+      const created = AlertService.evaluateBudgetOverspend(userId);
+      expect(created.length).toBe(1);
+      const list = AlertService.list(userId);
+      expect(list.some((a) => a.type === 'budget_threshold')).toBe(true);
+    });
+
+    it('genera alerta crítica cuando el gasto excede el 100%', () => {
+      const userId = seedTestUser();
+      const account = seedAccount(userId);
+      const catId = seedCategory(userId, 'Comida');
+      seedActiveBudget(userId, catId, 1000, 80);
+      seedExpense(userId, account.id, catId, 1200); // 120% > 100%
+
+      AlertService.evaluateBudgetOverspend(userId);
+      const list = AlertService.list(userId);
+      expect(list.some((a) => a.type === 'budget_exceeded')).toBe(true);
+      expect(list.some((a) => a.type === 'budget_threshold')).toBe(false);
+    });
+
+    it('no genera alerta cuando el gasto está por debajo del umbral', () => {
+      const userId = seedTestUser();
+      const account = seedAccount(userId);
+      const catId = seedCategory(userId, 'Comida');
+      seedActiveBudget(userId, catId, 1000, 80);
+      seedExpense(userId, account.id, catId, 500); // 50% < 80%
+
+      const created = AlertService.evaluateBudgetOverspend(userId);
+      expect(created).toHaveLength(0);
+    });
+
+    it('deduplica y auto-limpia al recuperarse (no repite; borra al bajar del umbral)', () => {
+      const userId = seedTestUser();
+      const account = seedAccount(userId);
+      const catId = seedCategory(userId, 'Comida');
+      const budget = seedActiveBudget(userId, catId, 1000, 80);
+      seedExpense(userId, account.id, catId, 1200); // exceeded
+
+      AlertService.evaluateBudgetOverspend(userId);
+      AlertService.evaluateBudgetOverspend(userId); // second run must not duplicate
+      const exceededHash = AlertService.generateHash(`budget_exceeded_${budget.id}_cat_${catId}_${budget.startDate}`);
+      const afterTwo = AlertService.list(userId).filter((a) => a.hash === exceededHash);
+      expect(afterTwo).toHaveLength(1);
+
+      // Recovery: raise the allocation so spending is now under threshold → alert cleared.
+      testDb.update(schema.budgetCategories).set({ allocated: 5000 }).where(eq(schema.budgetCategories.budgetId, budget.id)).run();
+      AlertService.evaluateBudgetOverspend(userId);
+      expect(AlertService.hashExists(exceededHash)).toBe(false);
+    });
+  });
+
   describe('removeAlertByHash()', () => {
     it('debe eliminar una alerta por su hash', () => {
       const userId = seedTestUser();

@@ -27,7 +27,7 @@ export function startAlertEvaluationJob(): ScheduledTask {
       for (const user of allUsers) {
         try {
           const result = await AlertService.evaluateAll(user.id);
-          totalAlerts += result.balanceLow.length + result.creditHigh.length + result.paymentDue.length + result.paymentOverdue.length + result.goalCompleted.length;
+          totalAlerts += result.balanceLow.length + result.creditHigh.length + result.paymentDue.length + result.paymentOverdue.length + result.goalCompleted.length + result.budgetOverspend.length;
         } catch {
           /* per-user evaluation failure shouldn't abort the whole run */
         }
@@ -64,7 +64,8 @@ export function startAlertEvaluationJob(): ScheduledTask {
             result.creditHigh.length +
             result.paymentDue.length +
             result.paymentOverdue.length +
-            result.goalCompleted.length;
+            result.goalCompleted.length +
+            result.budgetOverspend.length;
           totalAlerts += userAlerts;
         } catch (error) {
           console.error(`[AlertEvaluation] Error evaluando usuario ${user.id}:`, error);
