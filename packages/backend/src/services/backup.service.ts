@@ -537,13 +537,17 @@ export class BackupService {
         const newCategoryId = resolveCategory(rec);
         if (newAccountId == null || newCategoryId == null) continue; // required FKs
         const newSubcategoryId = remap(subcatMap, fk(rec, 'subcategoryId'));
-        const { id: _drop, accountId: _a, categoryId: _c, subcategoryId: _s, ...rest } = rec;
+        // P4.4: drop `importId` — it points at an `imports` row that the backup
+        // doesn't carry, so restoring it would leave a dangling reference. The
+        // restored transaction is no longer tied to any import session.
+        const { id: _drop, accountId: _a, categoryId: _c, subcategoryId: _s, importId: _imp, ...rest } = rec;
         const inserted = db.insert(transactions).values({
           ...(rest as Omit<typeof transactions.$inferInsert, 'accountId' | 'categoryId' | 'subcategoryId'>),
           userId,
           accountId: newAccountId,
           categoryId: newCategoryId,
           subcategoryId: newSubcategoryId,
+          importId: null,
         }).returning({ id: transactions.id }).get();
         const prev = oldId(rec);
         if (prev != null) txMap.set(prev, inserted.id);

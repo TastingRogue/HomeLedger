@@ -134,6 +134,10 @@ export const transactions = sqliteTable('transactions', {
   // Stable id from an imported source (bank reference), used for dedupe on re-import.
   externalId: text('external_id'),
   attachmentId: integer('attachment_id'),
+  // P4.4: the import session that created this row (null for manual entries).
+  // Enables "undo import" (reverse exactly the rows a session inserted). Plain
+  // integer at the DB level (SQLite ADD COLUMN can't add a FK), enforced by the app.
+  importId: integer('import_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -148,6 +152,8 @@ export const transactions = sqliteTable('transactions', {
   index('transactions_account_id_type_idx').on(table.accountId, table.type),
   // P4.1: fast lookup for import dedupe by source id (scoped per user+account).
   index('transactions_user_id_external_id_idx').on(table.userId, table.externalId),
+  // P4.4: fast lookup for undo-import (all rows a session created).
+  index('transactions_import_id_idx').on(table.importId),
 ]);
 
 export const transactionSplits = sqliteTable('transaction_splits', {
@@ -348,7 +354,8 @@ export const imports = sqliteTable('imports', {
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   filename: text('filename').notNull(),
   parser: text('parser').notNull(),
-  status: text('status', { enum: ['pending', 'completed', 'failed'] }).notNull().default('pending'),
+  // 'reverted' (P4.4): a completed import whose inserted rows were undone.
+  status: text('status', { enum: ['pending', 'completed', 'failed', 'reverted'] }).notNull().default('pending'),
   recordCount: integer('record_count'),
   createdAt: text('created_at').notNull(),
 }, (table) => [

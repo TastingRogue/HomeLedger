@@ -63,6 +63,7 @@ describe('NetWorthService', () => {
         invoice_path TEXT,
         parent_id INTEGER,
         is_reimbursed INTEGER NOT NULL DEFAULT 0,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

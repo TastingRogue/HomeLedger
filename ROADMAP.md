@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **549 passing, 0 failing** ✅ (499 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **588 passing, 0 failing** ✅ (538 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -585,12 +585,15 @@ Built in phases on `p4-feature-depth`.
 Parsers exist (BBVA/Santander/Nu; CSV/XLSX/OFX/QIF/JSON 🟡). Make the pipeline
 robust — all on the uploaded file, no network.
 
-- [ ] Duplicate detection against existing transactions
-- [ ] Merchant normalization
-- [ ] Pending → posted matching
-- [ ] Currency + date normalization, debit/credit detection
-- [ ] Automatic account detection
-- [ ] Import history + **undo import**
+✅ **Done** (on `p4-feature-depth`, migration `0014_import_id`).
+- [x] Duplicate detection against existing transactions ✅ — dedupe on stable `externalId` when present, else an exact date+amount+name heuristic, now **scoped per account** (a transfer between two of your accounts is no longer a false dup). Surfaced in the preview (per-row `duplicate` status), not just silently skipped at confirm
+- [x] Merchant normalization ✅ — new pure `normalizeMerchant` (packages/backend/src/importers/normalize.ts): strips store/terminal numbers, `#1234`, `REF:/AUT/FOLIO/OP` codes, embedded dates/times, currency markers, and noise words (compra/pago/pos/spei…), then consistent Title-Case. Feeds the stored `merchant` (falls back to the raw description) so dedupe + rules matching are more reliable
+- [x] Pending → posted matching ✅ — when an incoming posted row matches an existing `pending` transaction (same account, type, amount, date within ±5 days) the importer **promotes** that row to `posted` instead of inserting a near-duplicate (`ImportService.findPendingMatch`). Promoted rows are deliberately NOT tagged with the import so undo can't delete a pre-existing transaction
+- [x] Currency + date normalization, debit/credit detection ✅ — `normalizeDate` parses ISO, `DD/MM[/YYYY]`, `MM/DD` (disambiguated when a part >12), 2-digit years, `YYYY/MM/DD`, and textual months (es/en); `parseAmount` handles `$1,234.56` / `1.234,56` (EU/LA), accounting `(…)` negatives, `±`, and trailing `MXN/USD/EUR`, returning `{amount, sign}` for debit/credit detection
+- [x] Automatic account detection ✅ — when the user doesn't pick a target account, `ImportService.detectAccount` infers it from the parser's bank keywords (e.g. `bbva_mx` → matches an account named/banked "BBVA") then from filename tokens. Exposed as `detectedAccountId` in the preview; the UI preselects it
+- [x] Import history + **undo import** ✅ — every inserted row is tagged with its import session (`transactions.import_id`, migration `0014`). New `ImportService.undo()` + `DELETE /api/v1/imports/:id` reverse exactly the rows a completed import inserted and mark the session `reverted`; the Import page lists history with a per-import **Undo** button. Backups strip `import_id` on restore (the `imports` table isn't part of a backup, so keeping it would dangle)
+
+Also rebuilt the frontend import flow to the real **upload → preview → confirm** pipeline (it previously POSTed once and misread the session response as counts): step 2 now shows a classified row table (new / duplicate / pending-match badges), the detected/target account picker, a "skip duplicates" toggle, and step 3 reports imported / matched / skipped. **P4.4 complete.**
 
 ### P4.5 — Rules & auto-categorization UX (builds on P2.1)
 Rules engine + UI already tracked in P2.1. Add the "feels smart without AI" bits.

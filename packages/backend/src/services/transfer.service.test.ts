@@ -76,6 +76,7 @@ describe('TransferService', () => {
         status TEXT NOT NULL DEFAULT 'posted',
         external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

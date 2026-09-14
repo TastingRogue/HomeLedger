@@ -78,6 +78,7 @@ describe('ImportService', () => {
         status TEXT NOT NULL DEFAULT 'posted',
         external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -89,6 +90,14 @@ describe('ImportService', () => {
         action TEXT NOT NULL,
         changes TEXT,
         created_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS transaction_splits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+        amount REAL NOT NULL,
+        note TEXT
       );
 
       CREATE TABLE IF NOT EXISTS imports (
@@ -472,6 +481,176 @@ describe('ImportService', () => {
 
       expect(updated?.status).toBe('completed');
       expect(updated?.recordCount).toBe(1);
+    });
+  });
+
+  describe('smart importer (P4.4)', () => {
+    it('normaliza el comercio (merchant) al confirmar', () => {
+      const db = getDb();
+      const fileContent = buildBBVACSV(['15/03/2024,COMPRA OXXO GAS #4821,150.00,,4850.00']);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      ImportService.confirm(session.id, testUserId, {
+        accountId: testAccountId,
+        defaultCategoryId: testCategoryId,
+      });
+      const tx = db.select().from(transactions).where(eq(transactions.userId, testUserId)).get();
+      expect(tx?.merchant).toBe('Oxxo Gas');
+    });
+
+    it('etiqueta las transacciones insertadas con el importId de la sesión', () => {
+      const db = getDb();
+      const fileContent = buildBBVACSV(['01/01/2024,COMPRA UNO,100.00,,4900.00']);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      ImportService.confirm(session.id, testUserId, {
+        accountId: testAccountId,
+        defaultCategoryId: testCategoryId,
+      });
+      const tx = db.select().from(transactions).where(eq(transactions.userId, testUserId)).get();
+      expect(tx?.importId).toBe(session.id);
+    });
+
+    it('empareja una transacción pendiente existente en lugar de duplicar', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      // Existing PENDING transaction (e.g. an authorization hold).
+      db.insert(transactions).values({
+        userId: testUserId,
+        accountId: testAccountId,
+        categoryId: testCategoryId,
+        name: 'PENDIENTE',
+        amount: 250.00,
+        type: 'Gasto',
+        date: '2024-03-14T12:00:00.000Z',
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+
+      // Incoming posted row, same amount, 2 days later (within the window).
+      const fileContent = buildBBVACSV(['16/03/2024,COMPRA POSTED,250.00,,4750.00']);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      const result = ImportService.confirm(session.id, testUserId, {
+        accountId: testAccountId,
+        defaultCategoryId: testCategoryId,
+      });
+
+      expect(result.matchedCount).toBe(1);
+      expect(result.importedCount).toBe(0);
+
+      // Only ONE transaction should exist, now posted.
+      const all = db.select().from(transactions).where(eq(transactions.userId, testUserId)).all();
+      expect(all).toHaveLength(1);
+      expect(all[0]!.status).toBe('posted');
+    });
+
+    it('preview clasifica cada fila (new / duplicate / pending_match)', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      // Existing posted duplicate.
+      db.insert(transactions).values({
+        userId: testUserId,
+        accountId: testAccountId,
+        categoryId: testCategoryId,
+        name: 'COMPRA DUP',
+        amount: 100.00,
+        type: 'Gasto',
+        date: '2024-01-01T12:00:00.000Z',
+        status: 'posted',
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+      // Existing pending to be matched.
+      db.insert(transactions).values({
+        userId: testUserId,
+        accountId: testAccountId,
+        categoryId: testCategoryId,
+        name: 'HOLD',
+        amount: 300.00,
+        type: 'Gasto',
+        date: '2024-01-02T12:00:00.000Z',
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+
+      const fileContent = buildBBVACSV([
+        '01/01/2024,COMPRA DUP,100.00,,4900.00', // duplicate
+        '03/01/2024,COMPRA POSTED,300.00,,4600.00', // pending_match (300, within window)
+        '05/01/2024,COMPRA NUEVA,55.00,,4545.00', // new
+      ]);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      const preview = ImportService.preview(session.id, testUserId);
+
+      expect(preview.duplicateCount).toBe(1);
+      expect(preview.pendingMatchCount).toBe(1);
+      expect(preview.newCount).toBe(1);
+      expect(preview.transactions[0]!.status).toBe('duplicate');
+      expect(preview.transactions[1]!.status).toBe('pending_match');
+      expect(preview.transactions[2]!.status).toBe('new');
+      expect(preview.detectedAccountId).toBe(testAccountId);
+    });
+
+    it('auto-detecta la cuenta destino por el banco del parser', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      // Account whose bank matches the BBVA parser.
+      const bbvaAcct = db.insert(accounts).values({
+        userId: testUserId,
+        name: 'Tarjeta BBVA',
+        type: 'Crédito',
+        bank: 'BBVA',
+        initialBalance: 0,
+        currency: 'MXN',
+        status: 'Activo',
+        createdAt: now,
+        updatedAt: now,
+      }).returning().get();
+
+      const fileContent = buildBBVACSV(['01/01/2024,COMPRA,100.00,,4900.00']);
+      // No accountId provided → should auto-detect the BBVA account.
+      const session = ImportService.upload(testUserId, fileContent, 'bbva_movimientos.csv');
+      const preview = ImportService.preview(session.id, testUserId);
+      expect(preview.detectedAccountId).toBe(bbvaAcct.id);
+    });
+
+    it('deshace una importación eliminando solo las filas que creó', () => {
+      const db = getDb();
+      const fileContent = buildBBVACSV([
+        '01/01/2024,COMPRA UNO,100.00,,4900.00',
+        '02/01/2024,COMPRA DOS,200.00,,4700.00',
+      ]);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      ImportService.confirm(session.id, testUserId, {
+        accountId: testAccountId,
+        defaultCategoryId: testCategoryId,
+      });
+      expect(db.select().from(transactions).where(eq(transactions.userId, testUserId)).all()).toHaveLength(2);
+
+      const undo = ImportService.undo(session.id, testUserId);
+      expect(undo.removedCount).toBe(2);
+      expect(db.select().from(transactions).where(eq(transactions.userId, testUserId)).all()).toHaveLength(0);
+
+      const updated = db.select().from(imports).where(eq(imports.id, session.id)).get();
+      expect(updated?.status).toBe('reverted');
+    });
+
+    it('no permite deshacer una importación no completada', () => {
+      const fileContent = buildBBVACSV(['01/01/2024,COMPRA,100.00,,4900.00']);
+      const session = ImportService.upload(testUserId, fileContent, 'bbva.csv', {
+        accountId: testAccountId,
+      });
+      // Not confirmed yet → still 'pending'.
+      expect(() => ImportService.undo(session.id, testUserId)).toThrow(ImportError);
     });
   });
 
