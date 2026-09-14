@@ -745,10 +745,16 @@
   .detail-meta { display: flex; align-items: center; gap: 0.4rem; }
   .detail-bank { font-size: 0.7rem; color: var(--text-muted); }
 
-  .detail-balance-row { display: flex; gap: 1rem; padding: 0.75rem; background: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 1rem; }
-  .detail-balance { display: flex; flex-direction: column; gap: 0.1rem; }
+  /* Wraps into rows and each cell auto-sizes, so a credit card with many
+     statement fields (P4.2) no longer overflows the modal horizontally. */
+  .detail-balance-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem 1rem; padding: 0.75rem; background: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 1rem; }
+  .detail-balance { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .db-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .db-value { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+  .db-value { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Loading + payment history span the full width of the grid instead of
+     becoming a narrow grid cell. */
+  .credit-loading { grid-column: 1 / -1; }
+  .payments-section { grid-column: 1 / -1; }
   .db-value.negative { color: var(--accent-red); }
 
   .detail-transactions h3 { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
