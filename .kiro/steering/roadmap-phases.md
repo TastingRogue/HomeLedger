@@ -9,17 +9,20 @@ have collided before and caused work to start on the wrong one. Do not repeat th
 
 ## The two tracks
 
-- **v1 track → `P#`** (`P0`, `P1`, `P2`, `P3`, `P4`, `P5`). These are the
-  `## Phase P#` sections in `ROADMAP.md`. `## Phase P4 — Feature depth` (P4.1…P4.14)
-  is the **current, active** work.
+- **v1 track → `P#`** (`P0`, `P1`, `P2`, `P3`, `P4`). These are the `## Phase P#`
+  sections in `ROADMAP.md`. `P0`–`P3` are the 1.0.0 work (done);
+  `## Phase P4 — v1.x incremental depth` (`P4.1`…`P4.14`) is the **current, active**
+  track and ships as 1.1/1.2/…. There is **no `Phase P5`** — anything "P5" you recall
+  was the old Life-OS numbering, now `L2`.
 - **v2 / Life-OS track → `L#`** (`L1`…`L5`), under
   `## Post-1.0 — Personal Life & Finance OS`. This is **future / post-1.0** work.
 
 ## Hard rules
 
-1. **A bare "P4" / "P5" ALWAYS means the v1 phase of that number.** Never assume it
-   means a Life-OS phase. If the user says "continue with P4", it is
-   `## Phase P4 — Feature depth` — confirm the specific `P4.x` sub-item before coding.
+1. **A bare "P4" ALWAYS means the v1 phase** (`## Phase P4 — v1.x incremental
+   depth`), never a Life-OS phase. If the user says "continue with P4", confirm the
+   specific `P4.x` sub-item before coding. ("P5" is not a valid v1 phase — if the
+   user says P5, they likely mean the Life-OS `L2`; ask.)
 2. **Never start `L#` (Life-OS / v2) work unless the user names it by its `L#`
    label explicitly.** "Assets", "warranty", "documents", "maintenance" belong to the
    v2 track — do not begin them off a vague request.

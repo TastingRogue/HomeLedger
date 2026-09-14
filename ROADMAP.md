@@ -42,11 +42,39 @@ Implications for the feature list:
 
 ## Status snapshot
 
-- Current version: **0.1.0** (published; amd64-only Docker image)
-- Test suite: **429 passing, 0 failing** ✅ · lint 0 errors · CI gates in place
-- **ALL P0 BLOCKERS DONE** (P0.1–P0.5), merged to `main`
-- P1 in progress on branch `p1-release-quality`: **P1.2 (lint + CI) done**
-- Next P1: P1.1 arm64, P1.3/P1.4 i18n, P1.8 backups, P1.10 multi-user, etc.
+- Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
+  Done for v1.0.0" below); tagging/release is the maintainer's step.
+- Test suite: **549 passing, 0 failing** ✅ (499 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
+- **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
+
+---
+
+## Roadmap horizons & execution order (read this first)
+
+The rest of this file is long. This map removes all ambiguity about **what comes
+after 1.0.0 and what constitutes a v2**. Three horizons, executed in this order:
+
+| Horizon | Prefix | What it is | Ships as | Status |
+| --- | --- | --- | --- | --- |
+| **1.0.0** | `P0`–`P3` | Correctness, release quality, feature completeness, polish. The stability promise. | **1.0.0** | ✅ Done (tag pending) |
+| **v1.x — incremental depth** | `P4.x` | Makes the *finance* app deeper without changing its scope. Merchant/tags, credit-card modeling, envelope budgeting, smarter import, forecasting, reports, multi-currency, PWA, etc. Local-first, no scope change. | **1.1, 1.2, …** | 🔜 **Active track** |
+| **v2 — Personal Life & Finance OS** | `L1`–`L5` | Expands *scope* from "finance app" to "life + finance OS": assets as things, warranties, documents, reminders, maintenance, cross-entity search. | **2.0** | 🌿 Planning (L1 built on branch `p4-assets`, parked) |
+| **Out of scope / far future** | — | Bank sync, investments w/ live prices, multi-user households, Postgres, plugins, AI. Conflicts with local-first or is a separate initiative. | — | Vision only |
+
+**Execution rule (agreed with the maintainer):**
+1. **Finish the v1.x depth track (`P4.x`) first** — ship it as 1.1/1.2/… These keep
+   HomeLedger a great *finance* app.
+2. **Then start v2 (`L1`–`L5`)** — the scope-expanding Life-OS. `L1` (assets
+   first-class) is already implemented on the parked `p4-assets` branch; it gets
+   rebased + merged **only when the v2 track officially starts**, never before.
+3. **Out-of-scope items** stay vision-only unless there's real demand and they can
+   be done without breaking local-first.
+
+> ⚠️ **Label discipline (this bit caused a mistake once):** a bare "P4"/"P5" ALWAYS
+> means the **v1** phase of that number (`## Phase P4 — v1.x incremental depth`),
+> **never** a Life-OS phase. The Life-OS track uses `L#`. See
+> `.kiro/steering/roadmap-phases.md`.
 
 ---
 
@@ -313,7 +341,7 @@ currencies are handled in aggregates.
 - [x] Applied: instance currency stored in `app_settings` (`config/currency.ts`), seeded from `DISPLAY_CURRENCY` env (default MXN, validated against the 8 supported), admin-editable (`GET/PUT /api/v1/users/currency`), exposed via `GET /api/v1/config`. `AccountService.create/update` now **reject a mismatched currency** (`CURRENCY_MISMATCH` → 400) and default to the instance currency, so totals can never mix currencies. Frontend applies the instance currency from `/config` (authoritative); the Settings currency picker is now a read-only display (currency is instance-wide, not per-user). Documented as single-currency in README + `.env.example`/Docker/compose/HA.
 - [x] Verified: backend+frontend typecheck 0/0, full suite passing, build clean.
 
-> **Real multi-currency (per-currency totals and/or FX conversion) is explicitly a post-1.0 feature** — see the FUTURE/v2 section. It requires a currency dimension on every aggregation plus assets/liabilities, and (for conversion) exchange-rate sourcing, which conflicts with local-first defaults.
+> **Real multi-currency (per-currency totals and/or FX conversion) is explicitly a post-1.0 feature** — tracked as **P4.11** in the v1.x depth track. It requires a currency dimension on every aggregation plus assets/liabilities, and (for conversion) exchange-rate sourcing, which conflicts with local-first defaults (so any auto-fetch stays optional/off-by-default).
 
 ---
 
@@ -482,11 +510,16 @@ add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
 
 ---
 
-## Phase P4 — Feature depth (post-1.0, local-first compatible)
+## Phase P4 — v1.x incremental depth (the active post-1.0 track)
 
-These make HomeLedger *great* rather than just correct. None require internet;
-all operate on local data / user-provided files. Not blockers for 1.0.0 — they
-come after the P0 correctness/safety work. Status marks are vs. current code.
+> **Horizon: v1.x** (ships as 1.1, 1.2, …). This is the **current active track** —
+> do these before starting the v2 / Life-OS (`L#`) work. These make HomeLedger a
+> *deeper finance app* **without changing its scope** — it's still a personal-finance
+> app, just more powerful. None require internet; all operate on local data /
+> user-provided files. Status marks are vs. current code.
+>
+> The sub-items (`P4.1`…`P4.14`) are **independent** and can ship in any order across
+> point releases; pick by value/effort. They are NOT a strict sequence.
 
 ### P4.1 — Richer transaction model
 Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
@@ -591,10 +624,13 @@ Frontend is responsive. A local-first PWA is the natural mobile story.
 
 ---
 
-## FUTURE / v2 — big, optional, explicitly NOT in the local-first core
+## Out of scope / far future — big, optional, NOT in the local-first core
 
-Tracked for vision, but these either conflict with local-first or are large
-separate initiatives. Not required for 1.0.0 and not assumed for v1.x.
+> **Horizon: out of scope / far future** (NOT the same as "v2" — the real v2 is the
+> `L#` Life-OS track below). Tracked for vision, but these either conflict with
+> local-first or are large separate initiatives. Not required for 1.0.0, not part of
+> the v1.x depth track, and not part of the planned v2. Build only on real demand and
+> only if it can be done without breaking local-first.
 
 - **Automatic bank sync** (Plaid / SimpleFIN / per-bank): OUT of the core — it
   transmits financial data to a cloud service, conflicting with local-first. If
@@ -604,7 +640,8 @@ separate initiatives. Not required for 1.0.0 and not assumed for v1.x.
 - **Investments / portfolio** (brokerage, retirement, crypto, ETFs, FIBRAs,
   CETES, dividends, allocation, performance): large separate initiative. If
   built, must be **manual-entry-first**; any live price fetch is optional and
-  user-enabled only. Great v2 differentiator, not a 1.0 item.
+  user-enabled only. A strong differentiator, but a separate initiative beyond the
+  planned v2 (Life-OS) — not a 1.0 or v1.x item.
 
 ### Explicitly NOT doing (scope guard)
 Trading / buying-selling securities · payment processing · issuing loans · own
@@ -651,12 +688,17 @@ Keep these in sync (all currently `0.1.0`):
 
 ---
 
-## Post-1.0 — Personal Life & Finance OS (vision + phased plan)
+## v2 — Personal Life & Finance OS (`L#` track — vision + phased plan)
 
-> Status: **planning** (not started). Direction agreed with the maintainer. Every
-> phase below is **additive** — it extends the stable `/api/v1` surface and the
-> versioned backup without breaking Finance, and keeps the product's principles:
-> local-first, self-hosted, **no AI required**, deterministic logic, privacy-first.
+> **Horizon: v2** (ships as **2.0**). This is the scope-expanding track: HomeLedger
+> grows from a *finance app* into a *life + finance OS*. **Start this only after the
+> v1.x depth track (`P4.x`) is shipped** — see the horizon map at the top.
+>
+> Status: **planning** (not started, except `L1` which is built and parked on branch
+> `p4-assets`). Direction agreed with the maintainer. Every phase below is
+> **additive** — it extends the stable `/api/v1` surface and the versioned backup
+> without breaking Finance, and keeps the product's principles: local-first,
+> self-hosted, **no AI required**, deterministic logic, privacy-first.
 
 > ⚠️ **Naming — read before starting any work here.** The phases in THIS section are
 > **v2 / post-1.0** and are labeled **`L1…L5`** (L = Life-OS). They are a **separate
