@@ -607,6 +607,10 @@ export const en: Record<TranslationKey, string> = {
   'budgets.error_deleting': 'Could not delete the budget. Please try again.',
   'budgets.allocated': 'ALLOCATED',
   'budgets.spent': 'SPENT',
+  // ── P4.3 Phase B: available to spend ──
+  'budgets.income': 'INCOME',
+  'budgets.unassigned': 'UNASSIGNED',
+  'budgets.unassigned_hint': 'Period income minus what you allocated. Negative = you allocated more than came in.',
   'budgets.remaining': 'REMAINING',
   'budgets.usage': 'USAGE',
   'budgets.by_category': 'BY CATEGORY',

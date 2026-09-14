@@ -576,7 +576,7 @@ Budgets exist (monthly/weekly, per-category, progress 🟡). Upgrade toward
 envelope budgeting.
 
 Built in phases on `p4-feature-depth`.
-- [ ] "Available to spend" / assign-what-you-have model _(Phase B)_
+- [x] "Available to spend" / assign-what-you-have model ✅ (Phase B, light) — `getSummary` now aggregates period income (`type='Ingreso'` in the budget range) and exposes `totalIncome` + `unassigned` (income − allocated); the budgets summary row shows Income and an "Unassigned" indicator (negative = over-allocated). Kept as an informative indicator, not a full YNAB pool (per the "simplicity outranks features" principle)
 - [x] Rollover / carry-over of unspent budget ✅ (Phase A) — persisted `rolloverEnabled` + `alertThreshold` on `budgets` (migration `0012`; were accepted by the API but silently dropped before); rollover is no longer wiped to 0 on edit; the monthly cron only rolls over budgets with the flag on; form gets a rollover toggle + threshold field + a card badge
 - [ ] Budget by tag (in addition to category) _(Phase C)_
 - [ ] Overspending indicators + alerts _(Phase D — wire `evaluateAlerts` to a job/route, align with AlertService)_

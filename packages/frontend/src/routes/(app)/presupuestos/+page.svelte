@@ -282,6 +282,10 @@
     {#if summary && (summary.totalAllocated > 0 || budgets.length > 0)}
       <div class="summary-row" aria-label={$t('a11y.budgets_summary')}>
         <div class="stat">
+          <span class="stat-label">{$t('budgets.income')}</span>
+          <span class="stat-value">{formatCurrency(summary.totalIncome)}</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">{$t('budgets.allocated')}</span>
           <span class="stat-value">{formatCurrency(summary.totalAllocated)}</span>
         </div>
@@ -292,6 +296,10 @@
         <div class="stat">
           <span class="stat-label">{$t('budgets.remaining')}</span>
           <span class="stat-value {summary.totalRemaining < 0 ? 'exceeded' : 'remaining'}">{formatCurrency(summary.totalRemaining)}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label" title={$t('budgets.unassigned_hint')}>{$t('budgets.unassigned')}</span>
+          <span class="stat-value {summary.unassigned < 0 ? 'exceeded' : summary.unassigned > 0 ? 'remaining' : ''}">{formatCurrency(summary.unassigned)}</span>
         </div>
         <div class="stat">
           <span class="stat-label">{$t('budgets.usage')}</span>

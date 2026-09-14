@@ -304,6 +304,7 @@ export class BudgetService {
 
     let totalAllocated = 0;
     let totalSpent = 0;
+    let totalIncome = 0;
 
     for (const budget of targetBudgets) {
       const budgetCats = db
@@ -331,17 +332,38 @@ export class BudgetService {
 
         totalSpent += Number(spentResult?.total ?? 0);
       }
+
+      // P4.3 Phase B ("available to spend", light): income earned within the
+      // budget's period, so the UI can show income − allocated = unassigned.
+      const incomeResult = db
+        .select({ total: sum(transactions.amount) })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            eq(transactions.type, 'Ingreso'),
+            gte(transactions.date, budget.startDate),
+            lte(transactions.date, budget.endDate)
+          )
+        )
+        .get();
+      totalIncome += Number(incomeResult?.total ?? 0);
     }
 
     totalAllocated = roundMoney(totalAllocated);
     totalSpent = roundMoney(totalSpent);
+    totalIncome = roundMoney(totalIncome);
     const totalRemaining = roundMoney(totalAllocated - totalSpent);
+    // Unassigned = income not yet given a job. Negative means over-allocated.
+    const unassigned = roundMoney(totalIncome - totalAllocated);
     const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
     return {
       totalAllocated,
       totalSpent,
       totalRemaining,
+      totalIncome,
+      unassigned,
       percentUsed: Math.round(percentUsed * 100) / 100,
     };
   }

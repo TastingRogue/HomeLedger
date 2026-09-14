@@ -606,6 +606,10 @@ export const es = {
   'budgets.error_deleting': 'No se pudo eliminar el presupuesto. Intenta de nuevo.',
   'budgets.allocated': 'ASIGNADO',
   'budgets.spent': 'GASTADO',
+  // ── P4.3 Fase B: disponible para asignar ──
+  'budgets.income': 'INGRESOS',
+  'budgets.unassigned': 'SIN ASIGNAR',
+  'budgets.unassigned_hint': 'Ingresos del período menos lo asignado. Negativo = asignaste más de lo que ingresó.',
   'budgets.remaining': 'RESTANTE',
   'budgets.usage': 'USO',
   'budgets.by_category': 'POR CATEGORÍA',

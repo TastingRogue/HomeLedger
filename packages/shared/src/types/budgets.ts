@@ -43,4 +43,7 @@ export interface BudgetSummary {
   totalSpent: number;
   totalRemaining: number;
   percentUsed: number;
+  // ── P4.3 Phase B: "available to spend" (light) ──
+  totalIncome: number;   // ingresos registrados dentro del período del presupuesto
+  unassigned: number;    // totalIncome − totalAllocated (negativo = sobre-asignado)
 }
