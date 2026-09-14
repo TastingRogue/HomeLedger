@@ -9,6 +9,7 @@ import {
   transactionSplits,
   tags,
   transactionTags,
+  transactionAudit,
   transfers,
   subscriptions,
   goals,
@@ -69,6 +70,8 @@ export interface BackupData {
   tags: unknown[];
   /** Transaction↔tag M2M links (P4.1 Phase 2). */
   transactionTags: unknown[];
+  /** Transaction audit history (P4.1 Phase 3). */
+  transactionAudit: unknown[];
   transfers: unknown[];
   subscriptions: unknown[];
   goals: unknown[];
@@ -195,6 +198,9 @@ export class BackupService {
         .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
         .where(eq(transactions.userId, userId))
         .all(),
+      // P4.1 Phase 3: audit history (scoped by userId; includes rows whose
+      // transactionId is null because the transaction was later deleted).
+      transactionAudit: db.select().from(transactionAudit).where(eq(transactionAudit.userId, userId)).all(),
       transfers: db.select().from(transfers).where(eq(transfers.userId, userId)).all(),
       subscriptions: db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).all(),
       goals: db.select().from(goals).where(eq(goals.userId, userId)).all(),
@@ -382,6 +388,7 @@ export class BackupService {
       }
 
       // Delete main entities owned by user
+      db.delete(transactionAudit).where(eq(transactionAudit.userId, userId)).run(); // P4.1 Phase 3
       db.delete(transactions).where(eq(transactions.userId, userId)).run();
       db.delete(tags).where(eq(tags.userId, userId)).run(); // P4.1 Phase 2 tag catalog
       db.delete(transfers).where(eq(transfers.userId, userId)).run();
@@ -559,6 +566,22 @@ export class BackupService {
         const newTagId = remap(tagMap, fk(rec, 'tagId'));
         if (newTxId == null || newTagId == null) continue;
         db.insert(transactionTags).values({ transactionId: newTxId, tagId: newTagId }).run();
+      }
+
+      // Transaction audit (P4.1 Phase 3). transactionId is nullable: a null means
+      // a 'deleted' row (keep it as null); a non-null remaps via txMap (drop the
+      // row if its transaction didn't survive the import).
+      for (const audit of backupData.transactionAudit ?? []) {
+        const rec = audit as Record<string, unknown>;
+        const oldTxId = fk(rec, 'transactionId');
+        const newTxId = oldTxId == null ? null : remap(txMap, oldTxId);
+        if (oldTxId != null && newTxId == null) continue; // orphaned; skip
+        const { id: _drop, transactionId: _t, userId: _uid, ...rest } = rec;
+        db.insert(transactionAudit).values({
+          ...(rest as Omit<typeof transactionAudit.$inferInsert, 'transactionId' | 'userId'>),
+          transactionId: newTxId,
+          userId,
+        }).run();
       }
 
       // Transfers (source/destination account ids remapped)
@@ -875,7 +898,7 @@ export class BackupService {
     // Validate that data contains expected arrays (optional, but must be arrays if present)
     const data = obj['data'] as Record<string, unknown>;
     const expectedArrayFields = [
-      'accounts', 'transactions', 'transactionSplits', 'tags', 'transactionTags', 'transfers',
+      'accounts', 'transactions', 'transactionSplits', 'tags', 'transactionTags', 'transactionAudit', 'transfers',
       'subscriptions', 'goals', 'budgets', 'budgetCategories',
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
@@ -902,6 +925,7 @@ export class BackupService {
         transactionSplits: Array.isArray(data['transactionSplits']) ? data['transactionSplits'] : [],
         tags: Array.isArray(data['tags']) ? data['tags'] : [],
         transactionTags: Array.isArray(data['transactionTags']) ? data['transactionTags'] : [],
+        transactionAudit: Array.isArray(data['transactionAudit']) ? data['transactionAudit'] : [],
         transfers: Array.isArray(data['transfers']) ? data['transfers'] : [],
         subscriptions: Array.isArray(data['subscriptions']) ? data['subscriptions'] : [],
         goals: Array.isArray(data['goals']) ? data['goals'] : [],

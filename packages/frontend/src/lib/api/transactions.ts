@@ -181,3 +181,21 @@ export async function deleteTag(id: number): Promise<void> {
 export function setTransactionTags(id: number, tags: string[]): Promise<Tag[]> {
 	return apiPut<Tag[]>(`/transactions/${id}/tags`, { tags });
 }
+
+// ── Audit history (P4.1 Phase 3) ──
+
+/** One recorded change to a transaction. */
+export interface TransactionAudit {
+	id: number;
+	transactionId: number | null;
+	userId: number;
+	action: 'created' | 'updated' | 'deleted';
+	/** For 'updated': { field: { from, to } }; for created/deleted: a snapshot. */
+	changes: Record<string, unknown> | null;
+	createdAt: string;
+}
+
+/** Fetch a transaction's change history (newest first). */
+export function getTransactionAudit(id: number): Promise<TransactionAudit[]> {
+	return apiGet<TransactionAudit[]>(`/transactions/${id}/audit`);
+}

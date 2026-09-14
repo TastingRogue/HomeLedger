@@ -526,14 +526,14 @@ Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
 account, category, optional subcategory. Missing the fields that make ledgers
 powerful.
 
-Shipped in **3 phases** (branch `p4.1-richer-transactions`). Phases 1 & 2 done:
+Shipped in **3 phases** (branch `p4.1-richer-transactions`). ✅ **All phases done.**
 - [x] `merchant` / payee, separate from the free-text name/notes ✅ (Phase 1)
 - [x] Tags (many-to-many) ✅ (Phase 2) — real `tags` + `transaction_tags` tables (migration `0009`), reusable per-user catalog, `addTag` rule action now writes to the M2M (was concatenating into `notes`), tag CRUD + `PUT /transactions/:id/tags`, list filter by tag, chip UI in the form + detail panel, backup round-trips both tables
 - [x] `reconciled` / cleared flag (per transaction) ✅ (Phase 1)
 - [x] `pending` vs `posted` status ✅ (Phase 1, default `posted`)
 - [x] External transaction id (for import matching) ✅ (Phase 1; importers now map the bank `reference` → `externalId`)
 - [x] **Duplicate detection** ✅ (Phase 1; dedupe on `externalId` when present, else the date+amount+name heuristic)
-- [ ] Transaction audit history (who/when changed what) _(Phase 3)_
+- [x] Transaction audit history (who/when changed what) ✅ (Phase 3) — `transaction_audit` table (migration `0010`) records created/updated/deleted with a JSON field-level diff; `GET /transactions/:id/audit` + collapsible history in the detail panel
 - [x] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment ✅ (Phase 1) — resolved as a `subtype` **flag** (not a new `type`), so balance sums by `type` are unaffected
 
 Phase 1 details (migration `0008_richer_transactions`, additive `ALTER TABLE`):
@@ -551,7 +551,15 @@ M2M. New `tagRoutes` (`/api/v1/tags` CRUD) + `PUT /transactions/:id/tags`; list 
 a `tagId` filter and enriches each row with its tags (bulk, no N+1). Frontend: tag-chip
 input in the form, chips in the detail panel, `Tag` type + API client. Backup: both
 tables exported/imported with FK remap (txMap + new tagMap); backup version → 1.1.0.
-Only **Phase 3 (audit history)** remains for P4.1.
+
+Phase 3 details (migration `0010_transaction_audit`): `transaction_audit` (nullable
+`transaction_id` with **ON DELETE SET NULL** so a `deleted` row survives its
+transaction; `action` created/updated/deleted; JSON `changes` diff). `TransactionService`
+create/update/delete each write an audit row inside their existing atomic tx (update
+logs only the changed fields; delete snapshots before removal). `GET /transactions/:id/audit`
++ a lazily-loaded, collapsible "change history" in the detail panel (from→to per field).
+Backup exports/imports the audit table (transactionId remapped via txMap, null kept null).
+**P4.1 is now complete.**
 
 ### P4.2 — Credit card modeling
 Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows

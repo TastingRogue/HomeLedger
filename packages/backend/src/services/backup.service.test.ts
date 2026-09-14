@@ -115,6 +115,17 @@ describe('BackupService', () => {
       );
       CREATE INDEX IF NOT EXISTS transaction_tags_transaction_id_idx ON transaction_tags(transaction_id);
 
+      CREATE TABLE IF NOT EXISTS transaction_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        changes TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS transaction_audit_transaction_id_idx ON transaction_audit(transaction_id);
+      CREATE INDEX IF NOT EXISTS transaction_audit_user_id_idx ON transaction_audit(user_id);
+
       CREATE TABLE IF NOT EXISTS transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

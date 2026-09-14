@@ -180,6 +180,26 @@ export const transactionTags = sqliteTable('transaction_tags', {
 ]);
 
 // ============================================
+// TRANSACTION AUDIT (P4.1 Phase 3) — who/when changed what
+// ============================================
+
+export const transactionAudit = sqliteTable('transaction_audit', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable + `set null` (NOT cascade) on purpose: a `deleted` audit row must
+  // survive after its transaction is gone. Kept scoped by userId regardless.
+  transactionId: integer('transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action', { enum: ['created', 'updated', 'deleted'] }).notNull(),
+  // JSON: for 'updated', a { field: { from, to } } diff; for 'created'/'deleted'
+  // a snapshot of the relevant fields. Null when there's nothing meaningful.
+  changes: text('changes', { mode: 'json' }),
+  createdAt: text('created_at').notNull(),
+}, (table) => [
+  index('transaction_audit_transaction_id_idx').on(table.transactionId),
+  index('transaction_audit_user_id_idx').on(table.userId),
+]);
+
+// ============================================
 // TRANSFERS
 // ============================================
 

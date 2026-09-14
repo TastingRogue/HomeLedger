@@ -78,6 +78,15 @@ describe('ImportService', () => {
         updated_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS transaction_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        changes TEXT,
+        created_at TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS imports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

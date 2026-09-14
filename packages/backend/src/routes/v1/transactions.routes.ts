@@ -384,6 +384,27 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       throw error;
     }
   });
+
+  /**
+   * GET /api/v1/transactions/:id/audit
+   * Return the change history (who/when/what) for a transaction. (P4.1 Phase 3)
+   */
+  app.get('/:id/audit', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID de la transacción debe ser un número válido' } });
+    }
+    try {
+      const history = TransactionService.getAuditHistory(id, user.userId);
+      return reply.status(200).send({ success: true, data: history });
+    } catch (error) {
+      if (error instanceof TransactionError) {
+        return handleTransactionError(error, reply);
+      }
+      throw error;
+    }
+  });
 }
 
 /**

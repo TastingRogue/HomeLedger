@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
-  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, type TransactionSplit } from '$lib/api/transactions';
+  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '$lib/api/transactions';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -248,12 +248,62 @@
   }
 
   // --- Detail Popup ---
+  // Audit history (P4.1 Phase 3): lazily loaded when the user expands it.
+  let auditOpen = $state(false);
+  let auditRows = $state<TransactionAudit[]>([]);
+  let auditLoading = $state(false);
+  let auditLoaded = $state(false);
+
   function openDetail(tx: Transaction) {
     selectedTransaction = tx;
+    auditOpen = false; auditRows = []; auditLoaded = false;
   }
 
   function closePanel() {
     selectedTransaction = null;
+    auditOpen = false; auditRows = []; auditLoaded = false;
+  }
+
+  async function toggleAudit() {
+    auditOpen = !auditOpen;
+    if (auditOpen && !auditLoaded && selectedTransaction) {
+      auditLoading = true;
+      try {
+        auditRows = await getTransactionAudit(selectedTransaction.id);
+        auditLoaded = true;
+      } catch {
+        auditRows = [];
+      } finally {
+        auditLoading = false;
+      }
+    }
+  }
+
+  // Human-readable label for a changed field key.
+  function auditFieldLabel(key: string): string {
+    const map: Record<string, string> = {
+      name: $t('transactions.form_name'), amount: $t('transactions.form_amount'),
+      type: $t('transactions.form_type'), date: $t('transactions.form_date'),
+      categoryId: $t('common.category'), subcategoryId: $t('transactions.form_subcategory'),
+      accountId: $t('common.account'), notes: $t('transactions.form_notes'),
+      merchant: $t('transactions.merchant'), subtype: $t('transactions.subtype'),
+      reconciled: $t('transactions.reconciled'), status: $t('transactions.status'),
+      externalId: 'externalId',
+    };
+    return map[key] ?? key;
+  }
+
+  // Render an audit value compactly (booleans/nulls/dates → readable text).
+  function auditValue(v: unknown): string {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? $t('common.yes') : $t('common.no');
+    return String(v);
+  }
+
+  // For an 'updated' entry, the list of changed fields; for created/deleted, [].
+  function auditChangedFields(row: TransactionAudit): string[] {
+    if (row.action !== 'updated' || !row.changes) return [];
+    return Object.keys(row.changes);
   }
 
   function toggleMonth(key: string) {
@@ -776,6 +826,42 @@
             </div>
           {/if}
         </div>
+
+        <!-- P4.1 Phase 3: change history -->
+        <button type="button" class="audit-toggle" onclick={toggleAudit} aria-expanded={auditOpen}>
+          {auditOpen ? '−' : '+'} {$t('transactions.history')}
+        </button>
+        {#if auditOpen}
+          <div class="audit-list">
+            {#if auditLoading}
+              <p class="audit-empty">{$t('common.loading')}</p>
+            {:else if auditRows.length === 0}
+              <p class="audit-empty">{$t('transactions.history_empty')}</p>
+            {:else}
+              {#each auditRows as row (row.id)}
+                <div class="audit-row">
+                  <div class="audit-head">
+                    <span class="audit-action audit-{row.action}">{$t('transactions.audit_' + row.action)}</span>
+                    <span class="audit-date">{formatCardDate(row.createdAt)}</span>
+                  </div>
+                  {#if row.action === 'updated'}
+                    <ul class="audit-changes">
+                      {#each auditChangedFields(row) as field}
+                        {@const change = (row.changes as Record<string, { from: unknown; to: unknown }>)[field]}
+                        <li>
+                          <span class="audit-field">{auditFieldLabel(field)}:</span>
+                          <span class="audit-from">{auditValue(change.from)}</span>
+                          <span class="audit-arrow">→</span>
+                          <span class="audit-to">{auditValue(change.to)}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                </div>
+              {/each}
+            {/if}
+          </div>
+        {/if}
       </div>
       <footer class="modal-footer-actions">
         <button class="btn-edit" onclick={handlePanelEditClick}>✎ {$t('common.edit')}</button>
@@ -1162,6 +1248,24 @@
   .tag-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: var(--tag-blue-bg); color: var(--accent-blue); font-size: 0.7rem; font-weight: 500; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); }
   .tag-chip-x { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; opacity: 0.7; }
   .tag-chip-x:hover { opacity: 1; }
+
+  /* Audit history (detail panel, P4.1 Phase 3) */
+  .audit-toggle { background: none; border: none; color: var(--accent-blue); font-size: 0.72rem; font-weight: 500; cursor: pointer; padding: 0.4rem 0 0.2rem; }
+  .audit-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.3rem; max-height: 220px; overflow-y: auto; }
+  .audit-empty { font-size: 0.72rem; color: var(--text-muted); padding: 0.3rem 0; }
+  .audit-row { border-left: 2px solid var(--border-default); padding: 0.15rem 0 0.15rem 0.55rem; }
+  .audit-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .audit-action { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.05rem 0.35rem; border-radius: var(--radius-full); }
+  .audit-created { background: var(--tag-green-bg); color: var(--accent-green); }
+  .audit-updated { background: var(--tag-blue-bg); color: var(--accent-blue); }
+  .audit-deleted { background: var(--tag-red-bg); color: var(--accent-red); }
+  .audit-date { font-size: 0.65rem; color: var(--text-muted); }
+  .audit-changes { list-style: none; margin: 0.2rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+  .audit-changes li { font-size: 0.68rem; color: var(--text-secondary); }
+  .audit-field { color: var(--text-muted); }
+  .audit-from { text-decoration: line-through; opacity: 0.7; }
+  .audit-arrow { color: var(--text-muted); margin: 0 0.15rem; }
+  .audit-to { color: var(--text-primary); font-weight: 500; }
 
   .btn-action { background: none; border: none; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm); }
   .btn-action:hover { background: var(--bg-hover); color: var(--text-primary); }
