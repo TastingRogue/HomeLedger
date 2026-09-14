@@ -259,6 +259,8 @@ export const es = {
   'transactions.status_pending': 'Pendiente',
   'transactions.reconciled': 'Conciliada',
   'transactions.reconciled_label': 'Marcar como conciliada',
+  'transactions.tags': 'Etiquetas',
+  'transactions.tags_placeholder': 'Escribe y presiona Enter',
   'transactions.error_saving': 'No se pudo guardar la transacción. Revisa los datos e intenta de nuevo.',
   'transactions.col_date': 'Fecha',
   'transactions.col_name': 'Nombre',

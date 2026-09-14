@@ -7,6 +7,8 @@ import {
   accounts,
   transactions,
   transactionSplits,
+  tags,
+  transactionTags,
   transfers,
   subscriptions,
   goals,
@@ -33,8 +35,14 @@ const DATA_DIR = process.env['DATA_DIR']
   : path.resolve(process.cwd(), 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
 
-/** Application version used in backup metadata */
-export const APP_VERSION = '1.0.0';
+/**
+ * Application version used in backup metadata.
+ * Only the MAJOR version gates import compatibility (see validateBackup), so
+ * 1.0.x backups still import fine. Bumped to 1.1.0 with P4.1 Phase 2, which adds
+ * the `tags` + `transactionTags` arrays to the backup (older backups simply omit
+ * them and restore with no tags).
+ */
+export const APP_VERSION = '1.1.0';
 
 /**
  * Error personalizado para operaciones de respaldo.
@@ -57,6 +65,10 @@ export interface BackupData {
   accounts: unknown[];
   transactions: unknown[];
   transactionSplits: unknown[];
+  /** Tag catalog (P4.1 Phase 2). */
+  tags: unknown[];
+  /** Transaction↔tag M2M links (P4.1 Phase 2). */
+  transactionTags: unknown[];
   transfers: unknown[];
   subscriptions: unknown[];
   goals: unknown[];
@@ -170,6 +182,17 @@ export class BackupService {
         })
         .from(transactionSplits)
         .innerJoin(transactions, eq(transactionSplits.transactionId, transactions.id))
+        .where(eq(transactions.userId, userId))
+        .all(),
+      // P4.1 Phase 2: tag catalog + M2M links (scoped to the user).
+      tags: db.select().from(tags).where(eq(tags.userId, userId)).all(),
+      transactionTags: db
+        .select({
+          transactionId: transactionTags.transactionId,
+          tagId: transactionTags.tagId,
+        })
+        .from(transactionTags)
+        .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
         .where(eq(transactions.userId, userId))
         .all(),
       transfers: db.select().from(transfers).where(eq(transfers.userId, userId)).all(),
@@ -325,6 +348,9 @@ export class BackupService {
       if (userTransactionIds.length > 0) {
         for (const txId of userTransactionIds) {
           db.delete(transactionSplits).where(eq(transactionSplits.transactionId, txId)).run();
+          // P4.1 Phase 2: clear M2M tag links (would cascade on tx delete, but
+          // we delete them explicitly to mirror the splits handling).
+          db.delete(transactionTags).where(eq(transactionTags.transactionId, txId)).run();
         }
       }
 
@@ -357,6 +383,7 @@ export class BackupService {
 
       // Delete main entities owned by user
       db.delete(transactions).where(eq(transactions.userId, userId)).run();
+      db.delete(tags).where(eq(tags.userId, userId)).run(); // P4.1 Phase 2 tag catalog
       db.delete(transfers).where(eq(transfers.userId, userId)).run();
       db.delete(subscriptions).where(eq(subscriptions.userId, userId)).run();
       db.delete(goals).where(eq(goals.userId, userId)).run();
@@ -404,6 +431,7 @@ export class BackupService {
       const subcatMap = new Map<number, number>();
       const acctMap = new Map<number, number>();
       const txMap = new Map<number, number>();
+      const tagMap = new Map<number, number>(); // P4.1 Phase 2 (old tag id -> new)
       const transferMap = new Map<number, number>();
       const subMap = new Map<number, number>();
       const budgetMap = new Map<number, number>();
@@ -510,6 +538,27 @@ export class BackupService {
           transactionId: newTxId,
           categoryId: newCategoryId,
         }).run();
+      }
+
+      // Tags (P4.1 Phase 2): fresh id, forced userId; build tagMap for the links.
+      for (const tag of backupData.tags ?? []) {
+        const rec = tag as Record<string, unknown>;
+        const { id: _drop, userId: _uid, ...rest } = rec;
+        const inserted = db.insert(tags).values({
+          ...(rest as Omit<typeof tags.$inferInsert, 'userId'>),
+          userId,
+        }).returning({ id: tags.id }).get();
+        const prev = oldId(rec);
+        if (prev != null) tagMap.set(prev, inserted.id);
+      }
+
+      // Transaction↔tag links (both ids remapped; skip if either didn't survive).
+      for (const link of backupData.transactionTags ?? []) {
+        const rec = link as Record<string, unknown>;
+        const newTxId = remap(txMap, fk(rec, 'transactionId'));
+        const newTagId = remap(tagMap, fk(rec, 'tagId'));
+        if (newTxId == null || newTagId == null) continue;
+        db.insert(transactionTags).values({ transactionId: newTxId, tagId: newTagId }).run();
       }
 
       // Transfers (source/destination account ids remapped)
@@ -826,7 +875,7 @@ export class BackupService {
     // Validate that data contains expected arrays (optional, but must be arrays if present)
     const data = obj['data'] as Record<string, unknown>;
     const expectedArrayFields = [
-      'accounts', 'transactions', 'transactionSplits', 'transfers',
+      'accounts', 'transactions', 'transactionSplits', 'tags', 'transactionTags', 'transfers',
       'subscriptions', 'goals', 'budgets', 'budgetCategories',
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
@@ -851,6 +900,8 @@ export class BackupService {
         accounts: Array.isArray(data['accounts']) ? data['accounts'] : [],
         transactions: Array.isArray(data['transactions']) ? data['transactions'] : [],
         transactionSplits: Array.isArray(data['transactionSplits']) ? data['transactionSplits'] : [],
+        tags: Array.isArray(data['tags']) ? data['tags'] : [],
+        transactionTags: Array.isArray(data['transactionTags']) ? data['transactionTags'] : [],
         transfers: Array.isArray(data['transfers']) ? data['transfers'] : [],
         subscriptions: Array.isArray(data['subscriptions']) ? data['subscriptions'] : [],
         goals: Array.isArray(data['goals']) ? data['goals'] : [],

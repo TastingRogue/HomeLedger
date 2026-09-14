@@ -9,6 +9,15 @@ export type TransactionSubtype = 'refund' | 'reimbursement' | 'adjustment';
 /** Lifecycle status of a transaction. */
 export type TransactionStatus = 'pending' | 'posted';
 
+/** A reusable per-user label (P4.1 Phase 2). */
+export interface Tag {
+  id: number;
+  userId: number;
+  name: string;
+  color: string | null;
+  createdAt: string;
+}
+
 // Entidad principal de Transacción
 export interface Transaction {
   id: number;
@@ -33,6 +42,7 @@ export interface Transaction {
   // Resueltos por join en el endpoint de lista (no son columnas de la tabla).
   accountName?: string;
   categoryName?: string;
+  tags?: { id: number; name: string; color: string | null }[]; // P4.1 Fase 2
 }
 
 // Split de una transacción (división por categorías)

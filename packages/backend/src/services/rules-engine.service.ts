@@ -2,6 +2,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { rules, transactions, accounts, categories } from '../db/schema.js';
 import { UNCATEGORIZED_KEY } from '../db/seed.js';
+import { TagService } from './tag.service.js';
 import type { CreateRuleInput, UpdateRuleSchema } from '../validators/rule.schema.js';
 
 /**
@@ -711,21 +712,19 @@ export class RulesEngineService {
           break;
 
         case 'addTag': {
-          // Tags se almacenan en el campo notes, separados por coma
+          // P4.1 Phase 2: tags are a real M2M entity now (was: concatenated into
+          // `notes`). Resolve the transaction's owner, get-or-create the tag for
+          // that user, and attach it (idempotent).
           const txn = db
-            .select({ notes: transactions.notes })
+            .select({ userId: transactions.userId })
             .from(transactions)
             .where(eq(transactions.id, transactionId))
             .get();
-
-          const currentNotes = txn?.notes || '';
-          const tag = String(action.value);
-          const newNotes = currentNotes ? `${currentNotes}, ${tag}` : tag;
-
-          db.update(transactions)
-            .set({ notes: newNotes, updatedAt: new Date().toISOString() })
-            .where(eq(transactions.id, transactionId))
-            .run();
+          const tagName = String(action.value).trim();
+          if (txn && tagName) {
+            const tag = TagService.getOrCreate(txn.userId, tagName);
+            TagService.attach(transactionId, tag.id, txn.userId);
+          }
           break;
         }
       }

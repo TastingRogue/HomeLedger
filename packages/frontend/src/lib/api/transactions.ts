@@ -35,6 +35,7 @@ export interface Transaction {
 	status?: TransactionStatus;
 	externalId?: string | null;
 	splits?: TransactionSplit[];
+	tags?: { id: number; name: string; color: string | null }[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -79,8 +80,17 @@ export interface TransactionFilters {
 	reconciled?: boolean;
 	status?: TransactionStatus;
 	subtype?: TransactionSubtype;
+	tagId?: number;
 	page?: number;
 	pageSize?: number;
+}
+
+/** A reusable per-user label (P4.1 Phase 2). */
+export interface Tag {
+	id: number;
+	name: string;
+	color: string | null;
+	createdAt?: string;
 }
 
 export interface PaginatedTransactions {
@@ -148,4 +158,26 @@ export function exportTransactionsCsv(filters?: TransactionFilters): Promise<Blo
 	}
 	const query = params.toString() ? `?${params.toString()}` : '';
 	return apiFetchBlob(`/transactions/export.csv${query}`);
+}
+
+// ── Tags (P4.1 Phase 2) ──
+
+/** List the user's tag catalog. */
+export function getTags(): Promise<Tag[]> {
+	return apiGet<Tag[]>('/tags');
+}
+
+/** Create (or get existing) a tag by name. */
+export function createTag(name: string, color?: string | null): Promise<Tag> {
+	return apiPost<Tag>('/tags', { name, color });
+}
+
+/** Delete a tag from the catalog (removes it from all transactions). */
+export async function deleteTag(id: number): Promise<void> {
+	await apiDelete(`/tags/${id}`);
+}
+
+/** Replace the full set of tags on a transaction by name (creates missing ones). */
+export function setTransactionTags(id: number, tags: string[]): Promise<Tag[]> {
+	return apiPut<Tag[]>(`/transactions/${id}/tags`, { tags });
 }

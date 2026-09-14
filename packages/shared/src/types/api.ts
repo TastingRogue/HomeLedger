@@ -159,6 +159,7 @@ export interface TransactionFilters extends PaginationParams {
   reconciled?: boolean;                  // filtrar por conciliado / no conciliado
   status?: 'pending' | 'posted';         // filtrar por estado
   subtype?: 'refund' | 'reimbursement' | 'adjustment'; // filtrar por subtipo
+  tagId?: number;                        // filtrar por etiqueta (P4.1 Fase 2)
 }
 
 export interface DateRange {

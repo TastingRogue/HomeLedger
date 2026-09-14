@@ -1,9 +1,10 @@
-import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count, inArray } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { transactions, transactionSplits, accounts, categories, subcategories } from '../db/schema.js';
+import { transactions, transactionSplits, transactionTags, accounts, categories, subcategories } from '../db/schema.js';
 import type { CreateTransactionSchema, UpdateTransactionSchema, QuickTransactionInput } from '../validators/transaction.schema.js';
 import type { TransactionFilters, PaginatedResult } from '@homeledger/shared';
 import { TransactionType } from '@homeledger/shared';
+import { TagService } from './tag.service.js';
 
 // ============================================
 // Types
@@ -313,6 +314,15 @@ export class TransactionService {
     }
     if (filters.subtype) {
       conditions.push(eq(transactions.subtype, filters.subtype));
+    }
+    // P4.1 Phase 2: filter by tag via a subquery on the M2M join table.
+    if (filters.tagId) {
+      const db2 = getDb();
+      const tagged = db2
+        .select({ id: transactionTags.transactionId })
+        .from(transactionTags)
+        .where(eq(transactionTags.tagId, filters.tagId));
+      conditions.push(inArray(transactions.id, tagged));
     }
 
     const whereClause = and(...conditions);
@@ -628,6 +638,9 @@ export class TransactionService {
       .where(eq(transactionSplits.transactionId, id))
       .all();
 
-    return { ...transaction, splits };
+    // Attached tags (P4.1 Phase 2).
+    const tags = TagService.listForTransaction(id);
+
+    return { ...transaction, splits, tags };
   }
 }

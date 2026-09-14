@@ -98,6 +98,23 @@ describe('BackupService', () => {
       );
       CREATE INDEX IF NOT EXISTS transaction_splits_transaction_id_idx ON transaction_splits(transaction_id);
 
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS tags_user_id_idx ON tags(user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS tags_user_id_name_unique ON tags(user_id, name);
+
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
+      CREATE INDEX IF NOT EXISTS transaction_tags_transaction_id_idx ON transaction_tags(transaction_id);
+
       CREATE TABLE IF NOT EXISTS transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

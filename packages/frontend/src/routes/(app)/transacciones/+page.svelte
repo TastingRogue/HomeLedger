@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
-  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, type TransactionSplit } from '$lib/api/transactions';
+  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, type TransactionSplit } from '$lib/api/transactions';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -79,6 +79,8 @@
   let formSubtype = $state('');           // '' = none | refund | reimbursement | adjustment
   let formReconciled = $state(false);
   let formStatus = $state<'pending' | 'posted'>('posted');
+  let formTags = $state<string[]>([]);    // tag names attached to this transaction
+  let formTagInput = $state('');          // the in-progress tag being typed
   let formDetailsOpen = $state(false);    // collapsible "more details" section
   let formErrors = $state<Record<string, string>>({});
   let formSubmitting = $state(false);
@@ -272,7 +274,8 @@
     formCategoryId = categories.length > 0 ? String(categories[0].id) : '';
     formSubcategoryId = '';
     formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal();
-    formMerchant = ''; formSubtype = ''; formReconciled = false; formStatus = 'posted'; formDetailsOpen = false;
+    formMerchant = ''; formSubtype = ''; formReconciled = false; formStatus = 'posted';
+    formTags = []; formTagInput = ''; formDetailsOpen = false;
     formErrors = {};
     showFormModal = true;
   }
@@ -286,9 +289,37 @@
     formSubtype = tx.subtype ?? '';
     formReconciled = tx.reconciled ?? false;
     formStatus = tx.status ?? 'posted';
+    formTags = (tx.tags ?? []).map((t) => t.name);
+    formTagInput = '';
     // Auto-expand the details section when the tx already carries any richer data.
-    formDetailsOpen = !!(tx.merchant || tx.subtype || tx.reconciled || (tx.status && tx.status !== 'posted'));
+    formDetailsOpen = !!(tx.merchant || tx.subtype || tx.reconciled || (tx.status && tx.status !== 'posted') || formTags.length > 0);
     formErrors = {}; showFormModal = true;
+  }
+
+  // --- Tag chip helpers (form) ---
+  function addFormTag() {
+    const raw = formTagInput.trim();
+    if (!raw) return;
+    // Allow comma-separated bulk entry.
+    for (const part of raw.split(',')) {
+      const n = part.trim();
+      if (n && !formTags.some((t) => t.toLowerCase() === n.toLowerCase())) {
+        formTags = [...formTags, n];
+      }
+    }
+    formTagInput = '';
+  }
+  function removeFormTag(name: string) {
+    formTags = formTags.filter((t) => t !== name);
+  }
+  function onTagKeydown(e: KeyboardEvent) {
+    // Enter or comma commits the current tag; Backspace on empty removes the last.
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addFormTag();
+    } else if (e.key === 'Backspace' && formTagInput === '' && formTags.length > 0) {
+      formTags = formTags.slice(0, -1);
+    }
   }
 
   function closeFormModal() { showFormModal = false; editingTransaction = null; formErrors = {}; }
@@ -326,8 +357,18 @@
         reconciled: formReconciled,
         status: formStatus,
       };
-      if (isEditing && editingTransaction) await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
-      else await apiPost<Transaction>('/transactions', payload);
+      // Fold any tag still in the input box into the list before saving.
+      if (formTagInput.trim()) addFormTag();
+      let txId: number;
+      if (isEditing && editingTransaction) {
+        await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
+        txId = editingTransaction.id;
+      } else {
+        const created = await apiPost<Transaction>('/transactions', payload);
+        txId = created.id;
+      }
+      // Persist tags via the dedicated endpoint (creates missing ones). (P4.1 Phase 2)
+      await setTransactionTags(txId, formTags);
       closeFormModal(); await loadTransactions();
     } catch (e) {
       if (e instanceof ApiError) {
@@ -718,6 +759,16 @@
             <span class="prop-label">{$t('transactions.reconciled')}</span>
             <span class="prop-value">{selectedTransaction.reconciled ? $t('common.yes') : $t('common.no')}</span>
           </div>
+          {#if selectedTransaction.tags && selectedTransaction.tags.length > 0}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.tags')}</span>
+              <span class="prop-value tag-chips">
+                {#each selectedTransaction.tags as tag (tag.id)}
+                  <span class="tag-chip readonly">{tag.name}</span>
+                {/each}
+              </span>
+            </div>
+          {/if}
           {#if selectedTransaction.notes}
             <div class="detail-prop">
               <span class="prop-label">{$t('transactions.form_notes')}</span>
@@ -853,6 +904,25 @@
               <input type="checkbox" bind:checked={formReconciled} />
               <span>{$t('transactions.reconciled_label')}</span>
             </label>
+            <div class="field">
+              <label for="fm-tags">{$t('transactions.tags')} <span class="opt">{$t('transactions.optional')}</span></label>
+              <div class="tag-input">
+                {#each formTags as tag (tag)}
+                  <span class="tag-chip">
+                    {tag}
+                    <button type="button" class="tag-chip-x" onclick={() => removeFormTag(tag)} aria-label={$t('common.delete')}>×</button>
+                  </span>
+                {/each}
+                <input
+                  id="fm-tags"
+                  type="text"
+                  bind:value={formTagInput}
+                  onkeydown={onTagKeydown}
+                  onblur={addFormTag}
+                  placeholder={formTags.length === 0 ? $t('transactions.tags_placeholder') : ''}
+                />
+              </div>
+            </div>
           </div>
         {/if}
 
@@ -1084,6 +1154,14 @@
   .field .opt { text-transform: none; letter-spacing: 0; color: var(--text-muted); font-weight: 400; }
   .check-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; }
   .check-field input { width: auto; margin: 0; cursor: pointer; }
+
+  /* Tag chip input (form) + read-only chips (detail) */
+  .tag-input { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 0.35rem 0.4rem; }
+  .tag-input input { flex: 1; min-width: 90px; border: none; background: transparent; padding: 0.15rem; outline: none; color: var(--text-primary); font-size: 0.8rem; }
+  .tag-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .tag-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: var(--tag-blue-bg); color: var(--accent-blue); font-size: 0.7rem; font-weight: 500; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); }
+  .tag-chip-x { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; opacity: 0.7; }
+  .tag-chip-x:hover { opacity: 1; }
 
   .btn-action { background: none; border: none; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm); }
   .btn-action:hover { background: var(--bg-hover); color: var(--text-primary); }

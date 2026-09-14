@@ -260,6 +260,8 @@ export const en: Record<TranslationKey, string> = {
   'transactions.status_pending': 'Pending',
   'transactions.reconciled': 'Reconciled',
   'transactions.reconciled_label': 'Mark as reconciled',
+  'transactions.tags': 'Tags',
+  'transactions.tags_placeholder': 'Type and press Enter',
   'transactions.error_saving': 'Could not save the transaction. Check the details and try again.',
   'transactions.col_date': 'Date',
   'transactions.col_name': 'Name',

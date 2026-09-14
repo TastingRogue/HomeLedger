@@ -526,9 +526,9 @@ Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
 account, category, optional subcategory. Missing the fields that make ledgers
 powerful.
 
-Shipped in **3 phases** (branch `p4.1-richer-transactions`). Phase 1 done:
+Shipped in **3 phases** (branch `p4.1-richer-transactions`). Phases 1 & 2 done:
 - [x] `merchant` / payee, separate from the free-text name/notes ✅ (Phase 1)
-- [ ] Tags (many-to-many) — schema table + UI; rules already have an `addTag` action but there's no tags table yet _(Phase 2)_
+- [x] Tags (many-to-many) ✅ (Phase 2) — real `tags` + `transaction_tags` tables (migration `0009`), reusable per-user catalog, `addTag` rule action now writes to the M2M (was concatenating into `notes`), tag CRUD + `PUT /transactions/:id/tags`, list filter by tag, chip UI in the form + detail panel, backup round-trips both tables
 - [x] `reconciled` / cleared flag (per transaction) ✅ (Phase 1)
 - [x] `pending` vs `posted` status ✅ (Phase 1, default `posted`)
 - [x] External transaction id (for import matching) ✅ (Phase 1; importers now map the bank `reference` → `externalId`)
@@ -543,6 +543,15 @@ filters (reconciled/status/subtype), CSV export gains a Merchant column, importe
 wires `reference`→`externalId` + `description`→`merchant` and dedupes on `externalId`;
 frontend form gets a collapsible "more details" section + detail-panel display + es/en
 i18n. Backup round-trips the new scalars automatically (full-row export + spread import).
+
+Phase 2 details (migration `0009_tags`): `tags` (per-user catalog, unique name per
+user) + `transaction_tags` (M2M, composite PK). New `TagService` (get-or-create,
+set/attach/detach, bulk-map for lists). Rules-engine `addTag` rewritten to use the
+M2M. New `tagRoutes` (`/api/v1/tags` CRUD) + `PUT /transactions/:id/tags`; list gains
+a `tagId` filter and enriches each row with its tags (bulk, no N+1). Frontend: tag-chip
+input in the form, chips in the detail panel, `Tag` type + API client. Backup: both
+tables exported/imported with FK remap (txMap + new tagMap); backup version → 1.1.0.
+Only **Phase 3 (audit history)** remains for P4.1.
 
 ### P4.2 — Credit card modeling
 Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows

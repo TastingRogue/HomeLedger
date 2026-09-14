@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex, index, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // ============================================
 // USERS & AUTH
@@ -150,6 +150,33 @@ export const transactionSplits = sqliteTable('transaction_splits', {
   note: text('note'),
 }, (table) => [
   index('transaction_splits_transaction_id_idx').on(table.transactionId),
+]);
+
+// ============================================
+// TAGS (P4.1 Phase 2) — reusable per-user labels + M2M join to transactions
+// ============================================
+
+export const tags = sqliteTable('tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  color: text('color'),
+  createdAt: text('created_at').notNull(),
+}, (table) => [
+  index('tags_user_id_idx').on(table.userId),
+  // A user can't have two tags with the same name (case-sensitive at the DB
+  // level; the service normalizes/trims before comparing).
+  uniqueIndex('tags_user_id_name_unique').on(table.userId, table.name),
+]);
+
+export const transactionTags = sqliteTable('transaction_tags', {
+  transactionId: integer('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+}, (table) => [
+  // Composite PK: a tag is attached to a transaction at most once.
+  primaryKey({ columns: [table.transactionId, table.tagId] }),
+  index('transaction_tags_transaction_id_idx').on(table.transactionId),
+  index('transaction_tags_tag_id_idx').on(table.tagId),
 ]);
 
 // ============================================

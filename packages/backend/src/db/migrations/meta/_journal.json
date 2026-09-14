@@ -64,6 +64,13 @@
       "when": 1787696700000,
       "tag": "0008_richer_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787696800000,
+      "tag": "0009_tags",
+      "breakpoints": true
     }
   ]
 }

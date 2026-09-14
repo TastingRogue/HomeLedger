@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TransactionService, TransactionError } from '../../services/transaction.service.js';
+import { TagService, TagError } from '../../services/tag.service.js';
 import {
   createTransactionSchema,
   updateTransactionSchema,
@@ -76,6 +77,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       reconciled,
       status,
       subtype,
+      tagId: query.tagId ? parseInt(query.tagId, 10) : undefined,
       page: query.page ? parseInt(query.page, 10) : undefined,
       pageSize: query.pageSize ? parseInt(query.pageSize, 10) : undefined,
     };
@@ -88,6 +90,10 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     const { eq } = await import('drizzle-orm');
     const db = getDb();
 
+    // Bulk-load tags for the page (single query, no N+1). (P4.1 Phase 2)
+    const { TagService } = await import('../../services/tag.service.js');
+    const tagMap = TagService.mapForTransactions(result.items.map((i) => i.id));
+
     const enrichedItems = result.items.map((item) => {
       const account = db.select({ name: accounts.name }).from(accounts).where(eq(accounts.id, item.accountId)).get();
       const category = db.select({ name: categories.name }).from(categories).where(eq(categories.id, item.categoryId)).get();
@@ -95,6 +101,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         ...item,
         accountName: account?.name ?? '—',
         categoryName: category?.name ?? '—',
+        tags: tagMap.get(item.id) ?? [],
       };
     });
 
@@ -346,6 +353,33 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     } catch (error) {
       if (error instanceof TransactionError) {
         return handleTransactionError(error, reply);
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * PUT /api/v1/transactions/:id/tags
+   * Replace the full set of tags on a transaction by name (P4.1 Phase 2).
+   * Body: { tags: string[] } — names are trimmed, de-duplicated, and created
+   * on the fly if they don't exist for the user.
+   */
+  app.put('/:id/tags', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID de la transacción debe ser un número válido' } });
+    }
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const rawTags = Array.isArray(body['tags']) ? (body['tags'] as unknown[]) : [];
+    const names = rawTags.filter((t): t is string => typeof t === 'string');
+    try {
+      const tags = TagService.setForTransaction(id, user.userId, names);
+      return reply.status(200).send({ success: true, data: tags });
+    } catch (error) {
+      if (error instanceof TagError) {
+        const notFound = error.code.endsWith('_NOT_FOUND');
+        return reply.status(notFound ? 404 : 400).send({ success: false, error: { code: error.code, message: error.message } });
       }
       throw error;
     }
