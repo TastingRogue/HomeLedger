@@ -490,7 +490,7 @@
                 <div class="tx-left">
                   <span class="tx-indicator" class:income={tx.type === 'Ingreso'} class:expense={tx.type === 'Gasto'}></span>
                   <div class="tx-info">
-                    <span class="tx-name">{tx.name || tx.description || $t('accounts.no_name')}</span>
+                    <span class="tx-name">{tx.name || tx.merchant || $t('accounts.no_name')}</span>
                     <span class="tx-meta">{tx.categoryName ?? $t('accounts.no_category')} · {formatDate(tx.date)}</span>
                   </div>
                 </div>

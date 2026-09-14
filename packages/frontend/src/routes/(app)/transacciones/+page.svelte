@@ -74,6 +74,12 @@
   let formAmount = $state('');
   let formType = $state<'Ingreso' | 'Gasto'>('Gasto');
   let formDate = $state('');
+  // ── P4.1 richer transaction model form fields ──
+  let formMerchant = $state('');
+  let formSubtype = $state('');           // '' = none | refund | reimbursement | adjustment
+  let formReconciled = $state(false);
+  let formStatus = $state<'pending' | 'posted'>('posted');
+  let formDetailsOpen = $state(false);    // collapsible "more details" section
   let formErrors = $state<Record<string, string>>({});
   let formSubmitting = $state(false);
 
@@ -265,7 +271,9 @@
     formName = ''; formAccountId = accounts.length > 0 ? String(accounts[0].id) : '';
     formCategoryId = categories.length > 0 ? String(categories[0].id) : '';
     formSubcategoryId = '';
-    formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal(); formErrors = {};
+    formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal();
+    formMerchant = ''; formSubtype = ''; formReconciled = false; formStatus = 'posted'; formDetailsOpen = false;
+    formErrors = {};
     showFormModal = true;
   }
 
@@ -274,6 +282,12 @@
     formName = tx.name; formAccountId = String(tx.accountId); formCategoryId = String(tx.categoryId);
     formSubcategoryId = tx.subcategoryId != null ? String(tx.subcategoryId) : '';
     formAmount = String(tx.amount); formType = tx.type as 'Ingreso' | 'Gasto'; formDate = toDatetimeLocal(tx.date);
+    formMerchant = tx.merchant ?? '';
+    formSubtype = tx.subtype ?? '';
+    formReconciled = tx.reconciled ?? false;
+    formStatus = tx.status ?? 'posted';
+    // Auto-expand the details section when the tx already carries any richer data.
+    formDetailsOpen = !!(tx.merchant || tx.subtype || tx.reconciled || (tx.status && tx.status !== 'posted'));
     formErrors = {}; showFormModal = true;
   }
 
@@ -305,7 +319,12 @@
         subcategoryId: formSubcategoryId ? parseInt(formSubcategoryId, 10) : null,
         amount: parseFloat(parseFloat(String(formAmount ?? '')).toFixed(2)),
         type: formType,
-        date: new Date(formDate).toISOString()
+        date: new Date(formDate).toISOString(),
+        // P4.1 richer fields. Empty strings normalize to null / defaults.
+        merchant: formMerchant.trim() || null,
+        subtype: (formSubtype || null) as 'refund' | 'reimbursement' | 'adjustment' | null,
+        reconciled: formReconciled,
+        status: formStatus,
       };
       if (isEditing && editingTransaction) await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
       else await apiPost<Transaction>('/transactions', payload);
@@ -675,6 +694,36 @@
             <span class="prop-label">{$t('common.account')}</span>
             <span class="prop-value">{getAccountName(selectedTransaction.accountId)}</span>
           </div>
+          {#if selectedTransaction.merchant}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.merchant')}</span>
+              <span class="prop-value">{selectedTransaction.merchant}</span>
+            </div>
+          {/if}
+          {#if selectedTransaction.subtype}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.subtype')}</span>
+              <span class="prop-value"><span class="tag tag-blue">{$t('transactions.subtype_' + selectedTransaction.subtype)}</span></span>
+            </div>
+          {/if}
+          <div class="detail-prop">
+            <span class="prop-label">{$t('transactions.status')}</span>
+            <span class="prop-value">
+              <span class="tag {selectedTransaction.status === 'pending' ? 'tag-amber' : 'tag-green'}">
+                {$t('transactions.status_' + (selectedTransaction.status ?? 'posted'))}
+              </span>
+            </span>
+          </div>
+          <div class="detail-prop">
+            <span class="prop-label">{$t('transactions.reconciled')}</span>
+            <span class="prop-value">{selectedTransaction.reconciled ? $t('common.yes') : $t('common.no')}</span>
+          </div>
+          {#if selectedTransaction.notes}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.form_notes')}</span>
+              <span class="prop-value">{selectedTransaction.notes}</span>
+            </div>
+          {/if}
         </div>
       </div>
       <footer class="modal-footer-actions">
@@ -771,6 +820,42 @@
           <label for="fm-date">{$t('transactions.form_date')}</label>
           <DatePicker bind:value={formDate} showTime={true} />
         </div>
+
+        <!-- P4.1: collapsible richer-model section (all optional) -->
+        <button type="button" class="details-toggle" onclick={() => (formDetailsOpen = !formDetailsOpen)} aria-expanded={formDetailsOpen}>
+          {formDetailsOpen ? '−' : '+'} {$t('transactions.more_details')}
+        </button>
+        {#if formDetailsOpen}
+          <div class="details-section">
+            <div class="field">
+              <label for="fm-merchant">{$t('transactions.merchant')} <span class="opt">{$t('transactions.optional')}</span></label>
+              <input id="fm-merchant" type="text" bind:value={formMerchant} maxlength={100} placeholder={$t('transactions.merchant_placeholder')} />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="fm-subtype">{$t('transactions.subtype')} <span class="opt">{$t('transactions.optional')}</span></label>
+                <select id="fm-subtype" bind:value={formSubtype}>
+                  <option value="">{$t('transactions.subtype_none')}</option>
+                  <option value="refund">{$t('transactions.subtype_refund')}</option>
+                  <option value="reimbursement">{$t('transactions.subtype_reimbursement')}</option>
+                  <option value="adjustment">{$t('transactions.subtype_adjustment')}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fm-status">{$t('transactions.status')}</label>
+                <select id="fm-status" bind:value={formStatus}>
+                  <option value="posted">{$t('transactions.status_posted')}</option>
+                  <option value="pending">{$t('transactions.status_pending')}</option>
+                </select>
+              </div>
+            </div>
+            <label class="check-field">
+              <input type="checkbox" bind:checked={formReconciled} />
+              <span>{$t('transactions.reconciled_label')}</span>
+            </label>
+          </div>
+        {/if}
+
         <div class="form-buttons">
           <button type="button" class="btn-cancel" onclick={closeFormModal}>{$t('common.cancel')}</button>
           <button type="submit" class="btn-submit" disabled={formSubmitting}>
@@ -991,6 +1076,14 @@
   .tag-blue { background: var(--tag-blue-bg); color: var(--accent-blue); }
   .tag-green { background: var(--tag-green-bg); color: var(--accent-green); }
   .tag-red { background: var(--tag-red-bg); color: var(--accent-red); }
+  .tag-amber { background: var(--tag-orange-bg); color: var(--accent-orange); }
+
+  /* P4.1 richer-model form controls */
+  .details-toggle { align-self: flex-start; background: none; border: none; color: var(--accent-blue); font-size: 0.72rem; font-weight: 500; cursor: pointer; padding: 0.15rem 0; margin-top: 0.2rem; }
+  .details-section { border-top: 1px solid var(--border-default); padding-top: 0.7rem; margin-top: 0.2rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .field .opt { text-transform: none; letter-spacing: 0; color: var(--text-muted); font-weight: 400; }
+  .check-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; }
+  .check-field input { width: auto; margin: 0; cursor: pointer; }
 
   .btn-action { background: none; border: none; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm); }
   .btn-action:hover { background: var(--bg-hover); color: var(--text-primary); }

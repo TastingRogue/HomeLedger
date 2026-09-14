@@ -93,6 +93,12 @@ export class TransactionService {
           amount: input.amount,
           type: input.type,
           date: input.date,
+          // P4.1 richer fields (optional; sensible defaults preserve prior behavior)
+          merchant: input.merchant ?? null,
+          subtype: input.subtype ?? null,
+          reconciled: input.reconciled ?? false,
+          status: input.status ?? 'posted',
+          externalId: input.externalId ?? null,
           createdAt: now,
           updatedAt: now,
         })
@@ -213,6 +219,12 @@ export class TransactionService {
           ...(subcategoryUpdate !== undefined && subcategoryUpdate),
           ...(input.amount !== undefined && { amount: input.amount }),
           ...(input.type !== undefined && { type: input.type }),
+          // P4.1 richer fields. `!== undefined` so null explicitly clears them.
+          ...(input.merchant !== undefined && { merchant: input.merchant ?? null }),
+          ...(input.subtype !== undefined && { subtype: input.subtype ?? null }),
+          ...(input.reconciled !== undefined && { reconciled: input.reconciled }),
+          ...(input.status !== undefined && { status: input.status }),
+          ...(input.externalId !== undefined && { externalId: input.externalId ?? null }),
           updatedAt: now,
         })
         .where(eq(transactions.id, id))
@@ -292,6 +304,16 @@ export class TransactionService {
     if (filters.endDate) {
       conditions.push(lte(transactions.date, filters.endDate));
     }
+    // P4.1 richer-model filters.
+    if (filters.reconciled !== undefined) {
+      conditions.push(eq(transactions.reconciled, filters.reconciled));
+    }
+    if (filters.status) {
+      conditions.push(eq(transactions.status, filters.status));
+    }
+    if (filters.subtype) {
+      conditions.push(eq(transactions.subtype, filters.subtype));
+    }
 
     const whereClause = and(...conditions);
 
@@ -338,6 +360,7 @@ export class TransactionService {
   ): {
     date: string;
     name: string;
+    merchant: string;
     type: string;
     amount: number;
     accountName: string;
@@ -357,6 +380,7 @@ export class TransactionService {
       .select({
         date: transactions.date,
         name: transactions.name,
+        merchant: transactions.merchant,
         type: transactions.type,
         amount: transactions.amount,
         accountName: accounts.name,
@@ -373,12 +397,28 @@ export class TransactionService {
     return rows.map((r) => ({
       date: r.date,
       name: r.name,
+      merchant: r.merchant ?? '',
       type: r.type,
       amount: r.amount,
       accountName: r.accountName ?? '',
       categoryName: r.categoryName ?? '',
       notes: r.notes ?? '',
     }));
+  }
+
+  /**
+   * Finds a transaction by its imported source id (`externalId`) for a user.
+   * Used by the importer to skip rows already imported from the same source.
+   * Returns null when none match or when `externalId` is empty.
+   */
+  static findByExternalId(userId: number, externalId: string) {
+    if (!externalId) return null;
+    const db = getDb();
+    return db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), eq(transactions.externalId, externalId)))
+      .get() ?? null;
   }
 
   /**

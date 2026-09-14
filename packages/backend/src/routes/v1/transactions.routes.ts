@@ -56,12 +56,26 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       ? (typeParam as TransactionType)
       : undefined;
 
+    // P4.1 filters. reconciled accepts 'true'/'false'; status/subtype validated by enum.
+    const reconciledParam = query.reconciled;
+    const reconciled = reconciledParam === 'true' ? true : reconciledParam === 'false' ? false : undefined;
+    const status: 'pending' | 'posted' | undefined =
+      query.status === 'pending' ? 'pending' : query.status === 'posted' ? 'posted' : undefined;
+    const subtype: 'refund' | 'reimbursement' | 'adjustment' | undefined =
+      query.subtype === 'refund' ? 'refund'
+        : query.subtype === 'reimbursement' ? 'reimbursement'
+          : query.subtype === 'adjustment' ? 'adjustment'
+            : undefined;
+
     const filters = {
       accountId: query.accountId ? parseInt(query.accountId, 10) : undefined,
       categoryId: query.categoryId ? parseInt(query.categoryId, 10) : undefined,
       type: validType,
       startDate: query.startDate || undefined,
       endDate: query.endDate || undefined,
+      reconciled,
+      status,
+      subtype,
       page: query.page ? parseInt(query.page, 10) : undefined,
       pageSize: query.pageSize ? parseInt(query.pageSize, 10) : undefined,
     };
@@ -113,10 +127,10 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       endDate: query.endDate || undefined,
     });
 
-    const headers = ['Date', 'Name', 'Type', 'Amount', 'Account', 'Category', 'Notes'];
+    const headers = ['Date', 'Name', 'Merchant', 'Type', 'Amount', 'Account', 'Category', 'Notes'];
     const body = toCsv(
       headers,
-      rows.map((r) => [r.date, r.name, r.type, r.amount, r.accountName, r.categoryName, r.notes])
+      rows.map((r) => [r.date, r.name, r.merchant, r.type, r.amount, r.accountName, r.categoryName, r.notes])
     );
 
     const stamp = new Date().toISOString().slice(0, 10);

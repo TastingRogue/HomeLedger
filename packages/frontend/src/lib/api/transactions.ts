@@ -11,6 +11,11 @@ export interface TransactionSplit {
 	note: string | null;
 }
 
+/** Finer classification that does NOT change `type` (balance sums by type). */
+export type TransactionSubtype = 'refund' | 'reimbursement' | 'adjustment';
+/** Lifecycle status of a transaction. */
+export type TransactionStatus = 'pending' | 'posted';
+
 export interface Transaction {
 	id: number;
 	name: string;
@@ -22,7 +27,13 @@ export interface Transaction {
 	subcategoryId?: number | null;
 	accountId: number;
 	accountName?: string;
-	description?: string;
+	notes?: string | null;
+	// ── P4.1 richer transaction model ──
+	merchant?: string | null;
+	subtype?: TransactionSubtype | null;
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	externalId?: string | null;
 	splits?: TransactionSplit[];
 	createdAt: string;
 	updatedAt: string;
@@ -36,6 +47,12 @@ export interface CreateTransactionInput {
 	categoryId: number;
 	subcategoryId?: number | null;
 	accountId: number;
+	// ── P4.1 richer transaction model (all optional) ──
+	merchant?: string | null;
+	subtype?: TransactionSubtype | null;
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	externalId?: string | null;
 }
 
 /** One split row when saving a transaction split. */
@@ -58,6 +75,10 @@ export interface TransactionFilters {
 	type?: TransactionType;
 	startDate?: string;
 	endDate?: string;
+	// ── P4.1 richer transaction model filters ──
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	subtype?: TransactionSubtype;
 	page?: number;
 	pageSize?: number;
 }

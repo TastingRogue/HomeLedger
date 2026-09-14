@@ -155,6 +155,10 @@ export interface TransactionFilters extends PaginationParams {
   startDate?: string;                    // ISO 8601
   endDate?: string;                      // ISO 8601
   search?: string;                       // búsqueda por nombre
+  // ── P4.1 richer transaction model filters ──
+  reconciled?: boolean;                  // filtrar por conciliado / no conciliado
+  status?: 'pending' | 'posted';         // filtrar por estado
+  subtype?: 'refund' | 'reimbursement' | 'adjustment'; // filtrar por subtipo
 }
 
 export interface DateRange {

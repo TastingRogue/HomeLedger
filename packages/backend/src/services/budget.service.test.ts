@@ -68,6 +68,11 @@ describe('BudgetService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         attachment_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL

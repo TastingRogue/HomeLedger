@@ -387,8 +387,18 @@ export class ImportService {
           const type = parsed.type === 'income'
             ? TransactionType.Ingreso
             : TransactionType.Gasto;
+          // The parsed bank reference becomes the stable externalId; the raw
+          // description doubles as the merchant/payee (both optional). (P4.1)
+          const externalId = parsed.reference ? String(parsed.reference).substring(0, 120) : null;
+          const merchant = parsed.description ? parsed.description.substring(0, 100) : null;
 
-          // Duplicate detection: same date (YYYY-MM-DD) + amount + name for this user
+          // Duplicate detection (P4.1): prefer the stable externalId when the
+          // source provides one; otherwise fall back to the date+amount+name
+          // heuristic. Either match skips the row.
+          if (externalId && TransactionService.findByExternalId(userId, externalId)) {
+            result.duplicateCount++;
+            continue;
+          }
           if (ImportService.isDuplicate(userId, date, amount, name)) {
             result.duplicateCount++;
             continue;
@@ -402,6 +412,8 @@ export class ImportService {
             amount,
             type,
             date,
+            merchant,
+            externalId,
           });
 
           // Auto-apply rules engine for categorization

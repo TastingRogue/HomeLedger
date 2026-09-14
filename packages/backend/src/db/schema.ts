@@ -112,6 +112,19 @@ export const transactions = sqliteTable('transactions', {
   type: text('type', { enum: ['Ingreso', 'Gasto'] }).notNull(),
   date: text('date').notNull(),
   notes: text('notes'),
+  // ── P4.1 richer transaction model (all additive/optional) ──
+  // Payee / merchant, separate from the free-text name/notes.
+  merchant: text('merchant'),
+  // Finer classification WITHOUT touching `type` (balance sums by type, so a
+  // refund is still an 'Ingreso' with subtype 'refund'). null = plain income/expense.
+  subtype: text('subtype', { enum: ['refund', 'reimbursement', 'adjustment'] }),
+  // Cleared/reconciled against a statement. Default false (not yet reconciled).
+  reconciled: integer('reconciled', { mode: 'boolean' }).notNull().default(false),
+  // Lifecycle: a manually-entered tx already happened → 'posted'; imports may
+  // mark 'pending' until they clear.
+  status: text('status', { enum: ['pending', 'posted'] }).notNull().default('posted'),
+  // Stable id from an imported source (bank reference), used for dedupe on re-import.
+  externalId: text('external_id'),
   attachmentId: integer('attachment_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
@@ -125,6 +138,8 @@ export const transactions = sqliteTable('transactions', {
   // Composite for AccountService.calculateBalance's per-account income/expense
   // SUMs (filter account_id AND type). Added in migration 0006.
   index('transactions_account_id_type_idx').on(table.accountId, table.type),
+  // P4.1: fast lookup for import dedupe by source id (scoped per user+account).
+  index('transactions_user_id_external_id_idx').on(table.userId, table.externalId),
 ]);
 
 export const transactionSplits = sqliteTable('transaction_splits', {

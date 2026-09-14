@@ -526,14 +526,23 @@ Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
 account, category, optional subcategory. Missing the fields that make ledgers
 powerful.
 
-- [ ] `merchant` / payee, separate from the free-text description
-- [ ] Tags (many-to-many) — schema table + UI; rules already have an `addTag` action but there's no tags table yet
-- [ ] `reconciled` / cleared flag (per transaction)
-- [ ] `pending` vs `posted` status
-- [ ] External transaction id (for import matching)
-- [ ] **Duplicate detection** (by external id / date+amount+merchant heuristic)
-- [ ] Transaction audit history (who/when changed what)
-- [ ] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment (decide if these are types or flags)
+Shipped in **3 phases** (branch `p4.1-richer-transactions`). Phase 1 done:
+- [x] `merchant` / payee, separate from the free-text name/notes ✅ (Phase 1)
+- [ ] Tags (many-to-many) — schema table + UI; rules already have an `addTag` action but there's no tags table yet _(Phase 2)_
+- [x] `reconciled` / cleared flag (per transaction) ✅ (Phase 1)
+- [x] `pending` vs `posted` status ✅ (Phase 1, default `posted`)
+- [x] External transaction id (for import matching) ✅ (Phase 1; importers now map the bank `reference` → `externalId`)
+- [x] **Duplicate detection** ✅ (Phase 1; dedupe on `externalId` when present, else the date+amount+name heuristic)
+- [ ] Transaction audit history (who/when changed what) _(Phase 3)_
+- [x] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment ✅ (Phase 1) — resolved as a `subtype` **flag** (not a new `type`), so balance sums by `type` are unaffected
+
+Phase 1 details (migration `0008_richer_transactions`, additive `ALTER TABLE`):
+added `merchant`, `subtype`, `reconciled`, `status`, `external_id` to `transactions`
+(+ a `(user_id, external_id)` index); validators, service create/update + new list
+filters (reconciled/status/subtype), CSV export gains a Merchant column, importer
+wires `reference`→`externalId` + `description`→`merchant` and dedupes on `externalId`;
+frontend form gets a collapsible "more details" section + detail-panel display + es/en
+i18n. Backup round-trips the new scalars automatically (full-row export + spread import).
 
 ### P4.2 — Credit card modeling
 Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows
