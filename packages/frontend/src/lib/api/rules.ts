@@ -7,7 +7,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from './client';
 
 // ─── Types (mirror RulesEngineService interfaces) ───
 
-export type RuleField = 'name' | 'amount' | 'account' | 'description';
+export type RuleField = 'name' | 'amount' | 'account' | 'description' | 'merchant';
 export type RuleOperator =
   | 'contains'
   | 'equals'
@@ -17,7 +17,17 @@ export type RuleOperator =
   | 'lessThan'
   | 'between'
   | 'regex';
-export type RuleActionType = 'setCategory' | 'setSubcategory' | 'setType' | 'addTag';
+export type RuleActionType =
+  | 'setCategory'
+  | 'setSubcategory'
+  | 'setType'
+  | 'addTag'
+  | 'flagReview'
+  | 'markRecurring'
+  | 'ignore';
+
+/** Action types that carry no value (they act on the whole transaction). */
+export const VALUELESS_ACTIONS: RuleActionType[] = ['flagReview', 'markRecurring', 'ignore'];
 
 export interface RuleCondition {
   field: RuleField;
@@ -28,7 +38,17 @@ export interface RuleCondition {
 
 export interface RuleAction {
   type: RuleActionType;
-  value: number | string;
+  value?: number | string;
+}
+
+/** Rule-learning suggestion (P4.5). */
+export interface RuleSuggestion {
+  suggested: boolean;
+  field?: 'merchant' | 'name';
+  value?: string;
+  categoryId?: number;
+  categoryName?: string;
+  matchingCount?: number;
 }
 
 export interface Rule {
@@ -109,4 +129,9 @@ export function testRule(payload: CreateRulePayload & { transactionIds?: number[
 /** Apply all enabled rules to the user's uncategorized transactions. */
 export function applyRules(): Promise<ApplyResult> {
   return apiPost<ApplyResult>('/rules/apply');
+}
+
+/** Rule learning: get a rule suggestion for a just-categorized transaction (P4.5). */
+export function suggestRule(transactionId: number): Promise<RuleSuggestion> {
+  return apiGet<RuleSuggestion>('/rules/suggest', { transactionId });
 }

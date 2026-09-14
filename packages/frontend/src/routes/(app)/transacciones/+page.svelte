@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
   import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '$lib/api/transactions';
+  import { suggestRule, createRule, applyRules, type RuleSuggestion } from '$lib/api/rules';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -16,6 +17,11 @@
   let categories = $state<Category[]>([]);
   let loading = $state(true);
   let error = $state('');
+
+  // Rule-learning suggestion (P4.5): shown after a category change.
+  let ruleSuggestion = $state<RuleSuggestion | null>(null);
+  let suggestionCreating = $state(false);
+  let suggestionDone = $state(false);
 
   let currentPage = $state(1);
   let totalPages = $state(1);
@@ -409,6 +415,9 @@
       };
       // Fold any tag still in the input box into the list before saving.
       if (formTagInput.trim()) addFormTag();
+      // Track whether the category actually changed (drives rule-learning).
+      const prevCategoryId = isEditing && editingTransaction ? editingTransaction.categoryId : null;
+      const categoryChanged = payload.categoryId !== prevCategoryId;
       let txId: number;
       if (isEditing && editingTransaction) {
         await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
@@ -420,6 +429,9 @@
       // Persist tags via the dedicated endpoint (creates missing ones). (P4.1 Phase 2)
       await setTransactionTags(txId, formTags);
       closeFormModal(); await loadTransactions();
+      // Rule learning (P4.5): if the category changed, ask the backend whether a
+      // rule is worth suggesting for this merchant. Best-effort, never blocks.
+      if (categoryChanged) void maybeSuggestRule(txId);
     } catch (e) {
       if (e instanceof ApiError) {
         formErrors = e.details
@@ -428,6 +440,38 @@
       } else formErrors = { general: $t('transactions.error_saving') };
     } finally { formSubmitting = false; }
   }
+
+  // --- Rule learning (P4.5) ---
+  async function maybeSuggestRule(txId: number) {
+    try {
+      const s = await suggestRule(txId);
+      if (s.suggested) { ruleSuggestion = s; suggestionDone = false; }
+    } catch { /* suggestions are best-effort */ }
+  }
+
+  async function createSuggestedRule() {
+    if (!ruleSuggestion || !ruleSuggestion.categoryId || !ruleSuggestion.value) return;
+    suggestionCreating = true;
+    try {
+      await createRule({
+        name: `${ruleSuggestion.categoryName ?? 'Auto'}: ${ruleSuggestion.value}`.slice(0, 100),
+        priority: 100,
+        conditions: [{ field: ruleSuggestion.field ?? 'merchant', operator: 'contains', value: ruleSuggestion.value }],
+        actions: [{ type: 'setCategory', value: ruleSuggestion.categoryId }],
+        enabled: true,
+      });
+      // Apply immediately to the user's uncategorized transactions.
+      await applyRules();
+      suggestionDone = true;
+      await loadTransactions();
+    } catch {
+      /* leave the prompt open on failure */
+    } finally {
+      suggestionCreating = false;
+    }
+  }
+
+  function dismissSuggestion() { ruleSuggestion = null; }
 
   function openDeleteModal(tx: Transaction) { deletingTransaction = tx; showDeleteModal = true; }
   function closeDeleteModal() { showDeleteModal = false; deletingTransaction = null; }
@@ -566,6 +610,27 @@
       <button class="btn-new" onclick={openCreateForm}>{$t('common.new')}</button>
     </div>
   </header>
+
+  <!-- Rule-learning prompt (P4.5) -->
+  {#if ruleSuggestion}
+    <div class="rule-suggest" role="status">
+      <span class="rs-icon">✨</span>
+      <div class="rs-body">
+        <strong>{$t('rules.suggest_title')}</strong>
+        {#if suggestionDone}
+          <span class="rs-done">{$t('rules.suggest_created')}</span>
+        {:else}
+          <span class="rs-text">{$t('rules.suggest_body', { category: ruleSuggestion.categoryName ?? '', n: ruleSuggestion.matchingCount ?? 0, merchant: ruleSuggestion.value ?? '' })}</span>
+        {/if}
+      </div>
+      {#if suggestionDone}
+        <button class="rs-btn rs-dismiss" onclick={dismissSuggestion}>{$t('common.close')}</button>
+      {:else}
+        <button class="rs-btn rs-create" onclick={createSuggestedRule} disabled={suggestionCreating}>{$t('rules.suggest_create')}</button>
+        <button class="rs-btn rs-dismiss" onclick={dismissSuggestion}>{$t('rules.suggest_dismiss')}</button>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Filters - Always Visible -->
   <div class="filters-bar">
@@ -1096,6 +1161,18 @@
   .no-accounts-examples-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.35rem; }
   .no-accounts-examples { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
   .no-accounts-examples li { font-size: 0.8rem; color: var(--text-primary); padding: 0.4rem 0.6rem; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+
+  /* --- Rule-learning prompt (P4.5) --- */
+  .rule-suggest { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1rem; margin-bottom: 1rem; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: var(--radius-md); }
+  .rs-icon { font-size: 1.1rem; }
+  .rs-body { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  .rs-body strong { font-size: 0.8rem; color: var(--text-primary); }
+  .rs-text { font-size: 0.75rem; color: var(--text-secondary); }
+  .rs-done { font-size: 0.75rem; color: var(--accent-green); }
+  .rs-btn { padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .rs-create { background: var(--accent-purple); color: #fff; }
+  .rs-create:disabled { opacity: 0.6; cursor: not-allowed; }
+  .rs-dismiss { background: none; border-color: var(--border-default); color: var(--text-secondary); }
 
   /* --- Layout --- */
   .page { width: 100%; margin: 0; }

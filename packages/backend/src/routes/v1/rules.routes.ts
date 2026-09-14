@@ -157,6 +157,35 @@ export async function rulesRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * GET /api/v1/rules/suggest?transactionId=123
+   * Rule learning (P4.5): suggest a rule after the user categorizes a transaction.
+   */
+  app.get('/suggest', async (request: FastifyRequest<{ Querystring: { transactionId?: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const transactionId = parseInt(request.query.transactionId ?? '', 10);
+
+    if (isNaN(transactionId) || transactionId <= 0) {
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: 'INVALID_PARAM',
+          message: 'transactionId debe ser un número válido',
+        },
+      });
+    }
+
+    try {
+      const suggestion = RulesEngineService.suggestRuleForTransaction(user.userId, transactionId);
+      return reply.status(200).send({ success: true, data: suggestion });
+    } catch (error) {
+      if (error instanceof RulesEngineError) {
+        return handleRulesEngineError(error, reply);
+      }
+      throw error;
+    }
+  });
+
+  /**
    * POST /api/v1/rules/test
    * Test a rule against existing transactions (dry-run).
    * Body contains the rule definition (conditions, actions) and optional transactionIds.

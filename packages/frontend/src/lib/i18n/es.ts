@@ -1051,6 +1051,7 @@ export const es = {
   'rules.field.amount': 'Monto',
   'rules.field.account': 'Cuenta',
   'rules.field.description': 'Descripción/Notas',
+  'rules.field.merchant': 'Comercio',
   // Operators
   'rules.op.contains': 'contiene',
   'rules.op.equals': 'es igual a',
@@ -1065,8 +1066,20 @@ export const es = {
   'rules.action.setSubcategory': 'Asignar subcategoría',
   'rules.action.setType': 'Asignar tipo',
   'rules.action.addTag': 'Agregar etiqueta',
+  'rules.action.flagReview': 'Marcar para revisar',
+  'rules.action.markRecurring': 'Marcar como recurrente',
+  'rules.action.ignore': 'Ignorar (dejar sin cambios)',
+  'rules.action_note.flagReview': 'Etiqueta «review»',
+  'rules.action_note.markRecurring': 'Etiqueta «recurring»',
+  'rules.action_note.ignore': 'Protege la transacción de otras acciones',
   'rules.type_ingreso': 'Ingreso',
   'rules.type_gasto': 'Gasto',
+  // Rule learning (P4.5)
+  'rules.suggest_title': 'Crear regla automática',
+  'rules.suggest_body': '¿Aplicar «{category}» a otras {n} transacciones de «{merchant}»?',
+  'rules.suggest_create': 'Crear regla',
+  'rules.suggest_dismiss': 'Ahora no',
+  'rules.suggest_created': 'Regla creada y aplicada.',
 
   // Page titles (browser tab)
   'page_title.login': 'Iniciar Sesión',

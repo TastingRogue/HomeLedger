@@ -1052,6 +1052,7 @@ export const en: Record<TranslationKey, string> = {
   'rules.field.amount': 'Amount',
   'rules.field.account': 'Account',
   'rules.field.description': 'Description/Notes',
+  'rules.field.merchant': 'Merchant',
   // Operators
   'rules.op.contains': 'contains',
   'rules.op.equals': 'equals',
@@ -1066,8 +1067,20 @@ export const en: Record<TranslationKey, string> = {
   'rules.action.setSubcategory': 'Set subcategory',
   'rules.action.setType': 'Set type',
   'rules.action.addTag': 'Add tag',
+  'rules.action.flagReview': 'Flag for review',
+  'rules.action.markRecurring': 'Mark as recurring',
+  'rules.action.ignore': 'Ignore (leave unchanged)',
+  'rules.action_note.flagReview': '"review" tag',
+  'rules.action_note.markRecurring': '"recurring" tag',
+  'rules.action_note.ignore': 'Protects the transaction from other actions',
   'rules.type_ingreso': 'Income',
   'rules.type_gasto': 'Expense',
+  // Rule learning (P4.5)
+  'rules.suggest_title': 'Create automatic rule',
+  'rules.suggest_body': 'Apply "{category}" to {n} other "{merchant}" transactions?',
+  'rules.suggest_create': 'Create rule',
+  'rules.suggest_dismiss': 'Not now',
+  'rules.suggest_created': 'Rule created and applied.',
 
   // Page titles (browser tab)
   'page_title.login': 'Sign In',

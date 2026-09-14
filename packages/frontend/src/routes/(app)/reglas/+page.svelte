@@ -58,9 +58,11 @@
   }
 
   // ─── Option lists ───
-  const FIELDS: RuleField[] = ['name', 'amount', 'account', 'description'];
+  const FIELDS: RuleField[] = ['name', 'merchant', 'amount', 'account', 'description'];
   const OPERATORS: RuleOperator[] = ['contains', 'equals', 'startsWith', 'endsWith', 'greaterThan', 'lessThan', 'between', 'regex'];
-  const ACTION_TYPES: RuleActionType[] = ['setCategory', 'setType', 'addTag'];
+  const ACTION_TYPES: RuleActionType[] = ['setCategory', 'setType', 'addTag', 'flagReview', 'markRecurring', 'ignore'];
+  // Actions that act on the whole transaction and take no value input.
+  const VALUELESS: RuleActionType[] = ['flagReview', 'markRecurring', 'ignore'];
 
   const isNumericOp = (op: RuleOperator) => op === 'greaterThan' || op === 'lessThan' || op === 'between';
 
@@ -93,6 +95,8 @@
   function actionSummary(a: RuleAction): string {
     if (a.type === 'setCategory') return `${$t('rules.action.setCategory')}: ${categoryName(Number(a.value))}`;
     if (a.type === 'setType') return `${$t('rules.action.setType')}: ${a.value === 'Ingreso' ? $t('rules.type_ingreso') : $t('rules.type_gasto')}`;
+    // Valueless actions (flagReview / markRecurring / ignore) show just the label.
+    if (VALUELESS.includes(a.type)) return $t(`rules.action.${a.type}`);
     return `${$t(`rules.action.${a.type}`)}: ${a.value}`;
   }
 
@@ -121,7 +125,7 @@
       valueMax: Array.isArray(c.value) ? String(c.value[1]) : '',
       caseSensitive: c.caseSensitive ?? false,
     }));
-    formActions = rule.actions.map((a) => ({ type: a.type, value: String(a.value) }));
+    formActions = rule.actions.map((a) => ({ type: a.type, value: a.value == null ? '' : String(a.value) }));
     formError = '';
     testMessage = null;
     showForm = true;
@@ -169,10 +173,10 @@
       conditions.push(cond);
     }
 
-    const actions: RuleAction[] = formActions.map((a) => ({
-      type: a.type,
-      value: a.type === 'setCategory' ? Number(a.value) : a.value,
-    }));
+    const actions: RuleAction[] = formActions.map((a) => {
+      if (VALUELESS.includes(a.type)) return { type: a.type };
+      return { type: a.type, value: a.type === 'setCategory' ? Number(a.value) : a.value };
+    });
 
     return { name, priority, conditions, actions, enabled: formEnabled };
   }
@@ -403,6 +407,8 @@
                   <option value="Gasto">{$t('rules.type_gasto')}</option>
                   <option value="Ingreso">{$t('rules.type_ingreso')}</option>
                 </select>
+              {:else if VALUELESS.includes(act.type)}
+                <span class="val val-note">{$t(`rules.action_note.${act.type}`)}</span>
               {:else}
                 <input class="val" bind:value={act.value} placeholder={$t('rules.value')} />
               {/if}

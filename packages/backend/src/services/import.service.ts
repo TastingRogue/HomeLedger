@@ -448,22 +448,18 @@ export class ImportService {
             .where(eq(transactions.id, newTransaction.id))
             .run();
 
-          // Auto-apply rules engine for categorization
+          // Auto-apply rules engine (P4.5: full action set — category, tags,
+          // flag/recurring — honoring 'ignore'; the merchant field now works).
           try {
             const match = RulesEngineService.evaluate(userId, {
               id: newTransaction.id,
               name: newTransaction.name,
               amount: newTransaction.amount,
+              merchant: newTransaction.merchant,
               accountName: undefined,
             });
             if (match) {
-              const categoryAction = match.actions.find((a) => a.type === 'setCategory');
-              if (categoryAction && typeof categoryAction.value === 'number') {
-                db.update(transactions)
-                  .set({ categoryId: categoryAction.value, updatedAt: new Date().toISOString() })
-                  .where(eq(transactions.id, newTransaction.id))
-                  .run();
-              }
+              RulesEngineService.applyMatchActions(newTransaction.id, match.actions);
             }
           } catch {
             // Rules engine errors should not block the import

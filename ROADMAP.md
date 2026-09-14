@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **588 passing, 0 failing** ✅ (538 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **596 passing, 0 failing** ✅ (546 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -598,8 +598,9 @@ Also rebuilt the frontend import flow to the real **upload → preview → confi
 ### P4.5 — Rules & auto-categorization UX (builds on P2.1)
 Rules engine + UI already tracked in P2.1. Add the "feels smart without AI" bits.
 
-- [ ] "Rule learning": after the user categorizes e.g. AMAZON → Shopping, offer "apply to future AMAZON transactions?"
-- [ ] More trigger/action coverage (amount ranges, flag-for-review, mark recurring, ignore)
+✅ **Done** (on `p4-feature-depth`, no migration — reuses tags + free-form rule JSON).
+- [x] "Rule learning" ✅ — after the user changes a transaction's category, the app asks the backend (`GET /rules/suggest?transactionId=`) whether a rule is worth proposing. `RulesEngineService.suggestRuleForTransaction` suggests one only when it's useful: the tx isn't "uncategorized", **no existing enabled rule already matches it**, and there's ≥1 OTHER transaction from the same merchant (matched via `normalizeMerchant`, P4.4) not yet in that category. The transactions page shows a one-click "apply «Category» to N other «Merchant» transactions?" prompt that creates the rule (merchant/name `contains`, `setCategory`) and applies it immediately
+- [x] More trigger/action coverage ✅ — new **`merchant`** condition field (matches the P4.1 merchant, cleaned by P4.4). Amount ranges already existed via the `between` operator. New actions: **`flagReview`** (tags the tx `review`), **`markRecurring`** (tags it `recurring`) — both modeled as reusable tags so no schema change — and **`ignore`**, which **short-circuits** the rule (leaves the transaction exactly as-is, winning over any other action in the same rule) so you can protect internal transfers/known rows from auto-categorization. The importer now applies the full matched action set (was category-only) and honors `ignore`. Rules builder UI + es/en labels updated. **P4.5 complete.**
 
 ### P4.6 — CFDI / Mexican invoice flow (local file, MX differentiator)
 OCR already parses some CFDI XML 🟡. Make it a first-class local flow.
