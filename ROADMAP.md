@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **596 passing, 0 failing** ✅ (546 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **603 passing, 0 failing** ✅ (553 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -605,8 +605,9 @@ Rules engine + UI already tracked in P2.1. Add the "feels smart without AI" bits
 ### P4.6 — CFDI / Mexican invoice flow (local file, MX differentiator)
 OCR already parses some CFDI XML 🟡. Make it a first-class local flow.
 
-- [ ] Upload CFDI XML → extract RFC, merchant, date, subtotal, IVA, total, UUID → create transaction + receipt
-- [ ] Item-level categorization from receipts (line items → categories)
+✅ **Done** (on `p4-feature-depth`, no migration — receipt tables use the runtime `ensureTables` additive pattern).
+- [x] Upload CFDI XML → extract RFC, merchant, date, subtotal, IVA, total, UUID → create transaction + receipt ✅ — `parseCfdi` already pulled RFC/merchant/date/subtotal/total/UUID/line-items; now it also extracts **IVA** (prefers the document-level `<cfdi:Impuestos TotalImpuestosTrasladados>`, else sums each `<cfdi:Traslado Importe>`, else falls back to total − subtotal). New `ReceiptService.createTransaction` + `POST /receipts/:id/transaction` turn a completed receipt into a linked expense (name = merchant, amount = total, `merchant`, `externalId = UUID` so a re-uploaded CFDI is caught by the P4.1 dedupe, date = the CFDI date), guarding against missing total / already-linked. The receipt detail panel gains a **Create transaction** button + account/category picker
+- [x] Item-level categorization from receipts (line items → categories) ✅ — new `receipt_items.category_id` (runtime additive column) + `ReceiptService.setItemCategory` + `PATCH /receipts/:id/items/:itemId`; the receipts UI shows a per-item category dropdown. When creating the transaction, if ≥2 items are categorized **and** their totals sum to the receipt total, the transaction is automatically **split** by those categories (best-effort; falls back to a single transaction otherwise). **P4.6 complete.**
 
 ### P4.7 — Subscription intelligence
 Subscriptions + auto-charge exist. Add insight (all computed locally).

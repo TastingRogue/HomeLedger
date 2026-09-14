@@ -235,4 +235,37 @@ describe('parseCfdi — structured invoice', () => {
     expect(parsed.sourceType).toBe('cfdi_xml');
     expect(parsed.confidence).toBe(1);
   });
+
+  // P4.6: IVA / tax extraction.
+  it('falls back to total − subtotal when there is no Impuestos node', () => {
+    const parsed = parseCfdi(xml);
+    expect(parsed.tax).toBe(160);
+  });
+
+  it('extracts IVA from the document-level TotalImpuestosTrasladados', () => {
+    const withImpuestos = `<?xml version="1.0"?>
+    <cfdi:Comprobante Version="4.0" SubTotal="1000.00" Total="1160.00" Moneda="MXN" Fecha="2026-02-14">
+      <cfdi:Emisor Rfc="AAA010101AAA" Nombre="Proveedor"/>
+      <cfdi:Impuestos TotalImpuestosTrasladados="160.00">
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="1000.00" Impuesto="002" TasaOCuota="0.160000" Importe="160.00"/>
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Comprobante>`;
+    expect(parseCfdi(withImpuestos).tax).toBe(160);
+  });
+
+  it('sums Traslado Importe when there is no document-level total', () => {
+    const trasladosOnly = `<?xml version="1.0"?>
+    <cfdi:Comprobante Version="4.0" SubTotal="200.00" Total="232.00" Moneda="MXN" Fecha="2026-02-14">
+      <cfdi:Emisor Rfc="AAA010101AAA" Nombre="Proveedor"/>
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Importe="16.00"/>
+          <cfdi:Traslado Importe="16.00"/>
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Comprobante>`;
+    expect(parseCfdi(trasladosOnly).tax).toBe(32);
+  });
 });
