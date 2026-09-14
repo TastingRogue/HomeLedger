@@ -10,6 +10,7 @@
     type BudgetSummary,
     type BudgetPeriod,
     type CategoryAllocation,
+    type TagAllocation,
     type CreateBudgetPayload,
   } from '$lib/api/budgets';
   import { apiGet, ApiError } from '$lib/api/client';
@@ -24,10 +25,13 @@
     name: string;
   }
 
+  interface Tag { id: number; name: string; }
+
   // ─── State ───
   let budgets: BudgetWithProgress[] = $state([]);
   let summary: BudgetSummary | null = $state(null);
   let categories: Category[] = $state([]);
+  let tags: Tag[] = $state([]);  // P4.3 Phase C: tag catalog for allocations
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -42,6 +46,8 @@
   let formPeriod: BudgetPeriod = $state('Mensual');
   let formStartDate = $state('');
   let formAllocations: { categoryId: number | ''; allocated: string }[] = $state([]);
+  // ── P4.3 Phase C: tag allocations ──
+  let formTagAllocations: { tagId: number | ''; allocated: string }[] = $state([]);
   // ── P4.3 envelope settings ──
   let formRolloverEnabled = $state(false);
   let formAlertThreshold = $state('80');
@@ -89,14 +95,16 @@
     loading = true;
     error = null;
     try {
-      const [b, s, cats] = await Promise.all([
+      const [b, s, cats, tgs] = await Promise.all([
         listBudgets(),
         getBudgetSummary(),
         apiGet<Category[]>('/categories'),
+        apiGet<Tag[]>('/tags'),
       ]);
       budgets = b;
       summary = s;
       categories = cats;
+      tags = tgs;
     } catch (e: unknown) {
       error = e instanceof ApiError ? e.message : $t('budgets.error_loading');
     } finally {
@@ -111,6 +119,7 @@
     formPeriod = 'Mensual';
     formStartDate = new Date().toISOString().split('T')[0]!;
     formAllocations = [{ categoryId: '', allocated: '' }];
+    formTagAllocations = [];
     formRolloverEnabled = false;
     formAlertThreshold = '80';
     formError = '';
@@ -130,11 +139,22 @@
     if (formAllocations.length === 0) {
       formAllocations = [{ categoryId: '', allocated: '' }];
     }
+    formTagAllocations = (budget.tags ?? []).map((t) => ({ tagId: t.tagId, allocated: String(t.allocated) }));
     formRolloverEnabled = budget.rolloverEnabled ?? false;
     formAlertThreshold = String(budget.alertThreshold ?? 80);
     formError = '';
     validationErrors = {};
     showForm = true;
+  }
+
+  function getTagName(tagId: number): string {
+    return tags.find((t) => t.id === tagId)?.name ?? `#${tagId}`;
+  }
+  function addTagAllocation() {
+    formTagAllocations = [...formTagAllocations, { tagId: '', allocated: '' }];
+  }
+  function removeTagAllocation(index: number) {
+    formTagAllocations = formTagAllocations.filter((_, i) => i !== index);
   }
 
   function closeForm() {
@@ -191,10 +211,20 @@
     formSubmitting = true;
     formError = '';
 
-    const catAllocations: CategoryAllocation[] = formAllocations.map((a) => ({
-      categoryId: Number(a.categoryId),
-      allocated: Number(Number(a.allocated).toFixed(2)),
-    }));
+    const catAllocations: CategoryAllocation[] = formAllocations
+      .filter((a) => a.categoryId !== '' && String(a.allocated).trim())
+      .map((a) => ({
+        categoryId: Number(a.categoryId),
+        allocated: Number(Number(a.allocated).toFixed(2)),
+      }));
+
+    // P4.3 Phase C: tag allocations (skip incomplete rows).
+    const tagAllocations: TagAllocation[] = formTagAllocations
+      .filter((a) => a.tagId !== '' && String(a.allocated).trim())
+      .map((a) => ({
+        tagId: Number(a.tagId),
+        allocated: Number(Number(a.allocated).toFixed(2)),
+      }));
 
     const rolloverEnabled = formRolloverEnabled;
     const alertThreshold = Math.min(100, Math.max(0, Number(formAlertThreshold) || 80));
@@ -205,6 +235,7 @@
           period: formPeriod,
           startDate: formStartDate,
           categories: catAllocations,
+          tags: tagAllocations,
           rolloverEnabled,
           alertThreshold,
         });
@@ -214,6 +245,7 @@
           period: formPeriod,
           startDate: formStartDate,
           categories: catAllocations,
+          tags: tagAllocations,
           rolloverEnabled,
           alertThreshold,
         };
@@ -359,6 +391,27 @@
               </div>
             {/if}
 
+            <!-- P4.3 Phase C: per-tag progress -->
+            {#if budget.tags && budget.tags.length > 0}
+              <div class="cat-section">
+                <span class="cat-section-title">{$t('budgets.by_tag')}</span>
+                {#each budget.tags as bt (bt.id)}
+                  {@const pct = bt.allocated > 0 ? (bt.spent / bt.allocated) * 100 : 0}
+                  {@const colorClass = getProgressColor(bt.spent, bt.allocated)}
+                  <div class="cat-row">
+                    <span class="cat-name">{bt.tagName ?? getTagName(bt.tagId)}</span>
+                    <div class="cat-bar-wrap">
+                      <div class="progress-bar progress-bar-thin">
+                        <div class="progress-fill {colorClass}" style="width:{Math.min(pct, 100)}%"></div>
+                      </div>
+                    </div>
+                    <span class="cat-amt">{formatCurrency(bt.spent)}/{formatCurrency(bt.allocated)}</span>
+                    <span class="cat-status-tag {colorClass}">{getProgressLabel(bt.spent, bt.allocated)}</span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
             <div class="budget-actions">
               <button class="btn btn-sm btn-secondary" onclick={() => openEditForm(budget)}>{$t('common.edit')}</button>
               <button class="btn btn-sm btn-danger" onclick={() => openDeleteConfirm(budget)}>{$t('common.delete')}</button>
@@ -436,6 +489,28 @@
             {#if validationErrors[`amt_${i}`]}<span class="field-err">{validationErrors[`amt_${i}`]}</span>{/if}
           {/each}
         </div>
+
+        <!-- P4.3 Phase C: allocate by tag (optional). Shown only if tags exist. -->
+        {#if tags.length > 0}
+          <div class="allocations-section">
+            <div class="alloc-header">
+              <span class="alloc-label">{$t('budgets.form_tag_allocations')} <span class="opt">{$t('budgets.optional')}</span></span>
+              <button type="button" class="btn btn-sm btn-secondary" onclick={addTagAllocation}>{$t('budgets.add_allocation')}</button>
+            </div>
+            {#each formTagAllocations as talloc, i (i)}
+              <div class="alloc-row">
+                <select bind:value={talloc.tagId}>
+                  <option value="">{$t('budgets.tag_placeholder')}</option>
+                  {#each tags as tag (tag.id)}
+                    <option value={tag.id}>{tag.name}</option>
+                  {/each}
+                </select>
+                <input type="number" step="0.01" min="0.01" bind:value={talloc.allocated} placeholder={$t('budgets.amount_placeholder')} />
+                <button type="button" class="btn-remove" onclick={() => removeTagAllocation(i)} aria-label={$t('common.delete')}>&times;</button>
+              </div>
+            {/each}
+          </div>
+        {/if}
 
         <!-- P4.3 envelope settings -->
         <div class="field-row">
@@ -620,6 +695,7 @@
   .allocations-section { border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--spacing-md); margin-bottom: var(--spacing-md); }
   .alloc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); }
   .alloc-header .alloc-label { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
+  .alloc-label .opt { font-weight: 400; color: var(--text-muted); font-size: 0.7rem; }
   .alloc-row { display: flex; gap: var(--spacing-sm); align-items: center; margin-bottom: var(--spacing-sm); }
   .alloc-row select { flex: 2; }
   .alloc-row input { flex: 1; }

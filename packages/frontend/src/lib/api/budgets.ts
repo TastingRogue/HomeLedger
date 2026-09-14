@@ -19,6 +19,24 @@ export interface BudgetCategory {
   remaining: number;
 }
 
+/** P4.3 Phase C: allocation keyed by tag. */
+export interface BudgetTag {
+  id: number;
+  budgetId: number;
+  tagId: number;
+  tagName?: string;
+  allocated: number;
+  spent: number;
+  rollover: number;
+  remaining: number;
+}
+
+/** One tag allocation when saving a budget. */
+export interface TagAllocation {
+  tagId: number;
+  allocated: number;
+}
+
 export interface BudgetWithProgress {
   id: number;
   userId: number;
@@ -33,6 +51,7 @@ export interface BudgetWithProgress {
   createdAt: string;
   updatedAt: string;
   categories: BudgetCategory[];
+  tags: BudgetTag[];
   percentUsed: number;
 }
 
@@ -56,6 +75,7 @@ export interface CreateBudgetPayload {
   period: BudgetPeriod;
   startDate: string;
   categories: CategoryAllocation[];
+  tags?: TagAllocation[];
   rolloverEnabled?: boolean;
   alertThreshold?: number;
 }
@@ -65,6 +85,7 @@ export interface UpdateBudgetPayload {
   period?: BudgetPeriod;
   startDate?: string;
   categories?: CategoryAllocation[];
+  tags?: TagAllocation[];
   rolloverEnabled?: boolean;
   alertThreshold?: number;
 }

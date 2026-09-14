@@ -92,6 +92,13 @@
       "when": 1787697100000,
       "tag": "0012_budget_rollover_threshold",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1787697200000,
+      "tag": "0013_budget_tags",
+      "breakpoints": true
     }
   ]
 }

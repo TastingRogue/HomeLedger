@@ -1,9 +1,9 @@
 import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
+import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
 import { BudgetPeriod, AlertType, AlertSeverity } from '@homeledger/shared';
-import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@homeledger/shared';
+import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType, BudgetTag as BudgetTagType } from '@homeledger/shared';
 import crypto from 'node:crypto';
 import { roundMoney } from '../utils/money.js';
 
@@ -76,6 +76,63 @@ export class BudgetService {
   }
 
   /**
+   * P4.3 Phase C: total spent on transactions carrying `tagId` within a period.
+   * Joins transaction_tags → transactions (Gasto only, in the date range).
+   */
+  private static spentByTag(userId: number, tagId: number, startDate: string, endDate: string): number {
+    const db = getDb();
+    const row = db
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .from(transactionTags)
+      .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
+      .where(
+        and(
+          eq(transactionTags.tagId, tagId),
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'Gasto'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        )
+      )
+      .get();
+    return roundMoney(Number(row?.total ?? 0));
+  }
+
+  /**
+   * Builds the per-tag progress array for a budget (allocated/spent/rollover/
+   * remaining + resolved tag name). P4.3 Phase C.
+   */
+  private static tagProgress(userId: number, budgetId: number, startDate: string, endDate: string): BudgetTagType[] {
+    const db = getDb();
+    const rows = db
+      .select({
+        id: budgetTags.id,
+        budgetId: budgetTags.budgetId,
+        tagId: budgetTags.tagId,
+        allocated: budgetTags.allocated,
+        rollover: budgetTags.rollover,
+        tagName: tags.name,
+      })
+      .from(budgetTags)
+      .innerJoin(tags, eq(budgetTags.tagId, tags.id))
+      .where(eq(budgetTags.budgetId, budgetId))
+      .all();
+    return rows.map((bt) => {
+      const spent = BudgetService.spentByTag(userId, bt.tagId, startDate, endDate);
+      return {
+        id: bt.id,
+        budgetId: bt.budgetId,
+        tagId: bt.tagId,
+        tagName: bt.tagName,
+        allocated: bt.allocated,
+        spent,
+        rollover: bt.rollover,
+        remaining: roundMoney((bt.allocated + bt.rollover) - spent),
+      };
+    });
+  }
+
+  /**
    * Crea un nuevo presupuesto con sus asignaciones de categorías.
    * Inserta el registro del presupuesto y luego las categorías asignadas de forma atómica.
    *
@@ -93,8 +150,11 @@ export class BudgetService {
       );
     }
 
-    // Validate that all categories exist AND are usable by this user (system or own)
-    for (const cat of input.categories) {
+    // Validate that all categories exist AND are usable by this user (system or own).
+    // Tolerate a caller that didn't go through the Zod schema (tests) where
+    // categories/tags may be undefined.
+    const inputCategories = input.categories ?? [];
+    for (const cat of inputCategories) {
       const existing = db
         .select({ id: categories.id })
         .from(categories)
@@ -109,11 +169,24 @@ export class BudgetService {
       }
     }
 
+    // P4.3 Phase C: validate tag allocations belong to the user.
+    const inputTags = input.tags ?? [];
+    for (const t of inputTags) {
+      const existing = db
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.id, t.tagId), eq(tags.userId, userId)))
+        .get();
+      if (!existing) {
+        throw new BudgetError(`La etiqueta con ID ${t.tagId} no existe`, 'TAG_NOT_FOUND');
+      }
+    }
+
     const startDate = input.startDate.split('T')[0]!;
     const endDate = BudgetService.calculateEndDate(startDate, dbPeriod);
     const now = new Date().toISOString();
 
-    const result = sqlite.transaction(() => {
+    const newBudgetId = sqlite.transaction(() => {
       // Insert the budget record
       const newBudget = db
         .insert(budgets)
@@ -129,51 +202,33 @@ export class BudgetService {
           createdAt: now,
           updatedAt: now,
         })
-        .returning()
+        .returning({ id: budgets.id })
         .get();
 
       // Insert budget category allocations
-      const insertedCategories = input.categories.map((cat) => {
-        return db
-          .insert(budgetCategories)
-          .values({
-            budgetId: newBudget.id,
-            categoryId: cat.categoryId,
-            allocated: cat.allocated,
-            rollover: 0,
-          })
-          .returning()
-          .get();
-      });
+      for (const cat of inputCategories) {
+        db.insert(budgetCategories).values({
+          budgetId: newBudget.id,
+          categoryId: cat.categoryId,
+          allocated: cat.allocated,
+          rollover: 0,
+        }).run();
+      }
+      // P4.3 Phase C: insert budget tag allocations
+      for (const t of inputTags) {
+        db.insert(budgetTags).values({
+          budgetId: newBudget.id,
+          tagId: t.tagId,
+          allocated: t.allocated,
+          rollover: 0,
+        }).run();
+      }
 
-      return { budget: newBudget, categories: insertedCategories };
+      return newBudget.id;
     })();
 
-    const totalAllocated = input.categories.reduce((sum, c) => sum + c.allocated, 0);
-
-    return {
-      id: result.budget.id,
-      userId: result.budget.userId,
-      name: result.budget.name,
-      period: PERIOD_FROM_DB[result.budget.period] ?? result.budget.period,
-      startDate: result.budget.startDate,
-      endDate: result.budget.endDate,
-      totalAllocated,
-      totalSpent: 0,
-      rolloverEnabled: result.budget.rolloverEnabled,
-      alertThreshold: result.budget.alertThreshold,
-      createdAt: result.budget.createdAt,
-      updatedAt: result.budget.updatedAt,
-      categories: result.categories.map((c) => ({
-        id: c.id,
-        budgetId: c.budgetId,
-        categoryId: c.categoryId,
-        allocated: c.allocated,
-        spent: 0,
-        rollover: c.rollover,
-        remaining: c.allocated + c.rollover,
-      })),
-    };
+    // Return the full budget with progress (categories + tags) computed uniformly.
+    return BudgetService.getById(newBudgetId, userId)!;
   }
 
   /**
@@ -241,8 +296,17 @@ export class BudgetService {
         };
       });
 
-      const totalAllocated = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.allocated, 0));
-      const totalSpent = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.spent, 0));
+      // P4.3 Phase C: per-tag allocations for this budget.
+      const tagsWithSpent = BudgetService.tagProgress(userId, budget.id, budget.startDate, budget.endDate);
+
+      const totalAllocated = roundMoney(
+        categoriesWithSpent.reduce((s, c) => s + c.allocated, 0) +
+        tagsWithSpent.reduce((s, t) => s + t.allocated, 0)
+      );
+      const totalSpent = roundMoney(
+        categoriesWithSpent.reduce((s, c) => s + c.spent, 0) +
+        tagsWithSpent.reduce((s, t) => s + t.spent, 0)
+      );
       const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
       return {
@@ -259,6 +323,7 @@ export class BudgetService {
         createdAt: budget.createdAt,
         updatedAt: budget.updatedAt,
         categories: categoriesWithSpent,
+        tags: tagsWithSpent,
         percentUsed: Math.round(percentUsed * 100) / 100,
       };
     });
@@ -331,6 +396,17 @@ export class BudgetService {
           .get();
 
         totalSpent += Number(spentResult?.total ?? 0);
+      }
+
+      // P4.3 Phase C: include tag allocations + their spent in the totals.
+      const budgetTagRows = db
+        .select()
+        .from(budgetTags)
+        .where(eq(budgetTags.budgetId, budget.id))
+        .all();
+      for (const bt of budgetTagRows) {
+        totalAllocated += bt.allocated;
+        totalSpent += BudgetService.spentByTag(userId, bt.tagId, budget.startDate, budget.endDate);
       }
 
       // P4.3 Phase B ("available to spend", light): income earned within the
@@ -457,6 +533,26 @@ export class BudgetService {
                 rollover: sql`${budgetCategories.rollover} + ${unused}`,
               })
               .where(eq(budgetCategories.id, nextBudgetCategory.id))
+              .run();
+          }
+        }
+      }
+
+      // P4.3 Phase C: roll over unused TAG budget into the next period's matching tag.
+      const budgetTagRows = db.select().from(budgetTags).where(eq(budgetTags.budgetId, budgetId)).all();
+      for (const bt of budgetTagRows) {
+        const spent = BudgetService.spentByTag(budget.userId, bt.tagId, budget.startDate, budget.endDate);
+        const unused = roundMoney((bt.allocated + bt.rollover) - spent);
+        if (unused > 0) {
+          const nextTag = db
+            .select()
+            .from(budgetTags)
+            .where(and(eq(budgetTags.budgetId, nextBudget.id), eq(budgetTags.tagId, bt.tagId)))
+            .get();
+          if (nextTag) {
+            db.update(budgetTags)
+              .set({ rollover: sql`${budgetTags.rollover} + ${unused}` })
+              .where(eq(budgetTags.id, nextTag.id))
               .run();
           }
         }
@@ -687,8 +783,17 @@ export class BudgetService {
       };
     });
 
-    const totalAllocated = categoriesWithSpent.reduce((s, c) => s + c.allocated, 0);
-    const totalSpent = categoriesWithSpent.reduce((s, c) => s + c.spent, 0);
+    // P4.3 Phase C: per-tag allocations.
+    const tagsWithSpent = BudgetService.tagProgress(userId, budget.id, budget.startDate, budget.endDate);
+
+    const totalAllocated = roundMoney(
+      categoriesWithSpent.reduce((s, c) => s + c.allocated, 0) +
+      tagsWithSpent.reduce((s, t) => s + t.allocated, 0)
+    );
+    const totalSpent = roundMoney(
+      categoriesWithSpent.reduce((s, c) => s + c.spent, 0) +
+      tagsWithSpent.reduce((s, t) => s + t.spent, 0)
+    );
     const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
     return {
@@ -705,6 +810,7 @@ export class BudgetService {
       createdAt: budget.createdAt,
       updatedAt: budget.updatedAt,
       categories: categoriesWithSpent,
+      tags: tagsWithSpent,
       percentUsed: Math.round(percentUsed * 100) / 100,
     };
   }
@@ -821,6 +927,31 @@ export class BudgetService {
               rollover: priorRollover.get(cat.categoryId) ?? 0,
             })
             .run();
+        }
+      }
+
+      // P4.3 Phase C: update tag allocations if provided (same rollover-preserve).
+      if (input.tags) {
+        const priorTagRollover = new Map<number, number>();
+        for (const bt of db.select().from(budgetTags).where(eq(budgetTags.budgetId, id)).all()) {
+          priorTagRollover.set(bt.tagId, bt.rollover);
+        }
+        db.delete(budgetTags).where(eq(budgetTags.budgetId, id)).run();
+        for (const t of input.tags) {
+          const okTag = db
+            .select({ id: tags.id })
+            .from(tags)
+            .where(and(eq(tags.id, t.tagId), eq(tags.userId, userId)))
+            .get();
+          if (!okTag) {
+            throw new BudgetError(`La etiqueta con ID ${t.tagId} no existe`, 'TAG_NOT_FOUND');
+          }
+          db.insert(budgetTags).values({
+            budgetId: id,
+            tagId: t.tagId,
+            allocated: t.allocated,
+            rollover: priorTagRollover.get(t.tagId) ?? 0,
+          }).run();
         }
       }
     })();

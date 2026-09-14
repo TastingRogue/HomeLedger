@@ -39,7 +39,24 @@ export const createBudgetSchema = z.object({
           .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
       })
     )
-    .min(1, 'Debe incluir al menos una categoría'),
+    .default([]),
+
+  // P4.3 Fase C: asignaciones por etiqueta (opcional).
+  tags: z
+    .array(
+      z.object({
+        tagId: z
+          .number({ error: 'El ID de etiqueta es obligatorio y debe ser un número' })
+          .int('El ID de etiqueta debe ser un número entero')
+          .positive('El ID de etiqueta debe ser un número positivo'),
+        allocated: z
+          .number({ error: 'El monto asignado es obligatorio y debe ser un número' })
+          .positive('El monto asignado debe ser mayor a 0')
+          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99')
+          .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
+      })
+    )
+    .default([]),
 
   rolloverEnabled: z
     .boolean({ error: 'El acumulado debe ser verdadero o falso' })
@@ -50,7 +67,10 @@ export const createBudgetSchema = z.object({
     .min(0, 'El umbral de alerta debe ser al menos 0')
     .max(100, 'El umbral de alerta no puede exceder 100')
     .default(80),
-});
+}).refine(
+  (data) => data.categories.length + data.tags.length >= 1,
+  { message: 'Debe incluir al menos una categoría o etiqueta', path: ['categories'] }
+);
 
 /**
  * Schema de validación para actualización de presupuestos.
@@ -89,7 +109,23 @@ export const updateBudgetSchema = z.object({
           .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
       })
     )
-    .min(1, 'Debe incluir al menos una categoría')
+    .optional(),
+
+  // P4.3 Fase C: asignaciones por etiqueta (opcional).
+  tags: z
+    .array(
+      z.object({
+        tagId: z
+          .number({ error: 'El ID de etiqueta debe ser un número' })
+          .int('El ID de etiqueta debe ser un número entero')
+          .positive('El ID de etiqueta debe ser un número positivo'),
+        allocated: z
+          .number({ error: 'El monto asignado debe ser un número' })
+          .positive('El monto asignado debe ser mayor a 0')
+          .max(999999999.99, 'El monto asignado no puede exceder 999,999,999.99')
+          .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg }),
+      })
+    )
     .optional(),
 
   rolloverEnabled: z

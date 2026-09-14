@@ -262,6 +262,19 @@ export const budgetCategories = sqliteTable('budget_categories', {
   index('budget_categories_category_id_idx').on(table.categoryId),
 ]);
 
+// P4.3 Phase C: budget allocations keyed by TAG (in addition to category).
+// Mirrors budget_categories; spent is computed by joining transaction_tags.
+export const budgetTags = sqliteTable('budget_tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  budgetId: integer('budget_id').notNull().references(() => budgets.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'restrict' }),
+  allocated: real('allocated').notNull(),
+  rollover: real('rollover').notNull().default(0),
+}, (table) => [
+  index('budget_tags_budget_id_idx').on(table.budgetId),
+  index('budget_tags_tag_id_idx').on(table.tagId),
+]);
+
 // ============================================
 // SUBSCRIPTIONS
 // ============================================

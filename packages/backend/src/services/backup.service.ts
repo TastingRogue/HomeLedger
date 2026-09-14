@@ -15,6 +15,7 @@ import {
   goals,
   budgets,
   budgetCategories,
+  budgetTags,
   categories,
   subcategories,
   rules,
@@ -77,6 +78,8 @@ export interface BackupData {
   goals: unknown[];
   budgets: unknown[];
   budgetCategories: unknown[];
+  /** Budget allocations keyed by tag (P4.3 Phase C). */
+  budgetTags: unknown[];
   categories: unknown[];
   subcategories: unknown[];
   rules: unknown[];
@@ -215,6 +218,18 @@ export class BackupService {
         })
         .from(budgetCategories)
         .innerJoin(budgets, eq(budgetCategories.budgetId, budgets.id))
+        .where(eq(budgets.userId, userId))
+        .all(),
+      budgetTags: db
+        .select({
+          id: budgetTags.id,
+          budgetId: budgetTags.budgetId,
+          tagId: budgetTags.tagId,
+          allocated: budgetTags.allocated,
+          rollover: budgetTags.rollover,
+        })
+        .from(budgetTags)
+        .innerJoin(budgets, eq(budgetTags.budgetId, budgets.id))
         .where(eq(budgets.userId, userId))
         .all(),
       categories: db.select().from(categories).where(eq(categories.userId, userId)).all(),
@@ -366,6 +381,7 @@ export class BackupService {
       if (userBudgetIds.length > 0) {
         for (const budgetId of userBudgetIds) {
           db.delete(budgetCategories).where(eq(budgetCategories.budgetId, budgetId)).run();
+          db.delete(budgetTags).where(eq(budgetTags.budgetId, budgetId)).run(); // P4.3 Phase C
         }
       }
 
@@ -654,6 +670,20 @@ export class BackupService {
         }).run();
       }
 
+      // Budget tags (P4.3 Phase C): budgetId via budgetMap, tagId via tagMap.
+      for (const bt of backupData.budgetTags ?? []) {
+        const rec = bt as Record<string, unknown>;
+        const newBudgetId = remap(budgetMap, fk(rec, 'budgetId'));
+        const newTagId = remap(tagMap, fk(rec, 'tagId'));
+        if (newBudgetId == null || newTagId == null) continue;
+        const { id: _drop, budgetId: _b, tagId: _t, ...rest } = rec;
+        db.insert(budgetTags).values({
+          ...(rest as Omit<typeof budgetTags.$inferInsert, 'budgetId' | 'tagId'>),
+          budgetId: newBudgetId,
+          tagId: newTagId,
+        }).run();
+      }
+
       // Rules (no cross-FK; drop id)
       for (const rule of backupData.rules ?? []) {
         const rec = rule as Record<string, unknown>;
@@ -899,7 +929,7 @@ export class BackupService {
     const data = obj['data'] as Record<string, unknown>;
     const expectedArrayFields = [
       'accounts', 'transactions', 'transactionSplits', 'tags', 'transactionTags', 'transactionAudit', 'transfers',
-      'subscriptions', 'goals', 'budgets', 'budgetCategories',
+      'subscriptions', 'goals', 'budgets', 'budgetCategories', 'budgetTags',
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
       'networthSnapshots', 'creditSubscriptions',
@@ -931,6 +961,7 @@ export class BackupService {
         goals: Array.isArray(data['goals']) ? data['goals'] : [],
         budgets: Array.isArray(data['budgets']) ? data['budgets'] : [],
         budgetCategories: Array.isArray(data['budgetCategories']) ? data['budgetCategories'] : [],
+        budgetTags: Array.isArray(data['budgetTags']) ? data['budgetTags'] : [],
         categories: Array.isArray(data['categories']) ? data['categories'] : [],
         subcategories: Array.isArray(data['subcategories']) ? data['subcategories'] : [],
         rules: Array.isArray(data['rules']) ? data['rules'] : [],

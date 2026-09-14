@@ -28,6 +28,7 @@ export { BudgetPeriod } from './types/budgets.js';
 export type {
   Budget,
   BudgetCategory,
+  BudgetTag,
   BudgetWithProgress,
   BudgetSummary,
 } from './types/budgets.js';

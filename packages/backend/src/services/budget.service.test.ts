@@ -113,6 +113,28 @@ describe('BudgetService', () => {
       CREATE INDEX IF NOT EXISTS budget_categories_budget_id_idx ON budget_categories(budget_id);
       CREATE INDEX IF NOT EXISTS budget_categories_category_id_idx ON budget_categories(category_id);
 
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
+      CREATE TABLE IF NOT EXISTS budget_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+        allocated REAL NOT NULL,
+        rollover REAL NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS budget_tags_budget_id_idx ON budget_tags(budget_id);
+      CREATE INDEX IF NOT EXISTS budget_tags_tag_id_idx ON budget_tags(tag_id);
+
       CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

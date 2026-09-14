@@ -31,9 +31,22 @@ export interface BudgetCategory {
   remaining: number;                 // calculado: (allocated + rollover) - spent
 }
 
+// P4.3 Fase C: asignación por ETIQUETA dentro de un presupuesto.
+export interface BudgetTag {
+  id: number;
+  budgetId: number;
+  tagId: number;
+  tagName?: string;                  // resuelto por join para mostrar
+  allocated: number;
+  spent: number;                     // calculado: gasto de transacciones con esa etiqueta
+  rollover: number;
+  remaining: number;
+}
+
 // Resumen de presupuesto con progreso
 export interface BudgetWithProgress extends Budget {
   categories: BudgetCategory[];
+  tags: BudgetTag[];                 // P4.3 Fase C: asignaciones por etiqueta
   percentUsed: number;               // (totalSpent / totalAllocated) * 100
 }
 

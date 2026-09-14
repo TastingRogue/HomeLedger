@@ -613,6 +613,11 @@ export const es = {
   'budgets.remaining': 'RESTANTE',
   'budgets.usage': 'USO',
   'budgets.by_category': 'POR CATEGORÍA',
+  // ── P4.3 Fase C: presupuesto por etiqueta ──
+  'budgets.by_tag': 'POR ETIQUETA',
+  'budgets.form_tag_allocations': 'Asignaciones por etiqueta',
+  'budgets.tag_placeholder': 'Etiqueta',
+  'budgets.optional': '(opcional)',
   'budgets.form_name': 'Nombre',
   'budgets.form_name_placeholder': 'Ej: Presupuesto mensual',
   'budgets.form_period': 'Período',

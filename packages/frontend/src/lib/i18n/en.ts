@@ -614,6 +614,11 @@ export const en: Record<TranslationKey, string> = {
   'budgets.remaining': 'REMAINING',
   'budgets.usage': 'USAGE',
   'budgets.by_category': 'BY CATEGORY',
+  // ── P4.3 Phase C: budget by tag ──
+  'budgets.by_tag': 'BY TAG',
+  'budgets.form_tag_allocations': 'Tag allocations',
+  'budgets.tag_placeholder': 'Tag',
+  'budgets.optional': '(optional)',
   'budgets.form_name': 'Name',
   'budgets.form_name_placeholder': 'E.g.: Monthly budget',
   'budgets.form_period': 'Period',
