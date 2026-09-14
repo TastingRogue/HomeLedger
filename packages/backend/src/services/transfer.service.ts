@@ -39,7 +39,6 @@ function calculateAccountBalance(accountId: number): number {
   }
 
   const initialBalance = account.initialBalance;
-  const isCredit = account.type === 'Crédito';
 
   // Sum of incomes for this account
   const incomeResult = db
@@ -74,12 +73,9 @@ function calculateAccountBalance(accountId: number): number {
   const transfersIn = transfersInResult?.total ?? 0;
   const transfersOut = transfersOutResult?.total ?? 0;
 
-  if (isCredit) {
-    // Para cuentas de crédito: recibir una transferencia (pago) reduce la deuda,
-    // enviar una transferencia (disposición de crédito) aumenta la deuda.
-    return initialBalance + incomes - expenses - transfersIn + transfersOut;
-  }
-
+  // P4.2: unified formula (negative balance = debt for credit). Kept in sync
+  // with AccountService.calculateBalance. A payment (transfer into the card)
+  // reduces debt via +transfersIn; the old inverted credit branch was a bug.
   return initialBalance + incomes - expenses + transfersIn - transfersOut;
 }
 

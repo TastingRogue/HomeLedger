@@ -376,6 +376,22 @@ export const en: Record<TranslationKey, string> = {
   'accounts.no_category': 'No category',
   'accounts.credit_utilization': 'Utilization',
   'accounts.credit_limit_label': 'Credit limit',
+  // ── P4.2 credit-card statement modeling ──
+  'accounts.form_statement_day': 'Statement day',
+  'accounts.statement_day_tooltip': 'Day of month (1–31) your statement closes.',
+  'accounts.form_payment_due_day': 'Payment due day',
+  'accounts.payment_due_day_tooltip': 'Day of month (1–31) the payment is due to avoid interest.',
+  'accounts.form_apr': 'APR',
+  'accounts.apr_tooltip': "The card's annual interest rate, as a percentage. Informational only.",
+  'accounts.form_minimum_payment': 'Minimum payment',
+  'accounts.minimum_payment_tooltip': 'Minimum payment for the current statement (you enter it).',
+  'accounts.amount_owed': 'Amount owed',
+  'accounts.available_credit': 'Available credit',
+  'accounts.next_statement': 'Next statement',
+  'accounts.next_due': 'Next due date',
+  'accounts.minimum_payment_label': 'Minimum payment',
+  'accounts.apr_label': 'APR',
+  'accounts.payment_history': 'Payment history',
 
   // Settings
   'settings.title': 'Settings',

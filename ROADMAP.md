@@ -565,10 +565,11 @@ Backup exports/imports the audit table (transactionId remapped via txMap, null k
 Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows
 on the dashboard/alerts 🟡), but statement-cycle modeling is missing.
 
-- [ ] Statement balance, minimum payment, payment due date, statement closing date
-- [ ] APR / interest tracking
-- [ ] Payment handling that never double-counts (a CC payment is a transfer: checking ↓, card ↓ — not an expense)
-- [ ] Payment history + available credit surfaced clearly
+✅ **Done** (branch `p4.2-credit-cards`, migration `0011_credit_statement`).
+- [x] Statement balance, minimum payment, payment due date, statement closing date ✅ — added `statementDay`, `paymentDueDay`, `apr`, `minimumPayment` to `accounts`; `GET /accounts/:id/statement` derives owed / available credit / utilization / next statement + due dates
+- [x] APR / interest tracking ✅ — `apr` field, surfaced in the statement summary (informational)
+- [x] Payment handling that never double-counts ✅ — **fixed a real balance bug**: the credit branch of `calculateBalance` inverted transfer signs, so a payment (transfer into the card) was recorded as MORE debt. Unified the formula (negative balance = debt for all types) in both `account.service.ts` and the mirror in `transfer.service.ts`; a CC payment is a transfer (checking ↓, card debt ↓), never an expense
+- [x] Payment history + available credit surfaced clearly ✅ — the account detail drawer shows amount owed, available credit, utilization, next statement/due dates, APR, min payment, and the payment history (transfers into the card)
 
 ### P4.3 — Envelope budgeting (Actual-style)
 Budgets exist (monthly/weekly, per-category, progress 🟡). Upgrade toward

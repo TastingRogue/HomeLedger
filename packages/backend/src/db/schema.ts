@@ -54,6 +54,14 @@ export const accounts = sqliteTable('accounts', {
   initialBalance: real('initial_balance').notNull().default(0),
   balanceLimit: real('balance_limit'),
   creditLimit: real('credit_limit'),
+  // ── P4.2 credit-card statement modeling (credit accounts only; all optional) ──
+  // Day of month (1–31) the statement closes and the payment is due.
+  statementDay: integer('statement_day'),
+  paymentDueDay: integer('payment_due_day'),
+  // Annual percentage rate (e.g. 36.5 for 36.5%). Informational.
+  apr: real('apr'),
+  // Minimum payment for the current statement (user-entered).
+  minimumPayment: real('minimum_payment'),
   status: text('status', { enum: ['Activo', 'Inactivo'] }).notNull().default('Activo'),
   currency: text('currency').notNull().default('MXN'),
   createdAt: text('created_at').notNull(),

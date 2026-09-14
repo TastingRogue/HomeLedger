@@ -48,6 +48,34 @@ export const createAccountSchema = z
       .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional(),
 
+    // ── P4.2 credit-card statement fields (credit-only; all optional) ──
+    statementDay: z
+      .number({ error: 'El día de corte debe ser un número' })
+      .int('El día de corte debe ser un número entero')
+      .min(1, 'El día de corte debe estar entre 1 y 31')
+      .max(31, 'El día de corte debe estar entre 1 y 31')
+      .optional(),
+
+    paymentDueDay: z
+      .number({ error: 'El día de pago debe ser un número' })
+      .int('El día de pago debe ser un número entero')
+      .min(1, 'El día de pago debe estar entre 1 y 31')
+      .max(31, 'El día de pago debe estar entre 1 y 31')
+      .optional(),
+
+    apr: z
+      .number({ error: 'La tasa (APR) debe ser un número' })
+      .min(0, 'La tasa (APR) no puede ser negativa')
+      .max(1000, 'La tasa (APR) no puede exceder 1000%')
+      .optional(),
+
+    minimumPayment: z
+      .number({ error: 'El pago mínimo debe ser un número' })
+      .min(0, 'El pago mínimo no puede ser negativo')
+      .max(999999999.99, 'El pago mínimo no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
+      .optional(),
+
     linkedSubscriptionIds: z
       .array(z.number().int().positive('Los IDs de suscripciones deben ser números positivos'))
       .optional(),
@@ -110,6 +138,38 @@ export const updateAccountSchema = z
       .number({ error: 'El límite de crédito debe ser un número' })
       .min(0.01, 'El límite de crédito debe ser al menos 0.01')
       .max(999999999.99, 'El límite de crédito no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
+      .optional()
+      .nullable(),
+
+    // ── P4.2 credit-card statement fields ──
+    statementDay: z
+      .number({ error: 'El día de corte debe ser un número' })
+      .int('El día de corte debe ser un número entero')
+      .min(1, 'El día de corte debe estar entre 1 y 31')
+      .max(31, 'El día de corte debe estar entre 1 y 31')
+      .optional()
+      .nullable(),
+
+    paymentDueDay: z
+      .number({ error: 'El día de pago debe ser un número' })
+      .int('El día de pago debe ser un número entero')
+      .min(1, 'El día de pago debe estar entre 1 y 31')
+      .max(31, 'El día de pago debe estar entre 1 y 31')
+      .optional()
+      .nullable(),
+
+    apr: z
+      .number({ error: 'La tasa (APR) debe ser un número' })
+      .min(0, 'La tasa (APR) no puede ser negativa')
+      .max(1000, 'La tasa (APR) no puede exceder 1000%')
+      .optional()
+      .nullable(),
+
+    minimumPayment: z
+      .number({ error: 'El pago mínimo debe ser un número' })
+      .min(0, 'El pago mínimo no puede ser negativo')
+      .max(999999999.99, 'El pago mínimo no puede exceder 999,999,999.99')
       .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
       .optional()
       .nullable(),

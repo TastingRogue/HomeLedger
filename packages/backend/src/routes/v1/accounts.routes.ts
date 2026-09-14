@@ -103,6 +103,35 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * GET /api/v1/accounts/:id/statement
+   * Credit-card statement summary (P4.2): owed, available credit, utilization,
+   * next statement/due dates, APR, minimum payment, plus the payment history
+   * (transfers INTO this credit account, newest first).
+   */
+  app.get('/:id/statement', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id)) {
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_PARAM', message: 'El ID de la cuenta debe ser un número válido' } });
+    }
+    // Ownership check (getById is user-scoped).
+    const account = await AccountService.getById(id, user.userId);
+    if (!account || account.userId !== user.userId) {
+      return reply.status(404).send({ success: false, error: { code: 'ACCOUNT_NOT_FOUND', message: 'Cuenta no encontrada' } });
+    }
+    try {
+      const statement = await AccountService.getCreditStatement(id);
+      const payments = AccountService.getCreditPayments(id, user.userId);
+      return reply.status(200).send({ success: true, data: { ...statement, payments } });
+    } catch (error) {
+      if (error instanceof AccountError) {
+        return handleAccountError(error, reply);
+      }
+      throw error;
+    }
+  });
+
+  /**
    * POST /api/v1/accounts
    * Create a new account with validation.
    */

@@ -375,6 +375,22 @@ export const es = {
   'accounts.no_category': 'Sin categoría',
   'accounts.credit_utilization': 'Utilización',
   'accounts.credit_limit_label': 'Límite de crédito',
+  // ── P4.2 credit-card statement modeling ──
+  'accounts.form_statement_day': 'Día de corte',
+  'accounts.statement_day_tooltip': 'Día del mes (1–31) en que cierra tu estado de cuenta.',
+  'accounts.form_payment_due_day': 'Día de pago',
+  'accounts.payment_due_day_tooltip': 'Día del mes (1–31) límite para pagar sin intereses.',
+  'accounts.form_apr': 'Tasa anual (APR)',
+  'accounts.apr_tooltip': 'Tasa de interés anual de la tarjeta, en porcentaje. Solo informativo.',
+  'accounts.form_minimum_payment': 'Pago mínimo',
+  'accounts.minimum_payment_tooltip': 'Pago mínimo del estado de cuenta actual (lo capturas tú).',
+  'accounts.amount_owed': 'Saldo utilizado',
+  'accounts.available_credit': 'Crédito disponible',
+  'accounts.next_statement': 'Próximo corte',
+  'accounts.next_due': 'Próximo pago',
+  'accounts.minimum_payment_label': 'Pago mínimo',
+  'accounts.apr_label': 'Tasa anual (APR)',
+  'accounts.payment_history': 'Historial de pagos',
 
   // Settings
   'settings.title': 'Configuración',
