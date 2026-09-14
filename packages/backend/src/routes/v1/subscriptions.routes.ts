@@ -186,4 +186,19 @@ export async function subscriptionRoutes(app: FastifyInstance): Promise<void> {
       data: calendar,
     });
   });
+
+  /**
+   * GET /api/v1/subscriptions/insights
+   * Subscription intelligence (P4.7): annual cost projection, last-12-months
+   * total, and price-increase detection. All computed from local data.
+   */
+  app.get('/insights', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const insights = SubscriptionService.getInsights(user.userId);
+
+    return reply.status(200).send({
+      success: true,
+      data: insights,
+    });
+  });
 }

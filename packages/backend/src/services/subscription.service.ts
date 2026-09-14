@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gte } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { subscriptions, transactions, accounts, categories } from '../db/schema.js';
 import { SubscriptionCycle, TransactionType } from '@homeledger/shared';
@@ -32,6 +32,38 @@ export interface SubscriptionCalendarEntry {
   nextPaymentDate: string;
   daysRemaining: number;
   autoCharge: boolean;
+}
+
+/** A detected change in the recurring charge amount (P4.7). */
+export interface PriceChange {
+  from: number;
+  to: number;
+  /** ISO date of the charge at the new amount. */
+  date: string;
+}
+
+/** Per-subscription intelligence (P4.7). */
+export interface SubscriptionInsight {
+  id: number;
+  name: string;
+  cycle: string;
+  amount: number;
+  /** Projected yearly cost at the current amount (weekly×52, monthly×12). */
+  annualCost: number;
+  /** Actual spend on matching charges in the last 12 months. */
+  last12MonthsTotal: number;
+  /** How many matching charges were found in the last 12 months. */
+  chargeCount: number;
+  /** Detected amount changes over the charge history (oldest→newest). */
+  priceChanges: PriceChange[];
+}
+
+export interface SubscriptionInsightsResult {
+  subscriptions: SubscriptionInsight[];
+  totalAnnualProjected: number;
+  totalLast12Months: number;
+  /** Number of subscriptions whose latest amount is higher than a prior one. */
+  increasesDetected: number;
 }
 
 // ============================================
@@ -453,6 +485,92 @@ export class SubscriptionService {
     entries.sort((a, b) => a.daysRemaining - b.daysRemaining);
 
     return entries;
+  }
+
+  /**
+   * Subscription intelligence (P4.7), computed entirely from local data:
+   *  - annualCost: the current amount annualized (weekly×52, monthly×12);
+   *  - last12MonthsTotal: the sum of matching charges in the last 12 months
+   *    (matched by name + accountId + type=Gasto — the shape auto-charge writes);
+   *  - priceChanges: distinct consecutive charge amounts over the history (plus
+   *    the subscription's current amount if it differs from the latest charge),
+   *    surfacing "Netflix went from $269 to $299".
+   */
+  static getInsights(userId: number): SubscriptionInsightsResult {
+    const db = getDb();
+
+    const subs = db
+      .select()
+      .from(subscriptions)
+      .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, 'Activa')))
+      .all();
+
+    // 12-month window (inclusive) as an ISO date lower bound.
+    const from = new Date();
+    from.setFullYear(from.getFullYear() - 1);
+    const fromIso = from.toISOString();
+
+    const round = (n: number) => Math.round(n * 100) / 100;
+
+    const insights: SubscriptionInsight[] = [];
+    let totalAnnualProjected = 0;
+    let totalLast12Months = 0;
+    let increasesDetected = 0;
+
+    for (const sub of subs) {
+      const annualCost = round(sub.amount * (sub.cycle === SubscriptionCycle.Semanal ? 52 : 12));
+
+      // Matching charges in the last 12 months (oldest→newest by date).
+      const charges = db
+        .select({ amount: transactions.amount, date: transactions.date })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            eq(transactions.accountId, sub.accountId),
+            eq(transactions.name, sub.name),
+            eq(transactions.type, TransactionType.Gasto),
+            gte(transactions.date, fromIso),
+          ),
+        )
+        .all()
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const last12MonthsTotal = round(charges.reduce((s, c) => s + c.amount, 0));
+
+      // Detect price changes: walk the ordered charges, record when the amount
+      // changes from the previous one. Append the current subscription amount as
+      // the "latest" if it differs from the last charge (an upcoming change).
+      const priceChanges: PriceChange[] = [];
+      const amounts: { amount: number; date: string }[] = charges.map((c) => ({ amount: round(c.amount), date: c.date }));
+      if (amounts.length === 0 || amounts[amounts.length - 1]!.amount !== round(sub.amount)) {
+        amounts.push({ amount: round(sub.amount), date: sub.nextPaymentDate ?? new Date().toISOString() });
+      }
+      for (let i = 1; i < amounts.length; i++) {
+        const prev = amounts[i - 1]!;
+        const cur = amounts[i]!;
+        if (cur.amount !== prev.amount) {
+          priceChanges.push({ from: prev.amount, to: cur.amount, date: cur.date });
+        }
+      }
+      if (priceChanges.some((p) => p.to > p.from)) increasesDetected++;
+
+      insights.push({
+        id: sub.id,
+        name: sub.name,
+        cycle: sub.cycle,
+        amount: round(sub.amount),
+        annualCost,
+        last12MonthsTotal,
+        chargeCount: charges.length,
+        priceChanges,
+      });
+
+      totalAnnualProjected = round(totalAnnualProjected + annualCost);
+      totalLast12Months = round(totalLast12Months + last12MonthsTotal);
+    }
+
+    return { subscriptions: insights, totalAnnualProjected, totalLast12Months, increasesDetected };
   }
 
   /**

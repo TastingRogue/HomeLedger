@@ -3,16 +3,48 @@
   import {
     getNetWorth, createAsset, updateAsset, deleteAsset,
     createLiability, updateLiability, deleteLiability,
-    type NetWorthSummary, type Asset, type Liability
+    getNetWorthHistory,
+    type NetWorthSummary, type Asset, type Liability,
+    type NetWorthSnapshot, type NetWorthRange
   } from '$lib/api/networth';
   import { ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
+  import { formatCurrency, formatDateShort } from '$lib/utils/format';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
 
   let data = $state<NetWorthSummary | null>(null);
   let loading = $state(true);
   let error = $state('');
+
+  // P4.8: net-worth history chart
+  const RANGES: NetWorthRange[] = ['1m', '6m', '1y', '5y', 'all'];
+  let historyRange = $state<NetWorthRange>('1y');
+  let history = $state<NetWorthSnapshot[]>([]);
+  let historyLoading = $state(false);
+
+  async function loadHistory() {
+    historyLoading = true;
+    try { history = await getNetWorthHistory(historyRange); }
+    catch { history = []; }
+    finally { historyLoading = false; }
+  }
+  function setRange(r: NetWorthRange) { historyRange = r; void loadHistory(); }
+
+  // Build an SVG polyline for the net-worth history (0..100 viewBox).
+  const chart = $derived.by(() => {
+    if (history.length < 2) return null;
+    const values = history.map((s) => s.netWorth);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min || 1;
+    const n = history.length;
+    const points = history.map((s, i) => {
+      const x = (i / (n - 1)) * 100;
+      const y = 100 - ((s.netWorth - min) / span) * 100;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+    return { points, min, max, first: values[0]!, last: values[n - 1]! };
+  });
 
   // Modal state (shared for asset/liability create/edit)
   let showModal = $state(false);
@@ -24,7 +56,7 @@
 
   const isEditing = $derived(editingId !== null);
 
-  onMount(load);
+  onMount(() => { void load(); void loadHistory(); });
   async function load() {
     loading = true; error = '';
     try { data = await getNetWorth(); }
@@ -121,6 +153,33 @@
         <span class="sc-value" class:positive={data.netWorth >= 0} class:negative={data.netWorth < 0}>{formatCurrency(data.netWorth)}</span>
       </div>
     </div>
+
+    <!-- Net-worth history chart (P4.8) -->
+    <section class="history-card">
+      <div class="history-head">
+        <h2>{$t('networth.history_title')}</h2>
+        <div class="range-tabs" role="group" aria-label={$t('networth.history_title')}>
+          {#each RANGES as r}
+            <button class="range-btn" class:active={historyRange === r} onclick={() => setRange(r)}>{$t(`networth.range_${r}`)}</button>
+          {/each}
+        </div>
+      </div>
+      {#if historyLoading}
+        <p class="history-empty">{$t('networth.loading')}</p>
+      {:else if chart}
+        <svg class="nw-chart" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={$t('networth.history_title')}>
+          <polyline points={chart.points} fill="none" stroke="var(--accent-purple)" stroke-width="1.2" vector-effect="non-scaling-stroke" />
+        </svg>
+        <div class="history-legend">
+          <span>{formatDateShort(history[0]!.date)}: {formatCurrency(chart.first)}</span>
+          <span class:positive={chart.last >= chart.first} class:negative={chart.last < chart.first}>
+            {formatDateShort(history[history.length - 1]!.date)}: {formatCurrency(chart.last)}
+          </span>
+        </div>
+      {:else}
+        <p class="history-empty">{$t('networth.history_empty')}</p>
+      {/if}
+    </section>
 
     <div class="lists">
       <!-- Assets -->
@@ -225,6 +284,19 @@
   .loading { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 3rem; color: var(--text-muted); font-size: 0.8rem; }
   .spinner { width: 18px; height: 18px; border: 2px solid var(--border-default); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Net-worth history chart (P4.8) */
+  .history-card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .history-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .history-head h2 { font-size: 0.9rem; color: var(--text-primary); margin: 0; }
+  .range-tabs { display: flex; gap: 0.25rem; }
+  .range-btn { padding: 0.25rem 0.55rem; font-size: 0.68rem; border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; }
+  .range-btn.active { border-color: var(--accent-purple); color: var(--accent-purple); background: rgba(139, 92, 246, 0.08); }
+  .nw-chart { width: 100%; height: 120px; display: block; }
+  .history-legend { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-top: 0.4rem; }
+  .history-legend .positive { color: var(--accent-green); }
+  .history-legend .negative { color: var(--accent-red); }
+  .history-empty { font-size: 0.75rem; color: var(--text-muted); padding: 1.5rem 0; text-align: center; }
 
   .summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
   .summary-card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; }

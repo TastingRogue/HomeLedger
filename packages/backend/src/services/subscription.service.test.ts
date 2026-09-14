@@ -699,4 +699,68 @@ describe('SubscriptionService', () => {
       expect(found).toBeNull();
     });
   });
+
+  // ── P4.7: subscription intelligence ──
+  describe('getInsights()', () => {
+    /** Insert a matching charge (same name+accountId, expense) at a given date. */
+    function charge(name: string, amount: number, date: string) {
+      const db = getDb();
+      const now = new Date().toISOString();
+      db.insert(transactions).values({
+        userId, accountId, categoryId, name, amount, type: 'Gasto', date,
+        createdAt: now, updatedAt: now,
+      }).run();
+    }
+    function isoMonthsAgo(n: number): string {
+      const d = new Date(); d.setMonth(d.getMonth() - n); return d.toISOString();
+    }
+
+    it('annualizes weekly ×52 and monthly ×12', () => {
+      SubscriptionService.create(userId, { name: 'Netflix', startDate: getFutureDateStr(5), amount: 299, cycle: SubscriptionCycle.Mensual, categoryId, accountId, autoCharge: false });
+      SubscriptionService.create(userId, { name: 'Semanal Svc', startDate: getFutureDateStr(3), amount: 100, cycle: SubscriptionCycle.Semanal, categoryId, accountId, autoCharge: false });
+
+      const res = SubscriptionService.getInsights(userId);
+      const netflix = res.subscriptions.find(s => s.name === 'Netflix')!;
+      const weekly = res.subscriptions.find(s => s.name === 'Semanal Svc')!;
+      expect(netflix.annualCost).toBe(299 * 12);
+      expect(weekly.annualCost).toBe(100 * 52);
+      expect(res.totalAnnualProjected).toBe(299 * 12 + 100 * 52);
+    });
+
+    it('sums matching charges in the last 12 months', () => {
+      SubscriptionService.create(userId, { name: 'Spotify', startDate: getFutureDateStr(5), amount: 129, cycle: SubscriptionCycle.Mensual, categoryId, accountId, autoCharge: false });
+      charge('Spotify', 129, isoMonthsAgo(1));
+      charge('Spotify', 129, isoMonthsAgo(2));
+      charge('Spotify', 129, isoMonthsAgo(13)); // outside the window → excluded
+
+      const res = SubscriptionService.getInsights(userId);
+      const spotify = res.subscriptions.find(s => s.name === 'Spotify')!;
+      expect(spotify.chargeCount).toBe(2);
+      expect(spotify.last12MonthsTotal).toBe(258);
+    });
+
+    it('detects a price increase across charge history', () => {
+      SubscriptionService.create(userId, { name: 'Disney', startDate: getFutureDateStr(5), amount: 299, cycle: SubscriptionCycle.Mensual, categoryId, accountId, autoCharge: false });
+      charge('Disney', 269, isoMonthsAgo(3));
+      charge('Disney', 269, isoMonthsAgo(2));
+      charge('Disney', 299, isoMonthsAgo(1));
+
+      const res = SubscriptionService.getInsights(userId);
+      const disney = res.subscriptions.find(s => s.name === 'Disney')!;
+      expect(disney.priceChanges.length).toBeGreaterThanOrEqual(1);
+      const inc = disney.priceChanges.find(p => p.from === 269 && p.to === 299);
+      expect(inc).toBeDefined();
+      expect(res.increasesDetected).toBe(1);
+    });
+
+    it('reports no price change when the amount is stable', () => {
+      SubscriptionService.create(userId, { name: 'HBO', startDate: getFutureDateStr(5), amount: 149, cycle: SubscriptionCycle.Mensual, categoryId, accountId, autoCharge: false });
+      charge('HBO', 149, isoMonthsAgo(2));
+      charge('HBO', 149, isoMonthsAgo(1));
+
+      const res = SubscriptionService.getInsights(userId);
+      const hbo = res.subscriptions.find(s => s.name === 'HBO')!;
+      expect(hbo.priceChanges).toHaveLength(0);
+    });
+  });
 });

@@ -6,12 +6,14 @@
     updateGoal,
     fundGoal,
     withdrawGoal,
+    getGoalForecast,
     type GoalData,
     type GoalType,
     type CreateGoalPayload,
+    type GoalForecast,
   } from '$lib/api/goals';
   import { ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
+  import { formatCurrency, formatDateShort } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
@@ -20,6 +22,9 @@
   let goals: GoalData[] = $state([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+
+  // P4.8: goal completion forecasts, keyed by goal id.
+  let forecasts = $state<Record<number, GoalForecast>>({});
 
   // Form state (create/edit)
   let showForm = $state(false);
@@ -69,6 +74,14 @@
     error = null;
     try {
       goals = await listGoals();
+      // P4.8: fetch a completion forecast for each active goal (best-effort).
+      const active = goals.filter((g) => g.status !== 'Completada');
+      const results = await Promise.all(
+        active.map((g) => getGoalForecast(g.id).then((f) => [g.id, f] as const).catch(() => null)),
+      );
+      const map: Record<number, GoalForecast> = {};
+      for (const r of results) if (r) map[r[0]] = r[1];
+      forecasts = map;
     } catch (e: unknown) {
       error = e instanceof ApiError ? e.message : $t('goals.error_loading');
     } finally {
@@ -289,6 +302,22 @@
               <span class="goal-deadline">· {new Date(goal.deadline).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })}</span>
             {/if}
           </div>
+          {#if !isCompleted && forecasts[goal.id]}
+            {@const f = forecasts[goal.id]}
+            <div class="goal-forecast">
+              {#if f.estimatedDate}
+                <span class="fc-eta">🎯 {$t('goals.forecast_eta', { date: formatDateShort(f.estimatedDate) })}</span>
+                {#if f.onTrackForDeadline === true}
+                  <span class="fc-badge fc-ok">{$t('goals.forecast_on_track')}</span>
+                {:else if f.onTrackForDeadline === false}
+                  <span class="fc-badge fc-late">{$t('goals.forecast_behind')}</span>
+                {/if}
+                {#if f.estimated}<span class="fc-hint">{$t('goals.forecast_estimated', { amount: formatCurrency(f.monthlyContribution) })}</span>{/if}
+              {:else}
+                <span class="fc-hint">{$t('goals.forecast_no_rate')}</span>
+              {/if}
+            </div>
+          {/if}
           <div class="goal-actions">
             {#if !isCompleted}
               <button class="btn btn-sm btn-success" onclick={() => openFundModal(goal)}>{$t('goals.fund_btn')}</button>
@@ -483,6 +512,14 @@
   .amount-sep { color: var(--text-muted); }
   .amount-target { color: var(--text-secondary); }
   .goal-deadline { color: var(--text-muted); font-size: 0.72rem; }
+
+  /* Goal forecast (P4.8) */
+  .goal-forecast { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; grid-column: 1; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem; }
+  .fc-eta { font-weight: 600; color: var(--text-primary); }
+  .fc-badge { padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.6rem; font-weight: 600; }
+  .fc-ok { background: rgba(34, 197, 94, 0.12); color: var(--accent-green); }
+  .fc-late { background: rgba(245, 158, 11, 0.12); color: var(--accent-orange); }
+  .fc-hint { color: var(--text-muted); }
 
   .goal-actions { display: flex; gap: 0.3rem; grid-column: 2; grid-row: 2 / 4; align-self: center; }
 

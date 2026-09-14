@@ -89,3 +89,34 @@ export function getSubscriptionCalendar(): Promise<SubscriptionCalendarEntry[]> 
 export function deleteSubscription(id: number): Promise<{ message: string }> {
   return apiDelete<{ message: string }>(`/subscriptions/${id}`);
 }
+
+// ─── Intelligence (P4.7) ───
+
+export interface PriceChange {
+  from: number;
+  to: number;
+  date: string;
+}
+
+export interface SubscriptionInsight {
+  id: number;
+  name: string;
+  cycle: string;
+  amount: number;
+  annualCost: number;
+  last12MonthsTotal: number;
+  chargeCount: number;
+  priceChanges: PriceChange[];
+}
+
+export interface SubscriptionInsightsResult {
+  subscriptions: SubscriptionInsight[];
+  totalAnnualProjected: number;
+  totalLast12Months: number;
+  increasesDetected: number;
+}
+
+/** Subscription intelligence: annual projection, last-12mo total, price changes. */
+export function getSubscriptionInsights(): Promise<SubscriptionInsightsResult> {
+  return apiGet<SubscriptionInsightsResult>('/subscriptions/insights');
+}

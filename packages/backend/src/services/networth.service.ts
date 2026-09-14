@@ -140,6 +140,25 @@ export class NetWorthService {
    * Obtiene el historial de patrimonio neto del usuario dentro de un rango de fechas.
    * Consulta la tabla networthSnapshots ordenada por fecha ascendente.
    */
+  /**
+   * P4.8: resolve a named history range (1m / 6m / 1y / 5y / all) into a
+   * `{ startDate, endDate }` window (YYYY-MM-DD). `all` starts at the epoch.
+   * `endDate` is today. Unknown names fall back to `1y`.
+   */
+  static resolveRange(range: string): DateRange {
+    const end = new Date();
+    const start = new Date();
+    switch (range) {
+      case '1m': start.setMonth(start.getMonth() - 1); break;
+      case '6m': start.setMonth(start.getMonth() - 6); break;
+      case '5y': start.setFullYear(start.getFullYear() - 5); break;
+      case 'all': return { startDate: '1970-01-01', endDate: end.toISOString().slice(0, 10) };
+      case '1y':
+      default: start.setFullYear(start.getFullYear() - 1); break;
+    }
+    return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+  }
+
   static getHistory(userId: number, range: DateRange) {
     const db = getDb();
 

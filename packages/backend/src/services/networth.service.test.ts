@@ -498,4 +498,55 @@ describe('NetWorthService', () => {
       expect(snapshot.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
+
+  // ── P4.8: named history ranges ──
+  describe('resolveRange()', () => {
+    function monthsBetween(startIso: string, endIso: string): number {
+      const s = new Date(startIso); const e = new Date(endIso);
+      return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+    }
+
+    it('endDate is today for every named range', () => {
+      const today = new Date().toISOString().slice(0, 10);
+      for (const r of ['1m', '6m', '1y', '5y', 'all']) {
+        expect(NetWorthService.resolveRange(r).endDate).toBe(today);
+      }
+    });
+
+    function daysBetween(startIso: string, endIso: string): number {
+      return Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Day-based tolerances (robust to month-end setMonth clamping regardless of
+    // the date the test runs on).
+    it('1m ≈ 28-31 days back', () => {
+      const r = NetWorthService.resolveRange('1m');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(28);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(31);
+    });
+    it('6m ≈ 181-184 days back', () => {
+      const r = NetWorthService.resolveRange('6m');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(178);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(185);
+    });
+    it('1y ≈ 365-366 days back', () => {
+      const r = NetWorthService.resolveRange('1y');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(365);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(366);
+    });
+    it('5y ≈ 5 years back', () => {
+      const r = NetWorthService.resolveRange('5y');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(1825);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(1827);
+    });
+
+    it('all starts at the epoch', () => {
+      expect(NetWorthService.resolveRange('all').startDate).toBe('1970-01-01');
+    });
+
+    it('unknown range falls back to 1y', () => {
+      const r = NetWorthService.resolveRange('bogus');
+      expect(monthsBetween(r.startDate, r.endDate)).toBe(12);
+    });
+  });
 });

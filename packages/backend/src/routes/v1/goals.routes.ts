@@ -116,6 +116,41 @@ export async function goalRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * GET /api/v1/goals/:id/forecast?monthly=
+   * Goal completion forecast (P4.8): estimated date + on-track vs deadline.
+   */
+  app.get('/:id/forecast', async (request: FastifyRequest<{ Params: { id: string }; Querystring: { monthly?: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+
+    if (isNaN(id)) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'INVALID_PARAM', message: 'El ID de la meta debe ser un número válido' },
+      });
+    }
+
+    const rawMonthly = request.query.monthly;
+    const monthly = rawMonthly != null && rawMonthly !== '' ? Number(rawMonthly) : undefined;
+    if (monthly !== undefined && !Number.isFinite(monthly)) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'INVALID_PARAM', message: 'monthly debe ser un número válido' },
+      });
+    }
+
+    try {
+      const forecast = GoalService.forecast(id, user.userId, monthly);
+      return reply.status(200).send({ success: true, data: forecast });
+    } catch (error) {
+      if (error instanceof GoalError) {
+        return handleGoalError(error, reply);
+      }
+      throw error;
+    }
+  });
+
+  /**
    * POST /api/v1/goals/:id/fund
    * Assign funds to a savings goal.
    * The effective amount is capped at (targetAmount - savedAmount).

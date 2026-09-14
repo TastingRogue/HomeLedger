@@ -17,6 +17,28 @@ export class GoalError extends Error {
   }
 }
 
+/** Goal completion forecast (P4.8). All amounts are money-rounded. */
+export interface GoalForecast {
+  goalId: number;
+  targetAmount: number;
+  savedAmount: number;
+  remaining: number;
+  /** Monthly contribution used: the caller-provided value, else the estimate. */
+  monthlyContribution: number;
+  /** true when monthlyContribution was estimated from history (not provided). */
+  estimated: boolean;
+  /** Months left at this rate (null if already complete or rate is 0). */
+  monthsToComplete: number | null;
+  /** ISO date (YYYY-MM-DD) of the projected completion (null if never / done). */
+  estimatedDate: string | null;
+  /** The goal's deadline, if any. */
+  deadline: string | null;
+  /** vs the deadline: true on/before, false after, null when no deadline/rate. */
+  onTrackForDeadline: boolean | null;
+  /** true when savedAmount already meets the target. */
+  alreadyComplete: boolean;
+}
+
 /**
  * Mapeo entre valores del enum GoalType (shared) y valores de la base de datos.
  */
@@ -317,6 +339,84 @@ export class GoalService {
       ...result,
       type: GOAL_TYPE_FROM_DB[result.type] ?? result.type,
       progress: GoalService.calculateProgress(result.savedAmount, result.targetAmount),
+    };
+  }
+
+  /**
+   * Goal completion forecast (P4.8): estimates when a goal will be reached.
+   *
+   * The monthly contribution is either the caller-provided value or, when
+   * omitted, the observed average = savedAmount / (months since the goal was
+   * created, floored at 1). From `remaining / monthly` we derive the number of
+   * months left, the projected completion date, and — if the goal has a
+   * deadline — whether it's on track.
+   *
+   * @throws GoalError GOAL_NOT_FOUND when the goal doesn't exist for the user.
+   */
+  static forecast(id: number, userId: number, monthlyContribution?: number): GoalForecast {
+    const db = getDb();
+
+    const goal = db
+      .select()
+      .from(goals)
+      .where(and(eq(goals.id, id), eq(goals.userId, userId)))
+      .get();
+
+    if (!goal) {
+      throw new GoalError('La meta no existe o no pertenece al usuario', 'GOAL_NOT_FOUND');
+    }
+
+    const targetAmount = roundMoney(goal.targetAmount);
+    const savedAmount = roundMoney(goal.savedAmount);
+    const remaining = roundMoney(Math.max(0, targetAmount - savedAmount));
+    const alreadyComplete = remaining <= 0;
+
+    // Resolve the monthly contribution: provided (positive) wins; else estimate.
+    let monthly: number;
+    let estimated: boolean;
+    if (monthlyContribution != null && monthlyContribution > 0) {
+      monthly = roundMoney(monthlyContribution);
+      estimated = false;
+    } else {
+      const created = new Date(goal.createdAt);
+      const monthsSinceCreated = Math.max(
+        1,
+        (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24 * 30.4375),
+      );
+      monthly = roundMoney(savedAmount / monthsSinceCreated);
+      estimated = true;
+    }
+
+    let monthsToComplete: number | null = null;
+    let estimatedDate: string | null = null;
+    let onTrackForDeadline: boolean | null = null;
+
+    if (alreadyComplete) {
+      monthsToComplete = 0;
+      estimatedDate = new Date().toISOString().slice(0, 10);
+    } else if (monthly > 0) {
+      monthsToComplete = Math.ceil(remaining / monthly);
+      const d = new Date();
+      d.setMonth(d.getMonth() + monthsToComplete);
+      estimatedDate = d.toISOString().slice(0, 10);
+    }
+
+    if (goal.deadline && estimatedDate) {
+      onTrackForDeadline = estimatedDate <= goal.deadline.slice(0, 10);
+    }
+
+    return {
+      goalId: goal.id,
+      targetAmount,
+      savedAmount,
+      remaining,
+      monthlyContribution: monthly,
+      estimated,
+      monthsToComplete,
+      estimatedDate,
+      deadline: goal.deadline ?? null,
+      onTrackForDeadline,
+      alreadyComplete,
     };
   }
 }

@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **603 passing, 0 failing** ✅ (553 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **620 passing, 0 failing** ✅ (570 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -612,14 +612,16 @@ OCR already parses some CFDI XML 🟡. Make it a first-class local flow.
 ### P4.7 — Subscription intelligence
 Subscriptions + auto-charge exist. Add insight (all computed locally).
 
-- [ ] Annual cost projection + last-12-months total
-- [ ] Price-increase detection ("Netflix went from $269 to $299")
+✅ **Done** (on `p4-feature-depth`, no migration — all computed locally).
+- [x] Annual cost projection + last-12-months total ✅ — `SubscriptionService.getInsights` annualizes each active subscription (weekly ×52, monthly ×12) and sums the **actual** matching charges over the last 12 months (matched by name + account + expense — the shape auto-charge writes). New `GET /subscriptions/insights` + summary cards on the subscriptions page (annual projection, last-12-months spend) and a per-row **Annual** column
+- [x] Price-increase detection ✅ — the same endpoint walks each subscription's charge history (oldest→newest, plus the current amount) and reports `priceChanges` (`from → to`, with the date); the UI shows a "↑ $269 → $299" badge on the subscription and an "increases detected" card. All offline, no network. **P4.7 complete.**
 
 ### P4.8 — Forecasting & net-worth history
 Net worth + goals exist. Add projection + history (from local data).
 
-- [ ] Goal completion forecast (target, current, monthly contribution → estimated date)
-- [ ] Net-worth history chart (1m / 6m / 1y / 5y / all) from `networth_snapshots`
+✅ **Done** (on `p4-feature-depth`, no migration — from local data).
+- [x] Goal completion forecast ✅ — `GoalService.forecast` + `GET /goals/:id/forecast?monthly=`: uses a caller-supplied monthly contribution or, when omitted, **estimates** it from `savedAmount ÷ months-since-created`; returns `remaining`, `monthsToComplete`, the projected `estimatedDate`, and `onTrackForDeadline` (vs the goal's deadline). Each active goal card now shows a 🎯 estimated-completion date with an on-track / behind badge
+- [x] Net-worth history chart (1m / 6m / 1y / 5y / all) ✅ — `NetWorthService.resolveRange` maps a named range to a `{startDate,endDate}` window (server-side; `all` → epoch) and the existing `GET /networth/history` now accepts `?range=` (explicit start/end still work). The net-worth page renders an SVG line chart of `networth_snapshots` with a 1M/6M/1Y/5Y/All range selector + first/last legend. **P4.8 complete.**
 
 ### P4.9 — Global search
 - [ ] Cross-entity search (transactions, receipts, subscriptions) with filters (date, account, category, merchant, amount, tag, type)
