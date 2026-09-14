@@ -1,5 +1,6 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
+import { pathToFileURL } from 'node:url';
 import { initializeDatabase, closeDatabase, getSqlite } from './db/connection.js';
 import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
@@ -180,4 +181,20 @@ async function start(): Promise<void> {
   }
 }
 
-start();
+// Only boot the server when this module is run as the entrypoint (prod:
+// `node dist/server.js`, dev: `tsx src/server.ts`). Importing `buildApp` from
+// tests must NOT trigger a full boot (migrate + seed + listen + process.exit on
+// error) — that caused a shared-DB migration race across test suites.
+const isEntrypoint = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isEntrypoint) {
+  start();
+}

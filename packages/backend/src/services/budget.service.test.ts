@@ -173,14 +173,15 @@ describe('BudgetService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-budget/homeledger.db');
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-    const walPath = dbPath + '-wal';
-    if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
-    const shmPath = dbPath + '-shm';
-    if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
-    const dir = path.resolve('./data/test-budget');
-    if (fs.existsSync(dir)) fs.rmdirSync(dir);
+    // Best-effort cleanup. On Windows the DB file can stay briefly locked after
+    // closeDatabase() (or be reopened by another suite sharing the connection
+    // singleton), so a hard unlink/rmdir would throw EBUSY/ENOTEMPTY and fail the
+    // suite over harmless leftover temp files. rmSync recursive+force + try/catch
+    // makes teardown robust without masking real test failures.
+    try {
+      const dir = path.resolve('./data/test-budget');
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch { /* leftover temp DB files are harmless */ }
   });
 
   describe('create()', () => {
@@ -280,7 +281,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Test',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -348,7 +349,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Summary',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -435,7 +436,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Rollover',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -526,7 +527,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Alertas',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -582,7 +583,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Excedida',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -638,7 +639,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Baja',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -689,7 +690,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Dedup',
-          type: 'Débito',
+          type: 'Dï¿½bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
