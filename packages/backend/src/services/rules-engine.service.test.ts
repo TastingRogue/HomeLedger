@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { RulesEngineService, RulesEngineError } from './rules-engine.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -44,6 +44,7 @@ describe('RulesEngineService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

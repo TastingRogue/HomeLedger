@@ -56,6 +56,7 @@ describe('BudgetService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

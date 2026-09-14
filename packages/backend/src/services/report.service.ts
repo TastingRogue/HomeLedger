@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
-import { transactions, categories, loans } from '../db/schema.js';
+import { transactions, categories, loans, accounts } from '../db/schema.js';
 import { AccountService } from './account.service.js';
 import { SubscriptionService } from './subscription.service.js';
 import { GoalService } from './goal.service.js';
@@ -179,9 +179,10 @@ export class ReportService {
 
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      consolidatedBalance = roundMoney(consolidatedBalance + balance);
+      // P4.11: convert each account's native balance to base before consolidating.
+      consolidatedBalance = roundMoney(consolidatedBalance + balance * (account.exchangeRate ?? 1));
 
-      // Determine health status based on balanceLimit
+      // Determine health status based on balanceLimit (native — same currency as balance).
       let status: 'correcto' | 'bajo' | 'sin_limite' = 'sin_limite';
       if (account.balanceLimit !== null && account.balanceLimit !== undefined) {
         status = balance >= account.balanceLimit ? 'correcto' : 'bajo';
@@ -205,9 +206,11 @@ export class ReportService {
 
     const db = getDb();
 
+    // P4.11: convert to base by joining accounts and weighting by exchange_rate.
     const incomeResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, userId),
@@ -219,8 +222,9 @@ export class ReportService {
       .get();
 
     const expenseResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, userId),
@@ -231,8 +235,8 @@ export class ReportService {
       )
       .get();
 
-    const totalIncome = incomeResult?.total ?? 0;
-    const totalExpenses = expenseResult?.total ?? 0;
+    const totalIncome = roundMoney(incomeResult?.total ?? 0);
+    const totalExpenses = roundMoney(expenseResult?.total ?? 0);
 
     // 3. Category breakdown for the current month
     const categoryBreakdown = await CategoryService.getAnalysis(userId, {
@@ -291,9 +295,10 @@ export class ReportService {
       .select({
         period: sql<string>`strftime('%Y-%m', ${transactions.date})`,
         type: transactions.type,
-        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)`,
       })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, userId),
@@ -360,9 +365,10 @@ export class ReportService {
       .select({
         month: sql<string>`strftime('%Y-%m', ${transactions.date})`,
         type: transactions.type,
-        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)`,
       })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, userId),
@@ -514,7 +520,8 @@ export class ReportService {
     for (const acc of activeAccounts) {
       if (acc.type !== 'Crédito') continue;
       const balance = await AccountService.calculateBalance(acc.id);
-      const owed = roundMoney(Math.max(0, -balance)); // negative balance = debt
+      // P4.11: convert the owed amount to base currency for the total.
+      const owed = roundMoney(Math.max(0, -balance) * (acc.exchangeRate ?? 1));
       if (owed <= 0) continue;
       items.push({ id: acc.id, name: acc.name, kind: 'credit', owed, apr: acc.apr ?? null });
     }
@@ -548,11 +555,15 @@ export class ReportService {
     for (const acc of activeAccounts) {
       if (acc.type !== 'Crédito' || acc.creditLimit == null || acc.creditLimit <= 0) continue;
       const balance = await AccountService.calculateBalance(acc.id);
+      // Per-card owed/limit/utilization stay NATIVE (utilization is a unitless ratio).
       const owed = roundMoney(Math.max(0, -balance));
       const utilization = Math.round((owed / acc.creditLimit) * 10000) / 100;
       cards.push({ id: acc.id, name: acc.name, limit: roundMoney(acc.creditLimit), owed, utilization });
-      totalOwed = roundMoney(totalOwed + owed);
-      totalLimit = roundMoney(totalLimit + acc.creditLimit);
+      // P4.11: the OVERALL utilization aggregates across cards, so convert both
+      // legs to base before summing (mixed-currency cards would otherwise mix units).
+      const rate = acc.exchangeRate ?? 1;
+      totalOwed = roundMoney(totalOwed + owed * rate);
+      totalLimit = roundMoney(totalLimit + acc.creditLimit * rate);
     }
 
     cards.sort((a, b) => b.utilization - a.utilization);
@@ -575,10 +586,11 @@ export class ReportService {
     const rows = db
       .select({
         merchant: sql<string>`COALESCE(NULLIF(TRIM(${transactions.merchant}), ''), ${transactions.name})`,
-        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)`,
         count: sql<number>`COUNT(*)`,
       })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, userId),

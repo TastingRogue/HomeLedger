@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { NetWorthService, NetWorthError } from './networth.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, transfers, assets, liabilities, networthSnapshots } from '../db/schema.js';
@@ -40,6 +40,7 @@ describe('NetWorthService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -74,6 +75,7 @@ describe('NetWorthService', () => {
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         source_account_id INTEGER NOT NULL REFERENCES accounts(id),
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id),
         date TEXT NOT NULL,

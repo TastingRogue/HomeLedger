@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq, and } from 'drizzle-orm';
 import { ImportService, ImportError } from './import.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -45,6 +45,7 @@ describe('ImportService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

@@ -333,6 +333,11 @@ export const es = {
   'transfers.must_differ': 'Deben ser diferentes',
   'transfers.insufficient_funds': 'Fondos insuficientes',
   'transfers.invalid_amount': 'Monto inválido',
+  // P4.11 cross-currency transfers
+  'transfers.form_dest_amount': 'Monto recibido ({currency}) *',
+  'transfers.dest_amount_placeholder': 'Monto que llega a la cuenta destino',
+  'transfers.cross_currency_hint': 'Las cuentas usan monedas distintas ({from} → {to}). Indica cuánto llega a la cuenta destino.',
+  'transfers.invalid_dest_amount': 'Indica el monto recibido en la cuenta destino',
   'transfers.edit_tooltip': 'Editar transferencia',
   'transfers.delete_tooltip': 'Eliminar transferencia',
 
@@ -374,6 +379,16 @@ export const es = {
   'accounts.balance_numeric': 'Debe ser un valor numérico',
   'accounts.credit_required': 'El límite de crédito es obligatorio para cuentas de Crédito',
   'accounts.credit_positive': 'Debe ser un valor numérico mayor a 0',
+  // P4.11 multi-currency
+  'accounts.form_currency': 'Moneda',
+  'accounts.currency_base': 'base',
+  'accounts.currency_tooltip': 'Moneda de la cuenta. Si es distinta a la del sistema, se pedirá el tipo de cambio.',
+  'accounts.form_exchange_rate': 'Tipo de cambio ({currency} → {base})',
+  'accounts.form_exchange_rate_label': 'Tipo de cambio',
+  'accounts.form_exchange_rate_placeholder': 'Ej: 17.50',
+  'accounts.exchange_rate_tooltip': 'Cuántas unidades de la moneda del sistema equivale 1 unidad de esta cuenta. Se usa para convertir totales.',
+  'accounts.rate_required': 'El tipo de cambio es obligatorio para cuentas en otra moneda',
+  'accounts.rate_positive': 'El tipo de cambio debe ser mayor a 0',
   'accounts.edit_tooltip': 'Editar nombre, banco y límites',
   'accounts.deactivate_tooltip': 'Ocultar esta cuenta sin eliminar datos',
   'accounts.create_tooltip': 'Crear una nueva cuenta bancaria, de efectivo o crédito',

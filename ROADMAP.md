@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **633 passing, 0 failing** ✅ (583 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **637 passing, 0 failing** ✅ (587 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -634,9 +634,12 @@ Several reports exist 🟡. Extend and allow user-defined reports (rendered loca
 - [x] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports ✅ — cash flow already existed; added `ReportService.getSavingsRate` (monthly income/expenses/savings + rate), `getDebtReport` (owed across credit accounts + active loans, with APR), `getCreditUtilization` (per-card owed/limit/utilization + overall), and `getMerchantReport` (top merchants by spend over a date range). New routes `GET /reports/{savings-rate,debt,credit-utilization,merchant}`. The Reports page gained **Top merchants**, **Debt overview**, and **Credit utilization** cards (savings rate was already surfaced). **Custom reports:** a runtime-ensured `custom_reports` table + `CustomReportService` (list/create/delete, type-validated) + `GET/POST/DELETE /reports/custom` lets users save a named report definition (type + config) to re-run locally. **P4.10 complete.**
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
-- [ ] Builds on P1.13 (v1 shipped single-currency-per-install). Add a currency dimension to every aggregation (dashboard/net worth/reports/budgets) **and** to assets/liabilities.
-- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency, and/or per-currency separate totals
-- [ ] Optional, user-enabled FX auto-fetch only (off by default) — keeps local-first default
+✅ **Done (manual-first core)** (on `p4-feature-depth`, migration `0015_multi_currency`).
+- [x] Currency dimension in every cross-account aggregation ✅ — added `accounts.exchange_rate` (rate to the instance/base currency; default 1 so single-currency installs are an exact no-op). Every consolidating total now converts `amount × exchange_rate` to base: dashboard consolidated balance + monthly summary, cash flow, trends, merchant, net worth (`getCurrent`), debt (credit owed), and credit-utilization overall totals; **budgets** sum `spent` in base to compare against base allocations. Per-account/per-card/per-category rows stay in native units. Conversion happens ONLY in the consolidators — `calculateBalance` stays native — to avoid double-conversion. **Decision:** budgets and assets/liabilities are base-currency (documented).
+- [x] Per-account currency with a **user-entered** exchange rate ✅ — the P1.13 single-currency guard is lifted: `AccountService` accepts any supported currency and stores its rate (the account form has a currency dropdown + a rate field shown only for non-base currencies). **Cross-currency transfers** record two legs — `transfers.destination_amount` is the amount entering the destination in its currency while `amount` is what leaves the source — so each side is correct in its own currency (fixes the old single-amount bug); the transfer form asks for the received amount when the two accounts' currencies differ. Same-currency transfers are unchanged (`destination_amount` null → COALESCE to `amount`).
+- [ ] Optional, user-enabled FX auto-fetch (off by default) — **deferred**: all exchange rates are entered manually (keeps local-first with zero outbound calls). This bullet can be picked up later as an opt-in.
+
+**P4.11 manual-first multi-currency complete** (FX auto-fetch intentionally deferred).
 
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.

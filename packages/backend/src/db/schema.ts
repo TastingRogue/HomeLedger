@@ -64,6 +64,9 @@ export const accounts = sqliteTable('accounts', {
   minimumPayment: real('minimum_payment'),
   status: text('status', { enum: ['Activo', 'Inactivo'] }).notNull().default('Activo'),
   currency: text('currency').notNull().default('MXN'),
+  // P4.11 multi-currency: rate to convert this account's native amount into the
+  // instance/base currency. 1 = same as base (default; single-currency no-op).
+  exchangeRate: real('exchange_rate').notNull().default(1),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -223,7 +226,11 @@ export const transfers = sqliteTable('transfers', {
   sourceAccountId: integer('source_account_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
   destinationAccountId: integer('destination_account_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
   name: text('name').notNull(),
+  // Amount that LEAVES the source account, in the source account's currency.
   amount: real('amount').notNull(),
+  // P4.11: amount that ENTERS the destination account, in the destination's
+  // currency. NULL → same currency, use `amount` for both legs (back-compat).
+  destinationAmount: real('destination_amount'),
   date: text('date').notNull(),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),

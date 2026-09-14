@@ -24,6 +24,12 @@
   let formAmount = $state('');
   let formSourceAccountId = $state('');
   let formDestinationAccountId = $state('');
+  // P4.11: amount that enters the destination when currencies differ.
+  let formDestinationAmount = $state('');
+  const currencyOf = (id: string) => accounts.find((a) => String(a.id) === id)?.currency ?? '';
+  const sourceCurrency = $derived(currencyOf(formSourceAccountId));
+  const destCurrency = $derived(currencyOf(formDestinationAccountId));
+  const crossCurrency = $derived(!!sourceCurrency && !!destCurrency && sourceCurrency !== destCurrency);
   let formErrors = $state<Record<string, string>>({});
   let formSubmitting = $state(false);
 
@@ -32,13 +38,14 @@
   async function loadTransfers() { loading = true; error = ''; try { transfers = await listTransfers(); } catch (e) { error = e instanceof ApiError ? e.message : $t('transfers.error_loading'); } finally { loading = false; } }
   async function loadAccounts() { try { accounts = await apiGet<AccountData[]>('/accounts'); } catch { error = $t('common.error_loading_options'); } }
 
-  function openCreateForm() { editingTransfer = null; formName = ''; formDate = nowDatetimeLocal(); formAmount = ''; formSourceAccountId = accounts.length > 0 ? String(accounts[0].id) : ''; formDestinationAccountId = accounts.length > 1 ? String(accounts[1].id) : ''; formErrors = {}; showFormModal = true; }
+  function openCreateForm() { editingTransfer = null; formName = ''; formDate = nowDatetimeLocal(); formAmount = ''; formDestinationAmount = ''; formSourceAccountId = accounts.length > 0 ? String(accounts[0].id) : ''; formDestinationAccountId = accounts.length > 1 ? String(accounts[1].id) : ''; formErrors = {}; showFormModal = true; }
 
   function openEditForm(tf: Transfer) {
     editingTransfer = tf;
     formName = tf.name;
     formDate = toDatetimeLocal(tf.date);
     formAmount = String(tf.amount);
+    formDestinationAmount = tf.destinationAmount != null ? String(tf.destinationAmount) : '';
     formSourceAccountId = String(tf.sourceAccountId);
     formDestinationAccountId = String(tf.destinationAccountId);
     formErrors = {};
@@ -56,6 +63,10 @@
     if (!formSourceAccountId) errors.sourceAccountId = $t('common.required');
     if (!formDestinationAccountId) errors.destinationAccountId = $t('common.required');
     if (formSourceAccountId && formDestinationAccountId && formSourceAccountId === formDestinationAccountId) errors.destinationAccountId = $t('transfers.must_differ');
+    if (crossCurrency) {
+      const da = parseFloat(String(formDestinationAmount ?? ''));
+      if (!String(formDestinationAmount ?? '').trim() || isNaN(da) || da <= 0) errors.destinationAmount = $t('transfers.invalid_dest_amount');
+    }
     formErrors = errors;
     return Object.keys(errors).length === 0;
   }
@@ -64,7 +75,8 @@
     if (!validateForm()) return;
     formSubmitting = true;
     try {
-      const payload = { name: String(formName ?? '').trim(), date: new Date(formDate).toISOString(), amount: parseFloat(parseFloat(String(formAmount ?? '')).toFixed(2)), sourceAccountId: parseInt(formSourceAccountId, 10), destinationAccountId: parseInt(formDestinationAccountId, 10) };
+      const payload: { name: string; date: string; amount: number; sourceAccountId: number; destinationAccountId: number; destinationAmount?: number } = { name: String(formName ?? '').trim(), date: new Date(formDate).toISOString(), amount: parseFloat(parseFloat(String(formAmount ?? '')).toFixed(2)), sourceAccountId: parseInt(formSourceAccountId, 10), destinationAccountId: parseInt(formDestinationAccountId, 10) };
+      if (crossCurrency && String(formDestinationAmount ?? '').trim()) payload.destinationAmount = parseFloat(parseFloat(String(formDestinationAmount)).toFixed(2));
       if (isEditing && editingTransfer) {
         await updateTransfer(editingTransfer.id, payload);
       } else {
@@ -141,7 +153,15 @@
         {#if formErrors.general}<div class="form-alert">{formErrors.general}</div>{/if}
         <div class="field"><label for="tf-name">{$t('transfers.form_name')}</label><input id="tf-name" type="text" bind:value={formName} maxlength={100} class:invalid={!!formErrors.name} />{#if formErrors.name}<span class="field-err">{formErrors.name}</span>{/if}</div>
         <div class="field"><label for="tf-date">{$t('transfers.form_date')}</label><DatePicker bind:value={formDate} showTime={true} />{#if formErrors.date}<span class="field-err">{formErrors.date}</span>{/if}</div>
-        <div class="field"><label for="tf-amount">{$t('transfers.form_amount')}</label><input id="tf-amount" type="number" step="0.01" bind:value={formAmount} class:invalid={!!formErrors.amount} />{#if formErrors.amount}<span class="field-err">{formErrors.amount}</span>{/if}</div>
+        <div class="field"><label for="tf-amount">{$t('transfers.form_amount')}{#if crossCurrency} ({sourceCurrency}){/if}</label><input id="tf-amount" type="number" step="0.01" bind:value={formAmount} class:invalid={!!formErrors.amount} />{#if formErrors.amount}<span class="field-err">{formErrors.amount}</span>{/if}</div>
+        {#if crossCurrency}
+          <div class="field">
+            <label for="tf-dest-amount">{$t('transfers.form_dest_amount', { currency: destCurrency })}</label>
+            <input id="tf-dest-amount" type="number" step="0.01" bind:value={formDestinationAmount} class:invalid={!!formErrors.destinationAmount} placeholder={$t('transfers.dest_amount_placeholder')} />
+            <span class="field-hint">{$t('transfers.cross_currency_hint', { from: sourceCurrency, to: destCurrency })}</span>
+            {#if formErrors.destinationAmount}<span class="field-err">{formErrors.destinationAmount}</span>{/if}
+          </div>
+        {/if}
         <div class="field-row">
           <div class="field"><label for="tf-src">{$t('transfers.form_source')}</label><select id="tf-src" bind:value={formSourceAccountId} class:invalid={!!formErrors.sourceAccountId}><option value="">—</option>{#each accounts as a}<option value={String(a.id)}>{a.name}</option>{/each}</select></div>
           <div class="field"><label for="tf-dst">{$t('transfers.form_destination')}</label><select id="tf-dst" bind:value={formDestinationAccountId} class:invalid={!!formErrors.destinationAccountId}><option value="">—</option>{#each accounts as a}<option value={String(a.id)}>{a.name}</option>{/each}</select>{#if formErrors.destinationAccountId}<span class="field-err">{formErrors.destinationAccountId}</span>{/if}</div>

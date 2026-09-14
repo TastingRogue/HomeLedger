@@ -27,6 +27,8 @@ export interface AccountData {
   minimumPayment: number | null;
   status: string;
   currency: string;
+  // P4.11: rate to convert this account's currency to the instance/base currency.
+  exchangeRate: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +70,7 @@ export interface CreateAccountPayload {
   name: string;
   initialBalance: number;
   currency?: string;
+  exchangeRate?: number;
   type: AccountType;
   bank?: string;
   balanceLimit?: number | null;
@@ -84,6 +87,8 @@ export interface UpdateAccountPayload {
   name?: string;
   initialBalance?: number;
   type?: AccountType;
+  currency?: string;
+  exchangeRate?: number;
   bank?: string;
   balanceLimit?: number | null;
   creditLimit?: number | null;

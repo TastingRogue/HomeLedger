@@ -1,11 +1,15 @@
-import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories } from '../db/schema.js';
+import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories, accounts } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
 import { BudgetPeriod, AlertType, AlertSeverity } from '@homeledger/shared';
 import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType, BudgetTag as BudgetTagType } from '@homeledger/shared';
 import crypto from 'node:crypto';
 import { roundMoney } from '../utils/money.js';
+
+// P4.11: budgets are base-currency. Spent is summed as amount×account.exchange_rate
+// (join transactions→accounts) so it's comparable to the base-currency allocation.
+const spentInBase = sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)`;
 
 // ============================================
 // Types
@@ -82,9 +86,10 @@ export class BudgetService {
   private static spentByTag(userId: number, tagId: number, startDate: string, endDate: string): number {
     const db = getDb();
     const row = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: spentInBase })
       .from(transactionTags)
       .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactionTags.tagId, tagId),
@@ -267,10 +272,11 @@ export class BudgetService {
 
       // For each budget category, calculate spent from transactions
       const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
-        // Sum of Gasto transactions for this category within the budget period
+        // Sum of Gasto transactions for this category within the budget period (base currency)
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, userId),
@@ -382,8 +388,9 @@ export class BudgetService {
         totalAllocated += bc.allocated;
 
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, userId),
@@ -412,8 +419,9 @@ export class BudgetService {
       // P4.3 Phase B ("available to spend", light): income earned within the
       // budget's period, so the UI can show income − allocated = unassigned.
       const incomeResult = db
-        .select({ total: sum(transactions.amount) })
+        .select({ total: spentInBase })
         .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
         .where(
           and(
             eq(transactions.userId, userId),
@@ -494,10 +502,11 @@ export class BudgetService {
 
     sqlite.transaction(() => {
       for (const bc of budgetCats) {
-        // Calculate spent for this category in the current period
+        // Calculate spent for this category in the current period (base currency)
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, budget.userId),
@@ -612,10 +621,11 @@ export class BudgetService {
 
           const categoryName = category?.name ?? `Categoría ${bc.categoryId}`;
 
-          // Calculate spent
+          // Calculate spent (base currency)
           const spentResult = db
-            .select({ total: sum(transactions.amount) })
+            .select({ total: spentInBase })
             .from(transactions)
+            .innerJoin(accounts, eq(transactions.accountId, accounts.id))
             .where(
               and(
                 eq(transactions.userId, userId),
@@ -757,8 +767,9 @@ export class BudgetService {
 
     const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
       const spentResult = db
-        .select({ total: sum(transactions.amount) })
+        .select({ total: spentInBase })
         .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
         .where(
           and(
             eq(transactions.userId, userId),

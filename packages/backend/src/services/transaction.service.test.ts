@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { TransactionService, TransactionError } from './transaction.service.js';
 import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -49,6 +49,7 @@ describe('TransactionService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -133,6 +134,7 @@ describe('TransactionService', () => {
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         date TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL

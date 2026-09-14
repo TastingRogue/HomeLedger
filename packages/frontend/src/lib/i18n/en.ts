@@ -334,6 +334,11 @@ export const en: Record<TranslationKey, string> = {
   'transfers.must_differ': 'Must be different',
   'transfers.insufficient_funds': 'Insufficient funds',
   'transfers.invalid_amount': 'Invalid amount',
+  // P4.11 cross-currency transfers
+  'transfers.form_dest_amount': 'Received amount ({currency}) *',
+  'transfers.dest_amount_placeholder': 'Amount arriving in the destination account',
+  'transfers.cross_currency_hint': 'The accounts use different currencies ({from} → {to}). Enter how much arrives in the destination account.',
+  'transfers.invalid_dest_amount': 'Enter the amount received in the destination account',
   'transfers.edit_tooltip': 'Edit transfer',
   'transfers.delete_tooltip': 'Delete transfer',
 
@@ -375,6 +380,16 @@ export const en: Record<TranslationKey, string> = {
   'accounts.balance_numeric': 'Must be a numeric value',
   'accounts.credit_required': 'Credit limit is required for Credit accounts',
   'accounts.credit_positive': 'Must be a numeric value greater than 0',
+  // P4.11 multi-currency
+  'accounts.form_currency': 'Currency',
+  'accounts.currency_base': 'base',
+  'accounts.currency_tooltip': "The account's currency. If it differs from the system currency, you'll be asked for the exchange rate.",
+  'accounts.form_exchange_rate': 'Exchange rate ({currency} → {base})',
+  'accounts.form_exchange_rate_label': 'Exchange rate',
+  'accounts.form_exchange_rate_placeholder': 'E.g.: 17.50',
+  'accounts.exchange_rate_tooltip': 'How many units of the system currency equal 1 unit of this account. Used to convert totals.',
+  'accounts.rate_required': 'The exchange rate is required for foreign-currency accounts',
+  'accounts.rate_positive': 'The exchange rate must be greater than 0',
   'accounts.edit_tooltip': 'Edit name, bank, and limits',
   'accounts.deactivate_tooltip': 'Hide this account without deleting data',
   'accounts.create_tooltip': 'Create a new bank, cash, or credit account',

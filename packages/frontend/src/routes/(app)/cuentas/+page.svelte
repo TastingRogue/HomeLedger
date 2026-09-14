@@ -19,6 +19,10 @@
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
   import Tooltip from '$lib/components/Tooltip.svelte';
+  import { preferences, SUPPORTED_CURRENCIES } from '$lib/stores/preferences';
+
+  // The instance/base currency (from the preferences store, seeded from /config).
+  const baseCurrency = $derived($preferences.currency);
 
   let accounts: AccountData[] = $state([]);
   let loading = $state(true);
@@ -35,6 +39,11 @@
   let formBank = $state('');
   let formBalanceLimit = $state('');
   let formCreditLimit = $state('');
+  // ── P4.11 multi-currency ──
+  let formCurrency = $state('');
+  let formExchangeRate = $state('');
+  // The exchange-rate field is only relevant when the account isn't in base currency.
+  const formNeedsRate = $derived(formCurrency !== '' && formCurrency !== baseCurrency);
   // ── P4.2 credit-card statement fields ──
   let formStatementDay = $state('');
   let formPaymentDueDay = $state('');
@@ -195,6 +204,8 @@
     formBalanceLimit = '';
     formCreditLimit = '';
     formStatementDay = ''; formPaymentDueDay = ''; formApr = ''; formMinimumPayment = '';
+    formCurrency = baseCurrency;
+    formExchangeRate = '';
     formError = '';
     validationErrors = {};
     showForm = true;
@@ -212,6 +223,8 @@
     formPaymentDueDay = account.paymentDueDay != null ? String(account.paymentDueDay) : '';
     formApr = account.apr != null ? String(account.apr) : '';
     formMinimumPayment = account.minimumPayment != null ? String(account.minimumPayment) : '';
+    formCurrency = account.currency ?? baseCurrency;
+    formExchangeRate = account.exchangeRate != null && account.exchangeRate !== 1 ? String(account.exchangeRate) : '';
     formError = '';
     validationErrors = {};
     showForm = true;
@@ -238,6 +251,11 @@
       if (!credit) errors.creditLimit = $t('accounts.credit_required');
       else if (isNaN(Number(credit)) || Number(credit) <= 0) errors.creditLimit = $t('accounts.credit_positive');
     }
+    if (formNeedsRate) {
+      const rate = String(formExchangeRate ?? '').trim();
+      if (!rate) errors.exchangeRate = $t('accounts.rate_required');
+      else if (isNaN(Number(rate)) || Number(rate) <= 0) errors.exchangeRate = $t('accounts.rate_positive');
+    }
     validationErrors = errors;
     return Object.keys(errors).length === 0;
   }
@@ -252,6 +270,13 @@
       type: formType,
     };
     if (String(formBank ?? '').trim()) payload.bank = String(formBank).trim();
+    // P4.11: currency + exchange rate (rate only when not base currency).
+    if (formCurrency) payload.currency = formCurrency;
+    if (formNeedsRate && String(formExchangeRate ?? '').trim() && !isNaN(Number(formExchangeRate))) {
+      payload.exchangeRate = Number(formExchangeRate);
+    } else if (!formNeedsRate) {
+      payload.exchangeRate = 1;
+    }
     if (String(formBalanceLimit ?? '').trim() && !isNaN(Number(formBalanceLimit))) payload.balanceLimit = Number(formBalanceLimit);
     if (formType === 'Crédito' && String(formCreditLimit ?? '').trim()) payload.creditLimit = Number(formCreditLimit);
     // P4.2 statement fields (credit-only). Empty → null so editing can clear them.
@@ -427,6 +452,20 @@
           <label for="f-bank">{formType === 'Efectivo' ? $t('accounts.form_location') : $t('accounts.form_bank')}</label>
           <input id="f-bank" type="text" bind:value={formBank} maxlength={50} placeholder={formType === 'Efectivo' ? $t('accounts.form_location_placeholder') : $t('accounts.form_bank_placeholder')} title={formType === 'Efectivo' ? $t('accounts.location_tooltip') : $t('accounts.bank_tooltip')} />
         </div>
+        <!-- P4.11: per-account currency + exchange rate to base -->
+        <div class="field">
+          <label for="f-currency" class="field-label-row">{$t('accounts.form_currency')} <Tooltip text={$t('accounts.currency_tooltip')} label={$t('accounts.form_currency')} /></label>
+          <select id="f-currency" bind:value={formCurrency}>
+            {#each SUPPORTED_CURRENCIES as c}<option value={c}>{c}{c === baseCurrency ? ` (${$t('accounts.currency_base')})` : ''}</option>{/each}
+          </select>
+        </div>
+        {#if formNeedsRate}
+          <div class="field">
+            <label for="f-rate" class="field-label-row">{$t('accounts.form_exchange_rate', { currency: formCurrency, base: baseCurrency })} <Tooltip text={$t('accounts.exchange_rate_tooltip')} label={$t('accounts.form_exchange_rate_label')} /></label>
+            <input id="f-rate" type="number" step="0.000001" bind:value={formExchangeRate} placeholder={$t('accounts.form_exchange_rate_placeholder')} class:invalid={!!validationErrors.exchangeRate} />
+            {#if validationErrors.exchangeRate}<span class="field-error">{validationErrors.exchangeRate}</span>{/if}
+          </div>
+        {/if}
         <div class="field">
           <label for="f-limit" class="field-label-row">{$t('accounts.form_balance_limit')} <Tooltip text={$t('accounts.balance_limit_tooltip')} label={$t('accounts.form_balance_limit')} /></label>
           <input id="f-limit" type="number" step="0.01" bind:value={formBalanceLimit} placeholder={$t('accounts.form_balance_limit_placeholder')} />

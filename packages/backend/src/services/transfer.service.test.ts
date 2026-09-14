@@ -1,5 +1,6 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { TransferService, TransferError } from './transfer.service.js';
+import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, transfers } from '../db/schema.js';
 import fs from 'node:fs';
@@ -42,6 +43,7 @@ describe('TransferService', () => {
         minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -89,6 +91,7 @@ describe('TransferService', () => {
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         date TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL
@@ -467,6 +470,65 @@ describe('TransferService', () => {
     it('should return null for non-existent transfer', () => {
       const found = TransferService.getById(99999, userId);
       expect(found).toBeNull();
+    });
+  });
+
+  // ── P4.11: cross-currency transfers (dual amount) ──
+  describe('cross-currency transfers', () => {
+    let usdAccountId: number;
+
+    beforeEach(() => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      // A USD account (source & dest above are MXN). Rate is informational here;
+      // the transfer records the two native leg amounts.
+      usdAccountId = db.insert(accounts).values({
+        userId, name: 'USD Account', type: 'Débito', initialBalance: 1000,
+        status: 'Activo', currency: 'USD', exchangeRate: 17.5, createdAt: now, updatedAt: now,
+      }).returning().get().id;
+    });
+
+    it('requires destinationAmount when currencies differ', () => {
+      expect(() =>
+        TransferService.create(userId, {
+          name: 'USD→MXN sin monto',
+          date: '2024-01-15T10:00:00.000Z',
+          amount: 100, // 100 USD out
+          sourceAccountId: usdAccountId,
+          destinationAccountId: destAccountId, // MXN
+        }),
+      ).toThrow(TransferError);
+    });
+
+    it('records both legs in their own currency and balances correctly', async () => {
+      const usdBefore = await AccountService.calculateBalance(usdAccountId);
+      const mxnBefore = await AccountService.calculateBalance(destAccountId);
+
+      TransferService.create(userId, {
+        name: 'USD→MXN',
+        date: '2024-01-15T10:00:00.000Z',
+        amount: 100,             // 100 USD leaves the source
+        destinationAmount: 1750, // 1750 MXN enters the destination
+        sourceAccountId: usdAccountId,
+        destinationAccountId: destAccountId,
+      });
+
+      const usdAfter = await AccountService.calculateBalance(usdAccountId);
+      const mxnAfter = await AccountService.calculateBalance(destAccountId);
+      // Source drops by 100 (USD); destination rises by 1750 (MXN) — each native.
+      expect(usdAfter).toBe(Math.round((usdBefore - 100) * 100) / 100);
+      expect(mxnAfter).toBe(Math.round((mxnBefore + 1750) * 100) / 100);
+    });
+
+    it('same-currency transfer still uses a single amount (destinationAmount null)', () => {
+      const t = TransferService.create(userId, {
+        name: 'MXN→MXN',
+        date: '2024-01-15T10:00:00.000Z',
+        amount: 500,
+        sourceAccountId,
+        destinationAccountId: destAccountId,
+      });
+      expect(t.destinationAmount).toBeNull();
     });
   });
 });

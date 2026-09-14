@@ -17,7 +17,7 @@ describe('ReportService — P4.10 depth', () => {
     const sqlite = getSqlite();
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT, role TEXT DEFAULT 'user', disabled INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
-      CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, type TEXT, bank TEXT, initial_balance REAL DEFAULT 0, balance_limit REAL, credit_limit REAL, statement_day INTEGER, payment_due_day INTEGER, apr REAL, minimum_payment REAL, status TEXT DEFAULT 'Activo', currency TEXT DEFAULT 'MXN', created_at TEXT, updated_at TEXT);
+      CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, type TEXT, bank TEXT, initial_balance REAL DEFAULT 0, balance_limit REAL, credit_limit REAL, statement_day INTEGER, payment_due_day INTEGER, apr REAL, minimum_payment REAL, status TEXT DEFAULT 'Activo', currency TEXT DEFAULT 'MXN', exchange_rate REAL NOT NULL DEFAULT 1, created_at TEXT, updated_at TEXT);
       CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, key TEXT, name TEXT, icon TEXT, color TEXT, type TEXT DEFAULT 'Ambos', is_system INTEGER DEFAULT 0, created_at TEXT);
       CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, account_id INTEGER, category_id INTEGER, subcategory_id INTEGER, name TEXT, amount REAL, type TEXT, date TEXT, notes TEXT, merchant TEXT, subtype TEXT, reconciled INTEGER DEFAULT 0, status TEXT DEFAULT 'posted', external_id TEXT, attachment_id INTEGER, import_id INTEGER, created_at TEXT, updated_at TEXT);
     `);
@@ -114,6 +114,35 @@ describe('ReportService — P4.10 depth', () => {
 
     it('throws when deleting a non-existent report', () => {
       expect(() => CustomReportService.delete(99999, userId)).toThrow(CustomReportError);
+    });
+  });
+
+  // ── P4.11: multi-currency conversion in aggregations ──
+  describe('multi-currency conversion', () => {
+    it('converts foreign-currency amounts to base in reports', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      // Base-currency (MXN, rate 1) expense of 100 + a USD (rate 20) expense of 10 = 200 base.
+      const usdAcc = db.insert(accounts).values({
+        userId, name: 'USD', type: 'Débito', initialBalance: 0, status: 'Activo',
+        currency: 'USD', exchangeRate: 20, createdAt: now, updatedAt: now,
+      }).returning().get().id;
+
+      tx({ merchant: 'Base Store', amount: 100, type: 'Gasto', date: '2026-02-01' });
+      db.insert(transactions).values({
+        userId, accountId: usdAcc, categoryId, name: 'USD buy', merchant: 'USD Store',
+        amount: 10, type: 'Gasto', date: '2026-02-02', createdAt: now, updatedAt: now,
+      }).run();
+
+      // Savings rate report: total expenses in base = 100 + 10*20 = 300.
+      const sr = ReportService.getSavingsRate(userId, { startDate: '2026-02-01', endDate: '2026-02-28' });
+      expect(sr.totalExpenses).toBe(300);
+
+      // Merchant report: the USD merchant's total is converted (10*20 = 200).
+      const m = ReportService.getMerchantReport(userId, { startDate: '2026-02-01', endDate: '2026-02-28' });
+      const usdMerchant = m.merchants.find((x) => x.merchant === 'USD Store')!;
+      expect(usdMerchant.total).toBe(200);
+      expect(m.totalSpend).toBe(300);
     });
   });
 });

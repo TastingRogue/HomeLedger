@@ -9,7 +9,7 @@ import type { TokenPayload } from '../../services/auth.service.js';
  * ACCOUNT_NOT_FOUND → 404 Not Found
  */
 function handleAccountError(error: AccountError, reply: FastifyReply): FastifyReply {
-  const statusCode = error.code === 'ACCOUNT_NOT_FOUND' ? 404 : error.code === 'CURRENCY_MISMATCH' ? 400 : 409;
+  const statusCode = error.code === 'ACCOUNT_NOT_FOUND' ? 404 : error.code === 'INVALID_CURRENCY' ? 400 : 409;
   return reply.status(statusCode).send({
     success: false,
     error: {

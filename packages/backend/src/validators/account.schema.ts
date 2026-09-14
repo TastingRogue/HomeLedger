@@ -24,7 +24,14 @@ export const createAccountSchema = z
 
     currency: z
       .string()
-      .default('MXN'),
+      .optional(),
+
+    // P4.11: rate to convert this account's currency into the instance/base
+    // currency. Must be > 0. Defaults to 1 (base) when omitted.
+    exchangeRate: z
+      .number()
+      .positive('El tipo de cambio debe ser mayor a 0')
+      .optional(),
 
     type: z.nativeEnum(AccountType, {
       error: 'El tipo de cuenta es obligatorio y debe ser válido',
@@ -115,6 +122,11 @@ export const updateAccountSchema = z
 
     currency: z
       .string()
+      .optional(),
+
+    exchangeRate: z
+      .number()
+      .positive('El tipo de cambio debe ser mayor a 0')
       .optional(),
 
     type: z.nativeEnum(AccountType, {

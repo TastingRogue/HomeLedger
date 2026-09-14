@@ -76,18 +76,19 @@ export class NetWorthService {
   static async getCurrent(userId: number) {
     const db = getDb();
 
-    // Obtener todas las cuentas activas del usuario
+    // Obtener todas las cuentas activas del usuario (+ su tipo de cambio a base)
     const activeAccounts = db
-      .select({ id: accounts.id })
+      .select({ id: accounts.id, exchangeRate: accounts.exchangeRate })
       .from(accounts)
       .where(and(eq(accounts.userId, userId), eq(accounts.status, 'Activo')))
       .all();
 
-    // Calcular balance de cada cuenta activa
+    // Calcular balance de cada cuenta activa, convertido a la moneda base (P4.11).
+    // Los activos/pasivos no tienen moneda: se asumen ya en moneda base.
     let totalAccountBalances = 0;
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      totalAccountBalances = roundMoney(totalAccountBalances + balance);
+      totalAccountBalances = roundMoney(totalAccountBalances + balance * (account.exchangeRate ?? 1));
     }
 
     // Sumar valores de todos los activos del usuario
