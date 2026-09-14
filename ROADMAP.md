@@ -644,9 +644,20 @@ Several reports exist 🟡. Extend and allow user-defined reports (rendered loca
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.
 
-- [ ] TOTP 2FA (offline authenticator apps — no cloud)
-- [ ] Passkeys / WebAuthn
-- [ ] Login history + revoke individual session
+- [x] TOTP 2FA (offline authenticator apps — no cloud)
+- [ ] Passkeys / WebAuthn *(deferred: needs a WebAuthn dependency + real-browser origin/RP-ID verification that can't be validated headlessly — parked like FX auto-fetch)*
+- [x] Login history + revoke individual session
+
+**P4.12 (partial) complete — TOTP 2FA + session management shipped; passkeys deferred.**
+Delivered:
+- Self-contained RFC 6238 TOTP (`utils/totp.ts`, HMAC-SHA1, 30s step, ±1 window) — **zero new dependencies, fully offline**. Verified against the RFC 6238 test vectors.
+- Opt-in enrollment (secret + `otpauth://` URI shown; 2FA stays off until a valid code confirms the authenticator), **10 one-time backup codes** (sha256-hashed at rest, shown once), and disable (requires a valid TOTP or backup code).
+- Login gains a second-factor step: when 2FA is enabled the backend replies `TOTP_REQUIRED`; the client then submits a 6-digit TOTP **or** a backup code (consumed on use). Backend loss-of-phone recovery via backup codes; admin CLI reset (P1.12) remains the last resort.
+- Session management: `refresh_tokens` now records `ip` / `user_agent` / `last_used_at`; users can list active sessions (current one flagged) and revoke individually, plus the existing "close all".
+- Migration **0016** (`users.totp_secret/totp_enabled/totp_backup_codes` + `refresh_tokens.user_agent/ip/last_used_at`) — additive/defaulted, so existing installs are a no-op (2FA off). Applied + verified in the Docker container (17 migrations).
+- Frontend: login TOTP step, and a Security tab (`/configuracion`) with enable/confirm/backup-codes/disable and the active-sessions list; i18n es + en.
+- Tests: `totp.test.ts` (17, incl. RFC vectors) + AuthService TOTP/session suite (enroll/confirm/login-with-code/backup-code-once/disable/session list+revoke). Backend **612 passing**, frontend **50 passing**.
+- QR note: to stay offline we show the secret + `otpauth://` URI as text (user pastes into their app) rather than rendering a QR via an external service or new dependency.
 
 ### P4.13 — API maturity (local endpoints)
 `/api/v1` + API keys exist. Make it a real platform surface.

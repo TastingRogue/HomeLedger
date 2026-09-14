@@ -1,5 +1,6 @@
 ﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { AuthService, AuthError } from './auth.service.js';
+import { generateTotp } from '../utils/totp.js';
 import { setRegistrationMode, setRegistrationAllowlist } from '../config/registration.js';
 import { getDb, closeDatabase } from '../db/connection.js';
 import { users, refreshTokens, apiKeys, categories } from '../db/schema.js';
@@ -25,6 +26,9 @@ describe('AuthService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -35,7 +39,10 @@ describe('AuthService', () => {
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         token TEXT NOT NULL,
         expires_at TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        user_agent TEXT,
+        ip TEXT,
+        last_used_at TEXT
       );
       CREATE UNIQUE INDEX IF NOT EXISTS refresh_tokens_token_unique ON refresh_tokens(token);
       
@@ -364,6 +371,129 @@ describe('AuthService', () => {
     it('should return null for an invalid API key', async () => {
       const result = await AuthService.validateApiKey('invalid-key');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('TOTP 2FA (P4.12)', () => {
+    async function registerUser() {
+      return AuthService.register({ email: 'user@test.com', password: 'password123', name: 'User' });
+    }
+
+    it('is disabled by default', async () => {
+      const r = await registerUser();
+      const status = AuthService.getTotpStatus(r.user.id);
+      expect(status.enabled).toBe(false);
+      expect(status.pending).toBe(false);
+      expect(status.backupCodesRemaining).toBe(0);
+    });
+
+    it('enrollment produces a secret + otpauth URI but stays disabled until confirmed', async () => {
+      const r = await registerUser();
+      const enrollment = await AuthService.beginTotpEnrollment(r.user.id);
+      expect(enrollment.secret).toBeTruthy();
+      expect(enrollment.otpauthUri.startsWith('otpauth://totp/')).toBe(true);
+
+      const status = AuthService.getTotpStatus(r.user.id);
+      expect(status.enabled).toBe(false);
+      expect(status.pending).toBe(true);
+    });
+
+    it('confirm requires a valid code and then enables + returns backup codes', async () => {
+      const r = await registerUser();
+      const { secret } = await AuthService.beginTotpEnrollment(r.user.id);
+
+      await expect(AuthService.confirmTotpEnrollment(r.user.id, '000000')).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+
+      const code = generateTotp(secret);
+      const { backupCodes } = await AuthService.confirmTotpEnrollment(r.user.id, code);
+      expect(backupCodes).toHaveLength(10);
+
+      const status = AuthService.getTotpStatus(r.user.id);
+      expect(status.enabled).toBe(true);
+      expect(status.backupCodesRemaining).toBe(10);
+    });
+
+    it('login requires the second factor once enabled', async () => {
+      const r = await registerUser();
+      const { secret } = await AuthService.beginTotpEnrollment(r.user.id);
+      await AuthService.confirmTotpEnrollment(r.user.id, generateTotp(secret));
+
+      // No code -> TOTP_REQUIRED
+      await expect(
+        AuthService.login({ email: 'user@test.com', password: 'password123' }),
+      ).rejects.toMatchObject({ code: 'TOTP_REQUIRED' });
+
+      // Wrong code -> TOTP_INVALID
+      await expect(
+        AuthService.login({ email: 'user@test.com', password: 'password123', totpCode: '000000' }),
+      ).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+
+      // Correct code -> tokens
+      const ok = await AuthService.login({ email: 'user@test.com', password: 'password123', totpCode: generateTotp(secret) });
+      expect(ok.accessToken).toBeTruthy();
+    });
+
+    it('a backup code logs in once and is then consumed', async () => {
+      const r = await registerUser();
+      const { secret } = await AuthService.beginTotpEnrollment(r.user.id);
+      const { backupCodes } = await AuthService.confirmTotpEnrollment(r.user.id, generateTotp(secret));
+      const code = backupCodes[0]!;
+
+      const ok = await AuthService.login({ email: 'user@test.com', password: 'password123', totpCode: code });
+      expect(ok.accessToken).toBeTruthy();
+      expect(AuthService.getTotpStatus(r.user.id).backupCodesRemaining).toBe(9);
+
+      // Reusing the same backup code fails.
+      await expect(
+        AuthService.login({ email: 'user@test.com', password: 'password123', totpCode: code }),
+      ).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+    });
+
+    it('disable requires a valid factor and clears 2FA', async () => {
+      const r = await registerUser();
+      const { secret } = await AuthService.beginTotpEnrollment(r.user.id);
+      await AuthService.confirmTotpEnrollment(r.user.id, generateTotp(secret));
+
+      await expect(AuthService.disableTotp(r.user.id, '000000')).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+
+      await AuthService.disableTotp(r.user.id, generateTotp(secret));
+      const status = AuthService.getTotpStatus(r.user.id);
+      expect(status.enabled).toBe(false);
+      expect(status.backupCodesRemaining).toBe(0);
+
+      // Login no longer requires a second factor.
+      const ok = await AuthService.login({ email: 'user@test.com', password: 'password123' });
+      expect(ok.accessToken).toBeTruthy();
+    });
+  });
+
+  describe('sessions (P4.12)', () => {
+    it('records session metadata and lists sessions', async () => {
+      const r = await AuthService.register({ email: 'user@test.com', password: 'password123', name: 'User' });
+      // register created one session; login creates another with metadata.
+      await AuthService.login(
+        { email: 'user@test.com', password: 'password123' },
+        { ip: '10.0.0.5', userAgent: 'Mozilla/5.0 Test' },
+      );
+
+      const sessions = AuthService.listSessions(r.user.id, r.refreshToken);
+      expect(sessions.length).toBe(2);
+      const withMeta = sessions.find((s) => s.ip === '10.0.0.5');
+      expect(withMeta).toBeTruthy();
+      expect(withMeta!.userAgent).toBe('Mozilla/5.0 Test');
+      const current = sessions.find((s) => s.current);
+      expect(current).toBeTruthy();
+    });
+
+    it('revokes a single session and rejects unknown ids', async () => {
+      const r = await AuthService.register({ email: 'user@test.com', password: 'password123', name: 'User' });
+      const sessions = AuthService.listSessions(r.user.id);
+      const sessionId = sessions[0]!.id;
+
+      AuthService.revokeSession(sessionId, r.user.id);
+      expect(AuthService.listSessions(r.user.id).length).toBe(0);
+
+      expect(() => AuthService.revokeSession(999999, r.user.id)).toThrow(AuthError);
     });
   });
 });

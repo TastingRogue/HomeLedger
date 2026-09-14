@@ -20,6 +20,9 @@ describe('NetWorthService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

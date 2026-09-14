@@ -6,6 +6,14 @@ import { getDb } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import { getRegistrationMode, getRegistrationAllowlist } from '../config/registration.js';
 import { seedCategoriesForUser } from '../db/seed.js';
+import { desc } from 'drizzle-orm';
+import {
+  generateSecret,
+  buildOtpauthUri,
+  verifyTotp,
+  generateBackupCodes,
+  hashBackupCode,
+} from '../utils/totp.js';
 import type { RegisterSchema, LoginSchema } from '../validators/auth.schema.js';
 
 const SALT_ROUNDS = 12;
@@ -40,6 +48,33 @@ export interface GeneratedApiKey {
   key: string;
   keyPrefix: string;
   createdAt: string;
+}
+
+/** Client metadata captured at login so sessions can be reviewed/revoked. */
+export interface SessionContext {
+  ip?: string | null;
+  userAgent?: string | null;
+}
+
+export interface SessionInfo {
+  id: number;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string;
+  current: boolean;
+}
+
+export interface TotpEnrollment {
+  secret: string;
+  otpauthUri: string;
+}
+
+export interface TotpStatus {
+  enabled: boolean;
+  pending: boolean;
+  backupCodesRemaining: number;
 }
 
 function getJwtSecret(): string {
@@ -136,7 +171,7 @@ export class AuthService {
    * Authenticate user with email and password.
    * Returns access token (15min) and refresh token (7 days).
    */
-  static async login(input: LoginSchema): Promise<AuthTokens> {
+  static async login(input: LoginSchema, session: SessionContext = {}): Promise<AuthTokens> {
     const db = getDb();
 
     // Find user by email
@@ -163,6 +198,19 @@ export class AuthService {
       throw new AuthError('La cuenta está deshabilitada. Contacta al administrador.', 'ACCOUNT_DISABLED');
     }
 
+    // Second factor: when TOTP is enabled, a valid TOTP code OR one-time backup
+    // code is required. TOTP is fully offline (RFC 6238).
+    if (foundUser.totpEnabled) {
+      const provided = (input.totpCode ?? '').trim();
+      if (!provided) {
+        throw new AuthError('Se requiere el código de verificación de dos pasos', 'TOTP_REQUIRED');
+      }
+      const secondFactorOk = AuthService.verifySecondFactor(foundUser.id, foundUser.totpSecret, foundUser.totpBackupCodes, provided);
+      if (!secondFactorOk) {
+        throw new AuthError('Código de verificación inválido', 'TOTP_INVALID');
+      }
+    }
+
     // Generate tokens
     const tokenPayload: TokenPayload = {
       userId: foundUser.id,
@@ -171,9 +219,54 @@ export class AuthService {
     };
 
     const accessToken = AuthService.generateAccessToken(tokenPayload);
-    const refreshToken = await AuthService.createRefreshToken(foundUser.id);
+    const refreshToken = await AuthService.createRefreshToken(foundUser.id, session);
 
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * Verify a supplied second factor against a user's TOTP secret or backup codes.
+   * If a backup code matches, it is consumed (removed) so it can't be reused.
+   * Returns true when the factor is valid.
+   */
+  private static verifySecondFactor(
+    userId: number,
+    totpSecret: string | null,
+    backupCodesJson: string | null,
+    provided: string,
+  ): boolean {
+    const normalized = provided.replace(/\s+/g, '');
+
+    // Try TOTP first (6-digit codes).
+    if (totpSecret && /^\d{6}$/.test(normalized)) {
+      if (verifyTotp(totpSecret, normalized)) {
+        return true;
+      }
+    }
+
+    // Fall back to one-time backup codes.
+    if (backupCodesJson) {
+      let hashes: string[] = [];
+      try {
+        hashes = JSON.parse(backupCodesJson) as string[];
+      } catch {
+        hashes = [];
+      }
+      const providedHash = hashBackupCode(provided);
+      const idx = hashes.indexOf(providedHash);
+      if (idx !== -1) {
+        // Consume the used code.
+        hashes.splice(idx, 1);
+        const db = getDb();
+        db.update(users)
+          .set({ totpBackupCodes: JSON.stringify(hashes), updatedAt: new Date().toISOString() })
+          .where(eq(users.id, userId))
+          .run();
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -202,6 +295,12 @@ export class AuthService {
       db.delete(refreshTokens).where(eq(refreshTokens.id, record.id)).run();
       throw new AuthError('Token de actualización expirado', 'REFRESH_TOKEN_EXPIRED');
     }
+
+    // Track recent activity for the session list.
+    db.update(refreshTokens)
+      .set({ lastUsedAt: new Date().toISOString() })
+      .where(eq(refreshTokens.id, record.id))
+      .run();
 
     // Find the associated user
     const user = await db
@@ -368,7 +467,7 @@ export class AuthService {
     return jwt.sign(payload, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
   }
 
-  private static async createRefreshToken(userId: number): Promise<string> {
+  private static async createRefreshToken(userId: number, session: SessionContext = {}): Promise<string> {
     const db = getDb();
 
     // Generate a secure random token
@@ -386,10 +485,173 @@ export class AuthService {
         token,
         expiresAt: expiresAt.toISOString(),
         createdAt: now,
+        ip: session.ip ?? null,
+        userAgent: session.userAgent ?? null,
+        lastUsedAt: now,
       })
       .run();
 
     return token;
+  }
+
+  // =========================================
+  // TOTP 2FA (P4.12) — offline, opt-in
+  // =========================================
+
+  /**
+   * Begin TOTP enrollment: generate (or reuse a pending) secret and store it,
+   * but keep 2FA disabled until the user confirms a valid code. Returns the
+   * secret and the otpauth:// URI for the authenticator app.
+   */
+  static async beginTotpEnrollment(userId: number): Promise<TotpEnrollment> {
+    const db = getDb();
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    if (!user) {
+      throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+    }
+    if (user.totpEnabled) {
+      throw new AuthError('La verificación en dos pasos ya está activada', 'TOTP_ALREADY_ENABLED');
+    }
+
+    const secret = generateSecret();
+    db.update(users)
+      .set({ totpSecret: secret, updatedAt: new Date().toISOString() })
+      .where(eq(users.id, userId))
+      .run();
+
+    return {
+      secret,
+      otpauthUri: buildOtpauthUri(secret, user.email, 'HomeLedger'),
+    };
+  }
+
+  /**
+   * Confirm enrollment: verify a code against the pending secret; on success
+   * enable 2FA and generate one-time backup codes (returned in plaintext ONCE).
+   */
+  static async confirmTotpEnrollment(userId: number, code: string): Promise<{ backupCodes: string[] }> {
+    const db = getDb();
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    if (!user) {
+      throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+    }
+    if (user.totpEnabled) {
+      throw new AuthError('La verificación en dos pasos ya está activada', 'TOTP_ALREADY_ENABLED');
+    }
+    if (!user.totpSecret) {
+      throw new AuthError('No hay una inscripción de 2FA pendiente', 'TOTP_NOT_PENDING');
+    }
+    if (!verifyTotp(user.totpSecret, (code ?? '').trim())) {
+      throw new AuthError('Código de verificación inválido', 'TOTP_INVALID');
+    }
+
+    const { plaintext, hashes } = generateBackupCodes(10);
+    db.update(users)
+      .set({
+        totpEnabled: true,
+        totpBackupCodes: JSON.stringify(hashes),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId))
+      .run();
+
+    return { backupCodes: plaintext };
+  }
+
+  /**
+   * Disable TOTP 2FA. Requires a valid current TOTP or backup code so a
+   * hijacked access token alone can't turn it off.
+   */
+  static async disableTotp(userId: number, code: string): Promise<void> {
+    const db = getDb();
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    if (!user) {
+      throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+    }
+    if (!user.totpEnabled) {
+      throw new AuthError('La verificación en dos pasos no está activada', 'TOTP_NOT_ENABLED');
+    }
+    const ok = AuthService.verifySecondFactor(userId, user.totpSecret, user.totpBackupCodes, (code ?? '').trim());
+    if (!ok) {
+      throw new AuthError('Código de verificación inválido', 'TOTP_INVALID');
+    }
+
+    db.update(users)
+      .set({
+        totpEnabled: false,
+        totpSecret: null,
+        totpBackupCodes: null,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(users.id, userId))
+      .run();
+  }
+
+  /**
+   * Report the current 2FA status for a user.
+   */
+  static getTotpStatus(userId: number): TotpStatus {
+    const db = getDb();
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    if (!user) {
+      throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+    }
+    let remaining = 0;
+    if (user.totpBackupCodes) {
+      try {
+        remaining = (JSON.parse(user.totpBackupCodes) as string[]).length;
+      } catch {
+        remaining = 0;
+      }
+    }
+    return {
+      enabled: user.totpEnabled,
+      pending: !user.totpEnabled && !!user.totpSecret,
+      backupCodesRemaining: remaining,
+    };
+  }
+
+  // =========================================
+  // Sessions (P4.12) — list + revoke
+  // =========================================
+
+  /**
+   * List a user's active sessions (refresh tokens), most-recent first.
+   * The session matching `currentToken` is flagged as current.
+   */
+  static listSessions(userId: number, currentToken?: string): SessionInfo[] {
+    const db = getDb();
+    const rows = db
+      .select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.userId, userId))
+      .orderBy(desc(refreshTokens.createdAt))
+      .all();
+
+    return rows.map((r) => ({
+      id: r.id,
+      ip: r.ip ?? null,
+      userAgent: r.userAgent ?? null,
+      createdAt: r.createdAt,
+      lastUsedAt: r.lastUsedAt ?? null,
+      expiresAt: r.expiresAt,
+      current: !!currentToken && r.token === currentToken,
+    }));
+  }
+
+  /**
+   * Revoke a single session by id, scoped to the owning user.
+   */
+  static revokeSession(sessionId: number, userId: number): void {
+    const db = getDb();
+    const deleted = db
+      .delete(refreshTokens)
+      .where(and(eq(refreshTokens.id, sessionId), eq(refreshTokens.userId, userId)))
+      .returning()
+      .all();
+    if (deleted.length === 0) {
+      throw new AuthError('Sesión no encontrada', 'SESSION_NOT_FOUND');
+    }
   }
 }
 

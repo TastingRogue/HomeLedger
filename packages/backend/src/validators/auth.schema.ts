@@ -32,6 +32,21 @@ export const loginSchema = z.object({
   password: z
     .string({ error: 'La contraseña es obligatoria' })
     .min(1, 'La contraseña no puede estar vacía'),
+
+  // Second factor, only required when the account has TOTP 2FA enabled.
+  // Accepts either a 6-digit TOTP code or a one-time backup code.
+  totpCode: z.string().trim().max(20).optional(),
+});
+
+/**
+ * Schema para confirmar/activar TOTP (código de 6 dígitos del autenticador).
+ */
+export const totpCodeSchema = z.object({
+  code: z
+    .string({ error: 'El código es obligatorio' })
+    .trim()
+    .min(1, 'El código no puede estar vacío')
+    .max(20, 'El código no es válido'),
 });
 
 /**
@@ -64,5 +79,6 @@ export const createApiKeySchema = z.object({
 
 export type RegisterSchema = z.infer<typeof registerSchema>;
 export type LoginSchema = z.infer<typeof loginSchema>;
+export type TotpCodeSchema = z.infer<typeof totpCodeSchema>;
 export type RefreshTokenSchema = z.infer<typeof refreshTokenSchema>;
 export type CreateApiKeySchema = z.infer<typeof createApiKeySchema>;

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService, AuthError } from '../../services/auth.service.js';
-import { registerSchema, loginSchema, refreshTokenSchema } from '../../validators/auth.schema.js';
+import { registerSchema, loginSchema, refreshTokenSchema, totpCodeSchema } from '../../validators/auth.schema.js';
 import { authRateLimitPlugin } from '../../middleware/rate-limit.middleware.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 
@@ -59,7 +59,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const parsed = loginSchema.parse(request.body);
 
     try {
-      const result = await AuthService.login(parsed);
+      const result = await AuthService.login(parsed, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] ?? null,
+      });
 
       return reply.status(200).send({
         success: true,
@@ -250,4 +253,136 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     return reply.status(200).send({ success: true, data: { message: 'Todas las sesiones han sido cerradas' } });
   });
+
+  // =========================================
+  // TOTP 2FA (P4.12)
+  // =========================================
+
+  /**
+   * GET /api/v1/auth/2fa/status
+   * Report whether TOTP is enabled/pending and how many backup codes remain.
+   */
+  app.get('/2fa/status', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    try {
+      const status = AuthService.getTotpStatus(user.userId);
+      return reply.status(200).send({ success: true, data: status });
+    } catch (error) {
+      return handleAuthError(error, reply);
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/2fa/enroll
+   * Begin enrollment: returns a secret + otpauth URI (2FA not yet active).
+   */
+  app.post('/2fa/enroll', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    try {
+      const enrollment = await AuthService.beginTotpEnrollment(user.userId);
+      return reply.status(200).send({ success: true, data: enrollment });
+    } catch (error) {
+      return handleAuthError(error, reply);
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/2fa/confirm
+   * Confirm enrollment with a valid code; activates 2FA and returns backup codes.
+   */
+  app.post('/2fa/confirm', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    const parsed = totpCodeSchema.parse(request.body);
+    try {
+      const result = await AuthService.confirmTotpEnrollment(user.userId, parsed.code);
+      return reply.status(200).send({ success: true, data: result });
+    } catch (error) {
+      return handleAuthError(error, reply);
+    }
+  });
+
+  /**
+   * POST /api/v1/auth/2fa/disable
+   * Disable 2FA (requires a valid current TOTP or backup code).
+   */
+  app.post('/2fa/disable', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    const parsed = totpCodeSchema.parse(request.body);
+    try {
+      await AuthService.disableTotp(user.userId, parsed.code);
+      return reply.status(200).send({ success: true, data: { message: 'Verificación en dos pasos desactivada' } });
+    } catch (error) {
+      return handleAuthError(error, reply);
+    }
+  });
+
+  // =========================================
+  // Sessions (P4.12)
+  // =========================================
+
+  /**
+   * GET /api/v1/auth/sessions
+   * List the current user's active sessions. If a refreshToken query param is
+   * supplied, the matching session is flagged as current.
+   */
+  app.get('/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    const query = request.query as Record<string, unknown> | null;
+    const currentToken = typeof query?.refreshToken === 'string' ? query.refreshToken : undefined;
+    const sessions = AuthService.listSessions(user.userId, currentToken);
+    return reply.status(200).send({ success: true, data: sessions });
+  });
+
+  /**
+   * DELETE /api/v1/auth/sessions/:id
+   * Revoke a single session by id.
+   */
+  app.delete('/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload | null;
+    if (!user) {
+      return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
+    }
+    const params = request.params as Record<string, string>;
+    const sessionId = Number(params.id);
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return reply.status(400).send({ success: false, error: { code: 'BAD_REQUEST', message: 'Id de sesión inválido' } });
+    }
+    try {
+      AuthService.revokeSession(sessionId, user.userId);
+      return reply.status(200).send({ success: true, data: { message: 'Sesión revocada' } });
+    } catch (error) {
+      return handleAuthError(error, reply);
+    }
+  });
+}
+
+/**
+ * Map AuthError codes to HTTP statuses for the 2FA/session endpoints.
+ */
+function handleAuthError(error: unknown, reply: FastifyReply) {
+  if (error instanceof AuthError) {
+    let statusCode = 400;
+    if (error.code === 'USER_NOT_FOUND' || error.code === 'SESSION_NOT_FOUND') statusCode = 404;
+    else if (error.code === 'TOTP_INVALID') statusCode = 401;
+    return reply.status(statusCode).send({
+      success: false,
+      error: { code: error.code, message: error.message },
+    });
+  }
+  throw error;
 }

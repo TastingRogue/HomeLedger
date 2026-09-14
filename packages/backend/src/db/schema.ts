@@ -12,6 +12,12 @@ export const users = sqliteTable('users', {
   role: text('role', { enum: ['admin', 'user', 'viewer'] }).notNull().default('user'),
   // When true, the user cannot log in (admin can disable an account without deleting it).
   disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
+  // TOTP 2FA (P4.12): opt-in, offline (RFC 6238). Secret is stored on enrollment
+  // but only becomes active once the user confirms a valid code (totpEnabled=1).
+  totpSecret: text('totp_secret'),
+  totpEnabled: integer('totp_enabled', { mode: 'boolean' }).notNull().default(false),
+  // JSON array of sha256-hashed one-time recovery codes (shown once, in plaintext).
+  totpBackupCodes: text('totp_backup_codes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -36,6 +42,10 @@ export const refreshTokens = sqliteTable('refresh_tokens', {
   token: text('token').notNull(),
   expiresAt: text('expires_at').notNull(),
   createdAt: text('created_at').notNull(),
+  // Session metadata (P4.12) so users can review + revoke individual sessions.
+  userAgent: text('user_agent'),
+  ip: text('ip'),
+  lastUsedAt: text('last_used_at'),
 }, (table) => [
   uniqueIndex('refresh_tokens_token_unique').on(table.token),
   index('refresh_tokens_user_id_idx').on(table.userId),

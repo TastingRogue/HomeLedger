@@ -20,7 +20,7 @@ describe('ReceiptService — P4.6 CFDI flow', () => {
   beforeAll(() => {
     const sqlite = getSqlite();
     sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT, role TEXT DEFAULT 'user', disabled INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
+      CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT, password_hash TEXT, name TEXT, role TEXT DEFAULT 'user', disabled INTEGER DEFAULT 0, totp_secret TEXT, totp_enabled INTEGER NOT NULL DEFAULT 0, totp_backup_codes TEXT, created_at TEXT, updated_at TEXT);
       CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, type TEXT, bank TEXT, initial_balance REAL DEFAULT 0, balance_limit REAL, credit_limit REAL, statement_day INTEGER, payment_due_day INTEGER, apr REAL, minimum_payment REAL, status TEXT DEFAULT 'Activo', currency TEXT DEFAULT 'MXN', exchange_rate REAL NOT NULL DEFAULT 1, created_at TEXT, updated_at TEXT);
       CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, key TEXT, name TEXT, icon TEXT, color TEXT, type TEXT DEFAULT 'Ambos', is_system INTEGER DEFAULT 0, created_at TEXT);
       CREATE TABLE IF NOT EXISTS subcategories (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER, name TEXT, created_at TEXT);
