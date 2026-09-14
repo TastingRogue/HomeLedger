@@ -42,6 +42,9 @@
   let formPeriod: BudgetPeriod = $state('Mensual');
   let formStartDate = $state('');
   let formAllocations: { categoryId: number | ''; allocated: string }[] = $state([]);
+  // ── P4.3 envelope settings ──
+  let formRolloverEnabled = $state(false);
+  let formAlertThreshold = $state('80');
 
   // Validation
   let validationErrors: Record<string, string> = $state({});
@@ -108,6 +111,8 @@
     formPeriod = 'Mensual';
     formStartDate = new Date().toISOString().split('T')[0]!;
     formAllocations = [{ categoryId: '', allocated: '' }];
+    formRolloverEnabled = false;
+    formAlertThreshold = '80';
     formError = '';
     validationErrors = {};
     showForm = true;
@@ -125,6 +130,8 @@
     if (formAllocations.length === 0) {
       formAllocations = [{ categoryId: '', allocated: '' }];
     }
+    formRolloverEnabled = budget.rolloverEnabled ?? false;
+    formAlertThreshold = String(budget.alertThreshold ?? 80);
     formError = '';
     validationErrors = {};
     showForm = true;
@@ -189,6 +196,8 @@
       allocated: Number(Number(a.allocated).toFixed(2)),
     }));
 
+    const rolloverEnabled = formRolloverEnabled;
+    const alertThreshold = Math.min(100, Math.max(0, Number(formAlertThreshold) || 80));
     try {
       if (editingBudget) {
         await updateBudget(editingBudget.id, {
@@ -196,6 +205,8 @@
           period: formPeriod,
           startDate: formStartDate,
           categories: catAllocations,
+          rolloverEnabled,
+          alertThreshold,
         });
       } else {
         const payload: CreateBudgetPayload = {
@@ -203,6 +214,8 @@
           period: formPeriod,
           startDate: formStartDate,
           categories: catAllocations,
+          rolloverEnabled,
+          alertThreshold,
         };
         await createBudget(payload);
       }
@@ -301,6 +314,7 @@
               <div class="budget-title-row">
                 <h2 class="budget-name">{budget.name}</h2>
                 <span class="period-tag">{budget.period}</span>
+                {#if budget.rolloverEnabled}<span class="rollover-tag" title={$t('budgets.rollover_hint')}>{$t('budgets.rollover_badge')}</span>{/if}
               </div>
               <span class="budget-dates">{formatDateRange(budget.startDate, budget.endDate)}</span>
             </div>
@@ -415,6 +429,23 @@
           {/each}
         </div>
 
+        <!-- P4.3 envelope settings -->
+        <div class="field-row">
+          <div class="field">
+            <label for="f-threshold">{$t('budgets.form_alert_threshold')}</label>
+            <input id="f-threshold" type="number" min="0" max="100" step="1" bind:value={formAlertThreshold} placeholder="80" />
+            <span class="field-hint">{$t('budgets.alert_threshold_hint')}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">{$t('budgets.form_rollover')}</span>
+            <label class="toggle-field">
+              <input type="checkbox" bind:checked={formRolloverEnabled} />
+              <span>{$t('budgets.rollover_label')}</span>
+            </label>
+            <span class="field-hint">{$t('budgets.rollover_hint')}</span>
+          </div>
+        </div>
+
         <div class="form-buttons">
           <button type="button" class="btn btn-secondary" onclick={closeForm} disabled={formSubmitting}>{$t('common.cancel')}</button>
           <button type="submit" class="btn btn-primary" disabled={formSubmitting}>
@@ -489,7 +520,13 @@
   .budget-title-row { display: flex; align-items: center; gap: 0.4rem; }
   .budget-name { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .period-tag { font-size: 0.6rem; font-weight: 600; padding: 0.1rem 0.3rem; border-radius: var(--radius-sm); background: var(--tag-blue-bg); color: var(--accent-blue); }
+  .rollover-tag { font-size: 0.6rem; font-weight: 600; padding: 0.1rem 0.3rem; border-radius: var(--radius-sm); background: var(--tag-green-bg); color: var(--accent-green); }
   .budget-dates { font-size: 0.7rem; color: var(--text-muted); }
+  /* P4.3 envelope settings form controls */
+  .field-hint { font-size: 0.62rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .field-label { font-size: 0.7rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.3rem; display: block; }
+  .toggle-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; }
+  .toggle-field input { width: auto; margin: 0; cursor: pointer; }
 
   /* Progress */
   .budget-progress { display: flex; flex-direction: column; gap: 0.2rem; }

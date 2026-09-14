@@ -1,4 +1,4 @@
-ï»¿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { BudgetService, BudgetError } from './budget.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -95,6 +95,8 @@ describe('BudgetService', () => {
         period TEXT NOT NULL,
         start_date TEXT NOT NULL,
         end_date TEXT NOT NULL,
+        rollover_enabled INTEGER NOT NULL DEFAULT 0,
+        alert_threshold REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -278,7 +280,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Test',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -346,7 +348,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Summary',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -433,7 +435,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Rollover',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -524,7 +526,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Alertas',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -547,7 +549,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
 
       expect(alertsResult.length).toBeGreaterThanOrEqual(1);
       const thresholdAlert = alertsResult.find(a => a.alertType === 'threshold');
@@ -580,7 +582,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Excedida',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -603,7 +605,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
 
       expect(alertsResult.length).toBeGreaterThanOrEqual(1);
       const exceededAlert = alertsResult.find(a => a.alertType === 'exceeded');
@@ -636,7 +638,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Baja',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -651,7 +653,7 @@ describe('BudgetService', () => {
         userId,
         accountId: account.id,
         categoryId: categoryId1,
-        name: 'Gasto Pequeï¿½o',
+        name: 'Gasto Peque?o',
         amount: 500,
         type: 'Gasto',
         date: today,
@@ -659,7 +661,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
       expect(alertsResult).toHaveLength(0);
     });
 
@@ -687,7 +689,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Dedup',
-          type: 'DÃ©bito',
+          type: 'Débito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -710,8 +712,8 @@ describe('BudgetService', () => {
       }).run();
 
       // Call evaluateAlerts twice
-      BudgetService.evaluateAlerts(userId, 80);
-      BudgetService.evaluateAlerts(userId, 80);
+      BudgetService.evaluateAlerts(userId);
+      BudgetService.evaluateAlerts(userId);
 
       // Should only have 1 alert per budget+category combination, not duplicated
       const allAlerts = db.select().from(alerts).all();

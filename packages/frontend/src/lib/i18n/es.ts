@@ -615,6 +615,13 @@ export const es = {
   'budgets.form_start_date': 'Fecha de Inicio',
   'budgets.form_allocations': 'Categorías y Asignaciones',
   'budgets.add_allocation': '+ Agregar',
+  // ── P4.3 envelope budgeting settings ──
+  'budgets.form_alert_threshold': 'Umbral de alerta (%)',
+  'budgets.alert_threshold_hint': 'Avisa cuando el gasto llega a este % de lo asignado.',
+  'budgets.form_rollover': 'Acumular sobrante',
+  'budgets.rollover_label': 'Habilitar acumulación',
+  'budgets.rollover_hint': 'El sobrante no gastado se suma al presupuesto del siguiente período.',
+  'budgets.rollover_badge': 'Acumula',
   'budgets.category_placeholder': 'Categoría',
   'budgets.amount_placeholder': 'Monto',
   'budgets.save_changes': 'Guardar Cambios',

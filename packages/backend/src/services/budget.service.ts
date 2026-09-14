@@ -123,6 +123,9 @@ export class BudgetService {
           period: dbPeriod,
           startDate,
           endDate,
+          // P4.3: persist the settings (were dropped before).
+          rolloverEnabled: input.rolloverEnabled ?? false,
+          alertThreshold: input.alertThreshold ?? 80,
           createdAt: now,
           updatedAt: now,
         })
@@ -157,8 +160,8 @@ export class BudgetService {
       endDate: result.budget.endDate,
       totalAllocated,
       totalSpent: 0,
-      rolloverEnabled: input.rolloverEnabled ?? false,
-      alertThreshold: input.alertThreshold ?? 80,
+      rolloverEnabled: result.budget.rolloverEnabled,
+      alertThreshold: result.budget.alertThreshold,
       createdAt: result.budget.createdAt,
       updatedAt: result.budget.updatedAt,
       categories: result.categories.map((c) => ({
@@ -251,8 +254,8 @@ export class BudgetService {
         endDate: budget.endDate,
         totalAllocated,
         totalSpent,
-        rolloverEnabled: false, // Stored at schema level; could be extended
-        alertThreshold: 80,    // Default; could be persisted per budget
+        rolloverEnabled: budget.rolloverEnabled, // P4.3: persisted
+        alertThreshold: budget.alertThreshold,   // P4.3: persisted
         createdAt: budget.createdAt,
         updatedAt: budget.updatedAt,
         categories: categoriesWithSpent,
@@ -449,7 +452,7 @@ export class BudgetService {
    *
    * Requirements: 7.2
    */
-  static evaluateAlerts(userId: number, alertThreshold: number = 80): BudgetAlert[] {
+  static evaluateAlerts(userId: number): BudgetAlert[] {
     const db = getDb();
     const sqlite = getSqlite();
 
@@ -472,6 +475,8 @@ export class BudgetService {
 
     sqlite.transaction(() => {
       for (const budget of activeBudgets) {
+        // P4.3: each budget carries its own warning threshold.
+        const alertThreshold = budget.alertThreshold;
         const budgetCats = db
           .select()
           .from(budgetCategories)
@@ -673,8 +678,8 @@ export class BudgetService {
       endDate: budget.endDate,
       totalAllocated,
       totalSpent,
-      rolloverEnabled: false,
-      alertThreshold: 80,
+      rolloverEnabled: budget.rolloverEnabled, // P4.3: persisted
+      alertThreshold: budget.alertThreshold,   // P4.3: persisted
       createdAt: budget.createdAt,
       updatedAt: budget.updatedAt,
       categories: categoriesWithSpent,
@@ -749,6 +754,14 @@ export class BudgetService {
         updateData['endDate'] = BudgetService.calculateEndDate(startDate, period);
       }
 
+      // P4.3: persist the settings (were dropped before).
+      if (input.rolloverEnabled !== undefined) {
+        updateData['rolloverEnabled'] = input.rolloverEnabled;
+      }
+      if (input.alertThreshold !== undefined) {
+        updateData['alertThreshold'] = input.alertThreshold;
+      }
+
       db.update(budgets)
         .set(updateData)
         .where(eq(budgets.id, id))
@@ -756,6 +769,13 @@ export class BudgetService {
 
       // Update categories if provided
       if (input.categories) {
+        // P4.3: preserve any accumulated rollover per category across the edit
+        // (previously it was wiped to 0, discarding carried-over budget).
+        const priorRollover = new Map<number, number>();
+        for (const bc of db.select().from(budgetCategories).where(eq(budgetCategories.budgetId, id)).all()) {
+          priorRollover.set(bc.categoryId, bc.rollover);
+        }
+
         // Remove existing budget categories
         db.delete(budgetCategories)
           .where(eq(budgetCategories.budgetId, id))
@@ -776,7 +796,7 @@ export class BudgetService {
               budgetId: id,
               categoryId: cat.categoryId,
               allocated: cat.allocated,
-              rollover: 0,
+              rollover: priorRollover.get(cat.categoryId) ?? 0,
             })
             .run();
         }

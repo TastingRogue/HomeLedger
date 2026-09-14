@@ -616,6 +616,13 @@ export const en: Record<TranslationKey, string> = {
   'budgets.form_start_date': 'Start Date',
   'budgets.form_allocations': 'Categories and Allocations',
   'budgets.add_allocation': '+ Add',
+  // ── P4.3 envelope budgeting settings ──
+  'budgets.form_alert_threshold': 'Alert threshold (%)',
+  'budgets.alert_threshold_hint': 'Warns when spending reaches this % of the allocation.',
+  'budgets.form_rollover': 'Carry over unused',
+  'budgets.rollover_label': 'Enable rollover',
+  'budgets.rollover_hint': 'Unused budget is added to the next period’s allocation.',
+  'budgets.rollover_badge': 'Rollover',
   'budgets.category_placeholder': 'Category',
   'budgets.amount_placeholder': 'Amount',
   'budgets.save_changes': 'Save Changes',

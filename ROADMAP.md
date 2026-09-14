@@ -575,10 +575,11 @@ on the dashboard/alerts 🟡), but statement-cycle modeling is missing.
 Budgets exist (monthly/weekly, per-category, progress 🟡). Upgrade toward
 envelope budgeting.
 
-- [ ] "Available to spend" / assign-what-you-have model
-- [ ] Rollover / carry-over of unspent budget
-- [ ] Budget by tag (in addition to category)
-- [ ] Overspending indicators + alerts
+Built in phases on `p4-feature-depth`.
+- [ ] "Available to spend" / assign-what-you-have model _(Phase B)_
+- [x] Rollover / carry-over of unspent budget ✅ (Phase A) — persisted `rolloverEnabled` + `alertThreshold` on `budgets` (migration `0012`; were accepted by the API but silently dropped before); rollover is no longer wiped to 0 on edit; the monthly cron only rolls over budgets with the flag on; form gets a rollover toggle + threshold field + a card badge
+- [ ] Budget by tag (in addition to category) _(Phase C)_
+- [ ] Overspending indicators + alerts _(Phase D — wire `evaluateAlerts` to a job/route, align with AlertService)_
 
 ### P4.4 — Smart importer (local files only)
 Parsers exist (BBVA/Santander/Nu; CSV/XLSX/OFX/QIF/JSON 🟡). Make the pipeline

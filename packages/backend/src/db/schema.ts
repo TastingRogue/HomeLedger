@@ -239,6 +239,11 @@ export const budgets = sqliteTable('budgets', {
   period: text('period', { enum: ['monthly', 'weekly'] }).notNull(),
   startDate: text('start_date').notNull(),
   endDate: text('end_date').notNull(),
+  // ── P4.3 envelope budgeting (persisted; were previously hardcoded on read) ──
+  // When true, unused budget carries over to the next period (see processRollover).
+  rolloverEnabled: integer('rollover_enabled', { mode: 'boolean' }).notNull().default(false),
+  // % of the allocation at which a "near limit" warning alert fires (0–100).
+  alertThreshold: real('alert_threshold').notNull().default(80),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [

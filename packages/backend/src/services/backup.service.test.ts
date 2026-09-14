@@ -150,6 +150,8 @@ describe('BackupService', () => {
         period TEXT NOT NULL,
         start_date TEXT NOT NULL,
         end_date TEXT NOT NULL,
+        rollover_enabled INTEGER NOT NULL DEFAULT 0,
+        alert_threshold REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );

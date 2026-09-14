@@ -1,5 +1,5 @@
 import { schedule, type ScheduledTask } from 'node-cron';
-import { lt } from 'drizzle-orm';
+import { and, eq, lt } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { budgets } from '../db/schema.js';
 import { BudgetService } from '../services/budget.service.js';
@@ -28,11 +28,12 @@ export function startBudgetResetJob(): ScheduledTask {
       const db = getDb();
       const today = new Date().toISOString().split('T')[0]!;
 
-      // Encontrar presupuestos cuyo período ya terminó (endDate < hoy)
+      // Presupuestos cuyo período ya terminó (endDate < hoy) Y que tienen el
+      // rollover habilitado (P4.3: antes se procesaban todos indiscriminadamente).
       const expiredBudgets = db
         .select()
         .from(budgets)
-        .where(lt(budgets.endDate, today))
+        .where(and(lt(budgets.endDate, today), eq(budgets.rolloverEnabled, true)))
         .all();
 
       let processedCount = 0;
