@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **620 passing, 0 failing** ✅ (570 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **633 passing, 0 failing** ✅ (583 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -624,12 +624,14 @@ Net worth + goals exist. Add projection + history (from local data).
 - [x] Net-worth history chart (1m / 6m / 1y / 5y / all) ✅ — `NetWorthService.resolveRange` maps a named range to a `{startDate,endDate}` window (server-side; `all` → epoch) and the existing `GET /networth/history` now accepts `?range=` (explicit start/end still work). The net-worth page renders an SVG line chart of `networth_snapshots` with a 1M/6M/1Y/5Y/All range selector + first/last legend. **P4.8 complete.**
 
 ### P4.9 — Global search
-- [ ] Cross-entity search (transactions, receipts, subscriptions) with filters (date, account, category, merchant, amount, tag, type)
+✅ **Done** (on `p4-feature-depth`, no migration).
+- [x] Cross-entity search (transactions, receipts, subscriptions) with filters ✅ — new `SearchService.search` + `GET /api/v1/search` searches all three entities by a text query (transactions match name/merchant/notes; receipts match merchant/issuer name/RFC/UUID; subscriptions match name) plus structured filters: date range, account, category, merchant, amount range, **tag** (via the P4.1 M2M), and transaction type (Ingreso/Gasto). LIKE-based and fully local. A new **Buscar** page (nav + `/buscar`) offers a query box, the filter controls, and grouped result sections that link to each entity's page. (An FTS5 full-text engine over *all* entities remains the separate **v2 / L5** item.) **P4.9 complete.**
 
 ### P4.10 — Reports depth + custom reports
 Several reports exist 🟡. Extend and allow user-defined reports (rendered locally).
 
-- [ ] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports
+✅ **Done** (on `p4-feature-depth`, no migration — computed locally).
+- [x] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports ✅ — cash flow already existed; added `ReportService.getSavingsRate` (monthly income/expenses/savings + rate), `getDebtReport` (owed across credit accounts + active loans, with APR), `getCreditUtilization` (per-card owed/limit/utilization + overall), and `getMerchantReport` (top merchants by spend over a date range). New routes `GET /reports/{savings-rate,debt,credit-utilization,merchant}`. The Reports page gained **Top merchants**, **Debt overview**, and **Credit utilization** cards (savings rate was already surfaced). **Custom reports:** a runtime-ensured `custom_reports` table + `CustomReportService` (list/create/delete, type-validated) + `GET/POST/DELETE /reports/custom` lets users save a named report definition (type + config) to re-run locally. **P4.10 complete.**
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
 - [ ] Builds on P1.13 (v1 shipped single-currency-per-install). Add a currency dimension to every aggregation (dashboard/net worth/reports/budgets) **and** to assets/liabilities.

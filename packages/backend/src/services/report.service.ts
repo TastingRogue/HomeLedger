@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
-import { transactions, categories } from '../db/schema.js';
+import { transactions, categories, loans } from '../db/schema.js';
 import { AccountService } from './account.service.js';
 import { SubscriptionService } from './subscription.service.js';
 import { GoalService } from './goal.service.js';
@@ -98,6 +98,59 @@ export interface BudgetComparisonReport {
   totalAllocated: number;
   totalActual: number;
   totalDifference: number;
+}
+
+// ── P4.10 report types ──
+
+export interface SavingsRateEntry {
+  period: string;
+  income: number;
+  expenses: number;
+  savings: number;
+  savingsRate: number;
+}
+export interface SavingsRateReport {
+  entries: SavingsRateEntry[];
+  totalIncome: number;
+  totalExpenses: number;
+  totalSavings: number;
+  savingsRate: number;
+}
+
+export interface DebtItem {
+  id: number;
+  name: string;
+  kind: 'credit' | 'loan';
+  owed: number;
+  apr: number | null;
+}
+export interface DebtReport {
+  totalDebt: number;
+  items: DebtItem[];
+}
+
+export interface CreditUtilizationEntry {
+  id: number;
+  name: string;
+  limit: number;
+  owed: number;
+  utilization: number;
+}
+export interface CreditUtilizationReport {
+  overallUtilization: number;
+  totalOwed: number;
+  totalLimit: number;
+  cards: CreditUtilizationEntry[];
+}
+
+export interface MerchantEntry {
+  merchant: string;
+  total: number;
+  count: number;
+}
+export interface MerchantReport {
+  merchants: MerchantEntry[];
+  totalSpend: number;
 }
 
 // ============================================
@@ -421,5 +474,128 @@ export class ReportService {
       totalActual,
       totalDifference: roundMoney(totalAllocated - totalActual),
     };
+  }
+
+  // ============================================
+  // P4.10 — Reports depth
+  // ============================================
+
+  /**
+   * Savings-rate report: per-month income/expenses/savings and the savings rate
+   * (savings ÷ income). Reuses the cash-flow monthly grouping.
+   */
+  static getSavingsRate(userId: number, dateRange: { startDate: string; endDate: string }): SavingsRateReport {
+    const cash = ReportService.getCashFlow(userId, dateRange);
+    const entries: SavingsRateEntry[] = cash.entries.map((e) => {
+      const savings = roundMoney(e.income - e.expenses);
+      const savingsRate = e.income > 0 ? Math.round((savings / e.income) * 10000) / 100 : 0;
+      return { period: e.period, income: e.income, expenses: e.expenses, savings, savingsRate };
+    });
+    const totalSavings = roundMoney(cash.totalIncome - cash.totalExpenses);
+    const savingsRate = cash.totalIncome > 0 ? Math.round((totalSavings / cash.totalIncome) * 10000) / 100 : 0;
+    return {
+      entries,
+      totalIncome: cash.totalIncome,
+      totalExpenses: cash.totalExpenses,
+      totalSavings,
+      savingsRate,
+    };
+  }
+
+  /**
+   * Debt report: aggregates what the user owes across credit accounts (negative
+   * balances) and active loans, with per-item owed + APR/interest.
+   */
+  static async getDebtReport(userId: number): Promise<DebtReport> {
+    const db = getDb();
+    const items: DebtItem[] = [];
+
+    const activeAccounts = await AccountService.getActive(userId);
+    for (const acc of activeAccounts) {
+      if (acc.type !== 'Crédito') continue;
+      const balance = await AccountService.calculateBalance(acc.id);
+      const owed = roundMoney(Math.max(0, -balance)); // negative balance = debt
+      if (owed <= 0) continue;
+      items.push({ id: acc.id, name: acc.name, kind: 'credit', owed, apr: acc.apr ?? null });
+    }
+
+    const activeLoans = db
+      .select({ id: loans.id, name: loans.name, remainingAmount: loans.remainingAmount, interestRate: loans.interestRate })
+      .from(loans)
+      .where(and(eq(loans.userId, userId), eq(loans.status, 'active')))
+      .all();
+    for (const l of activeLoans) {
+      const owed = roundMoney(l.remainingAmount);
+      if (owed <= 0) continue;
+      items.push({ id: l.id, name: l.name, kind: 'loan', owed, apr: l.interestRate ?? null });
+    }
+
+    const totalDebt = roundMoney(items.reduce((s, i) => s + i.owed, 0));
+    items.sort((a, b) => b.owed - a.owed);
+    return { totalDebt, items };
+  }
+
+  /**
+   * Credit-utilization report: per credit-card owed vs limit + utilization %,
+   * plus the overall utilization across all cards with a limit.
+   */
+  static async getCreditUtilization(userId: number): Promise<CreditUtilizationReport> {
+    const activeAccounts = await AccountService.getActive(userId);
+    const cards: CreditUtilizationEntry[] = [];
+    let totalOwed = 0;
+    let totalLimit = 0;
+
+    for (const acc of activeAccounts) {
+      if (acc.type !== 'Crédito' || acc.creditLimit == null || acc.creditLimit <= 0) continue;
+      const balance = await AccountService.calculateBalance(acc.id);
+      const owed = roundMoney(Math.max(0, -balance));
+      const utilization = Math.round((owed / acc.creditLimit) * 10000) / 100;
+      cards.push({ id: acc.id, name: acc.name, limit: roundMoney(acc.creditLimit), owed, utilization });
+      totalOwed = roundMoney(totalOwed + owed);
+      totalLimit = roundMoney(totalLimit + acc.creditLimit);
+    }
+
+    cards.sort((a, b) => b.utilization - a.utilization);
+    const overallUtilization = totalLimit > 0 ? Math.round((totalOwed / totalLimit) * 10000) / 100 : 0;
+    return { overallUtilization, totalOwed, totalLimit, cards };
+  }
+
+  /**
+   * Merchant report: top merchants by expense total within a date range. Uses
+   * the transaction merchant (P4.1), falling back to the transaction name.
+   */
+  static getMerchantReport(
+    userId: number,
+    dateRange: { startDate: string; endDate: string },
+    limit: number = 20,
+  ): MerchantReport {
+    const db = getDb();
+    const capped = Math.min(Math.max(limit, 1), 100);
+
+    const rows = db
+      .select({
+        merchant: sql<string>`COALESCE(NULLIF(TRIM(${transactions.merchant}), ''), ${transactions.name})`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'Gasto'),
+          gte(transactions.date, dateRange.startDate),
+          lte(transactions.date, dateRange.endDate + 'T23:59:59.999Z'),
+        ),
+      )
+      .groupBy(sql`COALESCE(NULLIF(TRIM(${transactions.merchant}), ''), ${transactions.name})`)
+      .all();
+
+    const merchants: MerchantEntry[] = rows
+      .map((r) => ({ merchant: r.merchant, total: roundMoney(r.total), count: Number(r.count) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, capped);
+
+    const totalSpend = roundMoney(merchants.reduce((s, m) => s + m.total, 0));
+    return { merchants, totalSpend };
   }
 }
