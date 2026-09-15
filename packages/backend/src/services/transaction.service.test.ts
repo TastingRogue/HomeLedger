@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { TransactionService, TransactionError } from './transaction.service.js';
 import { AccountService } from './account.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -29,6 +29,9 @@ describe('TransactionService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -43,8 +46,13 @@ describe('TransactionService', () => {
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
         credit_limit REAL,
+        statement_day INTEGER,
+        payment_due_day INTEGER,
+        apr REAL,
+        minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -79,7 +87,13 @@ describe('TransactionService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -92,6 +106,30 @@ describe('TransactionService', () => {
         note TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS tags_user_id_name_unique ON tags(user_id, name);
+
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS transaction_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        changes TEXT,
+        created_at TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -99,6 +137,7 @@ describe('TransactionService', () => {
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         date TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL

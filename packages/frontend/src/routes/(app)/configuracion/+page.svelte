@@ -19,6 +19,20 @@
     listSnapshots, createSnapshot, restoreSnapshot,
     type SnapshotInfo,
   } from '$lib/api/backup';
+  import {
+    getTotpStatus, enrollTotp, confirmTotp, disableTotp,
+    listSessions, revokeSession,
+    type TotpStatus, type SessionInfo,
+  } from '$lib/api/auth';
+  import {
+    listApiKeys, listScopes, createApiKey, revokeApiKey,
+    listWebhookEvents, listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook,
+    type ApiKeyInfo, type CreatedApiKey, type WebhookInfo,
+  } from '$lib/api/developer';
+  import {
+    getLockConfig, webauthnSupported, enableWebauthnLock, enablePinLock, disableLock,
+    type LockConfig,
+  } from '$lib/stores/lock';
 
   // User profile
   let userName = $state('');
@@ -42,6 +56,26 @@
   // Sessions
   let revokingAll = $state(false);
   let revokeMsg = $state('');
+
+  // ─── TOTP 2FA (P4.12) ───
+  let totpStatus = $state<TotpStatus | null>(null);
+  let totpLoaded = false;
+  let totpBusy = $state(false);
+  let totpError = $state('');
+  // enrollment modal
+  let showTotpModal = $state(false);
+  let enrollSecret = $state('');
+  let enrollUri = $state('');
+  let enrollCode = $state('');
+  let backupCodes = $state<string[]>([]);
+  // disable modal
+  let showDisableTotpModal = $state(false);
+  let disableCode = $state('');
+
+  // ─── Active sessions (P4.12) ───
+  let sessions = $state<SessionInfo[]>([]);
+  let sessionsLoading = $state(false);
+  let sessionsError = $state('');
 
   // Active tab
   let activeTab = $state('perfil');
@@ -233,6 +267,14 @@
 
   // Lazy-load each admin dataset the first time its tab is opened.
   $effect(() => {
+    if (activeTab === 'seguridad') {
+      if (!totpLoaded) { totpLoaded = true; loadTotpStatus(); refreshLock(); }
+      loadSessions();
+    }
+    if (activeTab === 'api' && !apiLoaded) { apiLoaded = true; loadApiTab(); }
+  });
+
+  $effect(() => {
     if (!isAdmin) return;
     if (activeTab === 'usuarios' && !usersLoaded) loadUsers();
     if (activeTab === 'registro') {
@@ -309,6 +351,255 @@
     finally { revokingAll = false; }
   }
 
+  // ─── TOTP 2FA (P4.12) ───
+  async function loadTotpStatus() {
+    try {
+      totpStatus = await getTotpStatus();
+    } catch { totpStatus = { enabled: false, pending: false, backupCodesRemaining: 0 }; }
+  }
+
+  async function openTotpEnroll() {
+    totpError = ''; enrollCode = ''; backupCodes = [];
+    totpBusy = true;
+    try {
+      const e = await enrollTotp();
+      enrollSecret = e.secret;
+      enrollUri = e.otpauthUri;
+      showTotpModal = true;
+    } catch (e: unknown) { totpError = e instanceof Error ? e.message : 'Error'; }
+    finally { totpBusy = false; }
+  }
+
+  async function confirmTotpEnroll() {
+    if (!enrollCode.trim()) { totpError = $t('settings.totp_code_required'); return; }
+    totpBusy = true; totpError = '';
+    try {
+      const res = await confirmTotp(enrollCode.trim());
+      backupCodes = res.backupCodes;
+      await loadTotpStatus();
+    } catch (e: unknown) {
+      totpError = e instanceof ApiError && e.code === 'TOTP_INVALID' ? $t('settings.totp_invalid') : (e instanceof Error ? e.message : 'Error');
+    }
+    finally { totpBusy = false; }
+  }
+
+  function closeTotpModal() {
+    showTotpModal = false;
+    enrollSecret = ''; enrollUri = ''; enrollCode = ''; backupCodes = []; totpError = '';
+  }
+
+  function openDisableTotp() {
+    disableCode = ''; totpError = ''; showDisableTotpModal = true;
+  }
+
+  async function confirmDisableTotp() {
+    if (!disableCode.trim()) { totpError = $t('settings.totp_code_required'); return; }
+    totpBusy = true; totpError = '';
+    try {
+      await disableTotp(disableCode.trim());
+      showDisableTotpModal = false;
+      await loadTotpStatus();
+    } catch (e: unknown) {
+      totpError = e instanceof ApiError && e.code === 'TOTP_INVALID' ? $t('settings.totp_invalid') : (e instanceof Error ? e.message : 'Error');
+    }
+    finally { totpBusy = false; }
+  }
+
+  function copyBackupCodes() {
+    if (backupCodes.length && navigator.clipboard) {
+      navigator.clipboard.writeText(backupCodes.join('\n')).catch(() => {});
+    }
+  }
+
+  // ─── Active sessions (P4.12) ───
+  async function loadSessions() {
+    sessionsLoading = true; sessionsError = '';
+    try {
+      sessions = await listSessions();
+    } catch (e: unknown) { sessionsError = e instanceof Error ? e.message : 'Error'; }
+    finally { sessionsLoading = false; }
+  }
+
+  async function revokeOneSession(id: number, current: boolean) {
+    try {
+      await revokeSession(id);
+      if (current) {
+        localStorage.removeItem('sf_access_token');
+        localStorage.removeItem('sf_refresh_token');
+        window.location.href = '/login';
+        return;
+      }
+      await loadSessions();
+    } catch (e: unknown) { sessionsError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  function formatSessionDate(iso: string | null): string {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  }
+
+  // ─── App lock (P4.14) ───
+  let lockConfig = $state<LockConfig>({ enabled: false, method: null });
+  let lockError = $state('');
+  let lockBusy = $state(false);
+  let showPinModal = $state(false);
+  let pinValue = $state('');
+  let pinConfirm = $state('');
+  const canUseBiometric = webauthnSupported();
+
+  function refreshLock() { lockConfig = getLockConfig(); }
+
+  async function enableBiometric() {
+    lockError = ''; lockBusy = true;
+    try {
+      await enableWebauthnLock(userName || userEmail || 'HomeLedger');
+      refreshLock();
+    } catch { lockError = $t('lock.enable_failed'); }
+    finally { lockBusy = false; }
+  }
+
+  function openPinModal() {
+    pinValue = ''; pinConfirm = ''; lockError = ''; showPinModal = true;
+  }
+
+  async function submitPinLock() {
+    lockError = '';
+    if (!/^\d{4,8}$/.test(pinValue)) { lockError = $t('lock.pin_rule'); return; }
+    if (pinValue !== pinConfirm) { lockError = $t('lock.pin_mismatch'); return; }
+    lockBusy = true;
+    try {
+      await enablePinLock(pinValue);
+      refreshLock();
+      showPinModal = false;
+    } catch { lockError = $t('lock.enable_failed'); }
+    finally { lockBusy = false; }
+  }
+
+  function turnOffLock() {
+    disableLock();
+    refreshLock();
+  }
+
+  // ─── API tab (P4.13): API keys + webhooks ───
+  let apiLoaded = false;
+  // API keys
+  let apiKeys = $state<ApiKeyInfo[]>([]);
+  let availableScopes = $state<string[]>([]);
+  let apiKeysError = $state('');
+  let showCreateKeyModal = $state(false);
+  let newKeyName = $state('');
+  let newKeyScopes = $state<string[]>([]);
+  let keyBusy = $state(false);
+  let createdKey = $state<CreatedApiKey | null>(null);
+  // webhooks
+  let webhooks = $state<WebhookInfo[]>([]);
+  let webhookEvents = $state<string[]>([]);
+  let webhooksError = $state('');
+  let showWebhookModal = $state(false);
+  let editingWebhookId = $state<number | null>(null);
+  let whUrl = $state('');
+  let whSecret = $state('');
+  let whEvents = $state<string[]>([]);
+  let whEnabled = $state(true);
+  let webhookBusy = $state(false);
+  let webhookTestMsg = $state('');
+
+  async function loadApiTab() {
+    apiKeysError = ''; webhooksError = '';
+    try {
+      [apiKeys, availableScopes] = await Promise.all([listApiKeys(), listScopes()]);
+    } catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+    try {
+      [webhooks, webhookEvents] = await Promise.all([listWebhooks(), listWebhookEvents()]);
+    } catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  function openCreateKey() {
+    newKeyName = ''; newKeyScopes = []; createdKey = null; apiKeysError = '';
+    showCreateKeyModal = true;
+  }
+
+  function toggleKeyScope(scope: string) {
+    newKeyScopes = newKeyScopes.includes(scope)
+      ? newKeyScopes.filter((s) => s !== scope)
+      : [...newKeyScopes, scope];
+  }
+
+  async function submitCreateKey() {
+    if (!newKeyName.trim()) { apiKeysError = $t('developer.key_name_required'); return; }
+    keyBusy = true; apiKeysError = '';
+    try {
+      createdKey = await createApiKey(newKeyName.trim(), newKeyScopes);
+      apiKeys = await listApiKeys();
+    } catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+    finally { keyBusy = false; }
+  }
+
+  function copyCreatedKey() {
+    if (createdKey && navigator.clipboard) navigator.clipboard.writeText(createdKey.key).catch(() => {});
+  }
+
+  function closeCreateKey() {
+    showCreateKeyModal = false; createdKey = null; newKeyName = ''; newKeyScopes = [];
+  }
+
+  async function removeApiKey(id: number) {
+    try { await revokeApiKey(id); apiKeys = await listApiKeys(); }
+    catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  function openCreateWebhook() {
+    editingWebhookId = null;
+    whUrl = ''; whSecret = ''; whEvents = [...webhookEvents]; whEnabled = true;
+    webhooksError = ''; webhookTestMsg = '';
+    showWebhookModal = true;
+  }
+
+  function openEditWebhook(w: WebhookInfo) {
+    editingWebhookId = w.id;
+    whUrl = w.url; whSecret = ''; whEvents = [...w.events]; whEnabled = w.enabled;
+    webhooksError = ''; webhookTestMsg = '';
+    showWebhookModal = true;
+  }
+
+  function toggleWebhookEvent(event: string) {
+    whEvents = whEvents.includes(event) ? whEvents.filter((e) => e !== event) : [...whEvents, event];
+  }
+
+  async function submitWebhook() {
+    if (!whUrl.trim()) { webhooksError = $t('developer.webhook_url_required'); return; }
+    if (whEvents.length === 0) { webhooksError = $t('developer.webhook_events_required'); return; }
+    webhookBusy = true; webhooksError = '';
+    try {
+      if (editingWebhookId !== null) {
+        const payload: { url: string; events: string[]; enabled: boolean; secret?: string } = {
+          url: whUrl.trim(), events: whEvents, enabled: whEnabled,
+        };
+        if (whSecret.trim()) payload.secret = whSecret.trim();
+        await updateWebhook(editingWebhookId, payload);
+      } else {
+        await createWebhook({ url: whUrl.trim(), secret: whSecret.trim() || null, events: whEvents, enabled: whEnabled });
+      }
+      webhooks = await listWebhooks();
+      showWebhookModal = false;
+    } catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+    finally { webhookBusy = false; }
+  }
+
+  async function removeWebhook(id: number) {
+    try { await deleteWebhook(id); webhooks = await listWebhooks(); }
+    catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  async function runWebhookTest(id: number) {
+    webhookTestMsg = '';
+    try {
+      const res = await testWebhook(id);
+      webhookTestMsg = `${$t('developer.webhook_test_result')}: ${res.status}`;
+      webhooks = await listWebhooks();
+    } catch (e: unknown) { webhookTestMsg = e instanceof Error ? e.message : 'Error'; }
+  }
+
 
 
   function handleLocaleChange(e: Event) {
@@ -361,6 +652,9 @@
       </button>
       <button class="tab-item" class:active={activeTab === 'datos'} onclick={() => activeTab = 'datos'}>
         <Icon name="save" size={15} /> {$t('settings.data')}
+      </button>
+      <button class="tab-item" class:active={activeTab === 'api'} onclick={() => activeTab = 'api'}>
+        <Icon name="settings" size={15} /> {$t('developer.tab')}
       </button>
       {#if isAdmin}
         <button class="tab-item" class:active={activeTab === 'usuarios'} onclick={() => activeTab = 'usuarios'}>
@@ -453,9 +747,94 @@
           </div>
         </div>
 
+        <!-- ─── Two-factor authentication (P4.12) ─── -->
+        <div class="card">
+          <h3 class="card-title">{$t('settings.totp_title')}</h3>
+          <div class="pref-row">
+            <div class="pref-info">
+              <span class="pref-label">
+                {$t('settings.totp_label')}
+                {#if totpStatus?.enabled}
+                  <span class="badge-green">{$t('settings.totp_on')}</span>
+                {:else}
+                  <span class="badge-muted">{$t('settings.totp_off')}</span>
+                {/if}
+              </span>
+              <span class="pref-desc">{$t('settings.totp_desc')}</span>
+              {#if totpStatus?.enabled}
+                <span class="pref-desc">{$t('settings.totp_backup_remaining')}: {totpStatus.backupCodesRemaining}</span>
+              {/if}
+            </div>
+            {#if totpStatus?.enabled}
+              <button class="btn-action-sm danger" onclick={openDisableTotp} disabled={totpBusy}>{$t('settings.totp_disable_btn')}</button>
+            {:else}
+              <button class="btn-action-sm" onclick={openTotpEnroll} disabled={totpBusy}>{totpBusy ? '...' : $t('settings.totp_enable_btn')}</button>
+            {/if}
+          </div>
+        </div>
+
+        <!-- ─── App lock (P4.14) ─── -->
+        <div class="card">
+          <h3 class="card-title">{$t('lock.settings_title')}</h3>
+          <div class="pref-row">
+            <div class="pref-info">
+              <span class="pref-label">
+                {$t('lock.settings_label')}
+                {#if lockConfig.enabled}
+                  <span class="badge-green">{$t('lock.on')} · {lockConfig.method === 'webauthn' ? $t('lock.method_biometric') : $t('lock.method_pin')}</span>
+                {:else}
+                  <span class="badge-muted">{$t('lock.off')}</span>
+                {/if}
+              </span>
+              <span class="pref-desc">{$t('lock.settings_desc')}</span>
+            </div>
+            {#if lockConfig.enabled}
+              <button class="btn-action-sm danger" onclick={turnOffLock}>{$t('lock.disable')}</button>
+            {/if}
+          </div>
+          {#if !lockConfig.enabled}
+            <div class="lock-enable-row">
+              {#if canUseBiometric}
+                <button class="btn-action-sm" onclick={enableBiometric} disabled={lockBusy}>{lockBusy ? '...' : $t('lock.enable_biometric')}</button>
+              {/if}
+              <button class="btn-action-sm" onclick={openPinModal} disabled={lockBusy}>{$t('lock.enable_pin')}</button>
+            </div>
+            {#if !canUseBiometric}<p class="pref-desc">{$t('lock.no_biometric')}</p>{/if}
+          {/if}
+          {#if lockError}<p class="card-msg error">{lockError}</p>{/if}
+        </div>
+
+        <!-- ─── Active sessions (P4.12) ─── -->
         <div class="card">
           <h3 class="card-title">{$t('settings.sessions_title')}</h3>
-          <div class="pref-row">
+          <p class="card-desc">{$t('settings.sessions_desc')}</p>
+          {#if sessionsLoading}
+            <div class="loading-state">{$t('common.loading')}</div>
+          {:else if sessionsError}
+            <p class="card-msg error">{sessionsError}</p>
+          {:else if sessions.length === 0}
+            <p class="card-desc">{$t('settings.sessions_empty')}</p>
+          {:else}
+            <ul class="session-list">
+              {#each sessions as s (s.id)}
+                <li class="session-item">
+                  <div class="session-info">
+                    <span class="session-ua">
+                      {s.userAgent || $t('settings.session_unknown_device')}
+                      {#if s.current}<span class="badge-green">{$t('settings.session_current')}</span>{/if}
+                    </span>
+                    <span class="session-meta">
+                      {s.ip || '—'} · {$t('settings.session_last_used')}: {formatSessionDate(s.lastUsedAt)}
+                    </span>
+                  </div>
+                  <button class="btn-action-sm danger" onclick={() => revokeOneSession(s.id, s.current)}>
+                    {s.current ? $t('settings.session_revoke_current') : $t('settings.session_revoke')}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          <div class="pref-row" style="margin-top:0.6rem;">
             <div class="pref-info">
               <span class="pref-label">{$t('settings.close_all_sessions')}</span>
               <span class="pref-desc">{$t('settings.close_sessions_desc')}</span>
@@ -506,6 +885,71 @@
             </div>
             <span class="pref-value">0.1.0</span>
           </div>
+        </div>
+
+      {:else if activeTab === 'api'}
+        <!-- ─── API keys + webhooks (P4.13) ─── -->
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">{$t('developer.api_keys_title')}</h3>
+            <button class="btn-action-sm" onclick={openCreateKey}>{$t('developer.create_key')}</button>
+          </div>
+          <p class="card-desc">{$t('developer.api_keys_desc')}</p>
+          <p class="card-desc"><a href="/api/docs" target="_blank" rel="noopener">{$t('developer.open_docs')}</a></p>
+          {#if apiKeysError}<p class="card-msg error">{apiKeysError}</p>{/if}
+          {#if apiKeys.length === 0}
+            <p class="card-desc">{$t('developer.no_keys')}</p>
+          {:else}
+            <ul class="session-list">
+              {#each apiKeys as k (k.id)}
+                <li class="session-item">
+                  <div class="session-info">
+                    <span class="session-ua">{k.name}</span>
+                    <span class="session-meta">
+                      {#if k.scopes && k.scopes.length}{k.scopes.join(', ')}{:else}{$t('developer.full_access')}{/if}
+                      · {$t('developer.last_used')}: {formatSessionDate(k.lastUsedAt)}
+                    </span>
+                  </div>
+                  <button class="btn-action-sm danger" onclick={() => removeApiKey(k.id)}>{$t('developer.revoke')}</button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">{$t('developer.webhooks_title')}</h3>
+            <button class="btn-action-sm" onclick={openCreateWebhook}>{$t('developer.add_webhook')}</button>
+          </div>
+          <p class="card-desc">{$t('developer.webhooks_desc')}</p>
+          {#if webhooksError}<p class="card-msg error">{webhooksError}</p>{/if}
+          {#if webhookTestMsg}<p class="card-msg">{webhookTestMsg}</p>{/if}
+          {#if webhooks.length === 0}
+            <p class="card-desc">{$t('developer.no_webhooks')}</p>
+          {:else}
+            <ul class="session-list">
+              {#each webhooks as w (w.id)}
+                <li class="session-item">
+                  <div class="session-info">
+                    <span class="session-ua">
+                      {w.url}
+                      {#if w.enabled}<span class="badge-green">{$t('developer.enabled')}</span>{:else}<span class="badge-muted">{$t('developer.disabled')}</span>{/if}
+                    </span>
+                    <span class="session-meta">
+                      {w.events.join(', ')}
+                      {#if w.lastStatus} · {$t('developer.last_status')}: {w.lastStatus}{/if}
+                    </span>
+                  </div>
+                  <div class="webhook-actions">
+                    <button class="btn-action-sm" onclick={() => runWebhookTest(w.id)}>{$t('developer.test')}</button>
+                    <button class="btn-action-sm" onclick={() => openEditWebhook(w)}>{$t('common.edit')}</button>
+                    <button class="btn-action-sm danger" onclick={() => removeWebhook(w.id)}>{$t('common.delete')}</button>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
 
       {:else if activeTab === 'usuarios' && isAdmin}
@@ -671,6 +1115,200 @@
   </div>
 {/if}
 
+<!-- TOTP enroll modal (P4.12) -->
+{#if showTotpModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeTotpModal} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('settings.totp_enroll_title')}</h3>
+        <button class="modal-close" onclick={closeTotpModal} aria-label={$t('common.close')}>&times;</button>
+      </div>
+
+      {#if backupCodes.length > 0}
+        <!-- Step 2: show backup codes once -->
+        <div class="modal-form">
+          <div class="modal-success">{$t('settings.totp_enabled_ok')}</div>
+          <p class="pref-desc">{$t('settings.totp_backup_intro')}</p>
+          <ul class="backup-codes">
+            {#each backupCodes as code (code)}<li>{code}</li>{/each}
+          </ul>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={copyBackupCodes}>{$t('settings.totp_copy_codes')}</button>
+            <button type="button" class="btn-submit" onclick={closeTotpModal}>{$t('common.done')}</button>
+          </div>
+        </div>
+      {:else}
+        <!-- Step 1: show secret + otpauth URI, confirm with a code -->
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); confirmTotpEnroll(); }}>
+          <p class="pref-desc">{$t('settings.totp_enroll_intro')}</p>
+          <div class="form-field">
+            <label for="totp-secret">{$t('settings.totp_secret_label')}</label>
+            <input id="totp-secret" type="text" value={enrollSecret} readonly />
+          </div>
+          <p class="pref-desc totp-uri">{enrollUri}</p>
+          <div class="form-field">
+            <label for="totp-confirm-code">{$t('settings.totp_confirm_label')}</label>
+            <input id="totp-confirm-code" type="text" inputmode="numeric" autocomplete="one-time-code" bind:value={enrollCode} placeholder="000000" />
+          </div>
+          {#if totpError}<p class="modal-error">{totpError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={closeTotpModal}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit" disabled={totpBusy}>{totpBusy ? '...' : $t('settings.totp_confirm_btn')}</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- TOTP disable modal (P4.12) -->
+{#if showDisableTotpModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (showDisableTotpModal = false)} role="presentation" transition:scrim>
+    <div class="modal-content modal-sm" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('settings.totp_disable_title')}</h3>
+        <button class="modal-close" onclick={() => (showDisableTotpModal = false)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); confirmDisableTotp(); }}>
+        <p class="pref-desc">{$t('settings.totp_disable_intro')}</p>
+        <div class="form-field">
+          <label for="totp-disable-code">{$t('settings.totp_confirm_label')}</label>
+          <input id="totp-disable-code" type="text" inputmode="numeric" autocomplete="one-time-code" bind:value={disableCode} placeholder="000000" />
+        </div>
+        {#if totpError}<p class="modal-error">{totpError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (showDisableTotpModal = false)}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-danger-solid" disabled={totpBusy}>{totpBusy ? '...' : $t('settings.totp_disable_btn')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
+<!-- App-lock PIN modal (P4.14) -->
+{#if showPinModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (showPinModal = false)} role="presentation" transition:scrim>
+    <div class="modal-content modal-sm" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('lock.enable_pin')}</h3>
+        <button class="modal-close" onclick={() => (showPinModal = false)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitPinLock(); }}>
+        <p class="pref-desc">{$t('lock.pin_setup_intro')}</p>
+        <div class="form-field">
+          <label for="lock-pin">{$t('lock.pin_label')}</label>
+          <input id="lock-pin" type="password" inputmode="numeric" autocomplete="off" bind:value={pinValue} placeholder="••••" />
+        </div>
+        <div class="form-field">
+          <label for="lock-pin-confirm">{$t('lock.pin_confirm_label')}</label>
+          <input id="lock-pin-confirm" type="password" inputmode="numeric" autocomplete="off" bind:value={pinConfirm} placeholder="••••" />
+        </div>
+        {#if lockError}<p class="modal-error">{lockError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (showPinModal = false)}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-submit" disabled={lockBusy}>{lockBusy ? '...' : $t('lock.enable')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
+<!-- Create API key modal (P4.13) -->
+{#if showCreateKeyModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeCreateKey} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('developer.create_key')}</h3>
+        <button class="modal-close" onclick={closeCreateKey} aria-label={$t('common.close')}>&times;</button>
+      </div>
+
+      {#if createdKey}
+        <div class="modal-form">
+          <div class="modal-success">{$t('developer.key_created_ok')}</div>
+          <p class="pref-desc">{$t('developer.key_shown_once')}</p>
+          <p class="totp-uri">{createdKey.key}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={copyCreatedKey}>{$t('developer.copy_key')}</button>
+            <button type="button" class="btn-submit" onclick={closeCreateKey}>{$t('common.done')}</button>
+          </div>
+        </div>
+      {:else}
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitCreateKey(); }}>
+          <div class="form-field">
+            <label for="key-name">{$t('developer.key_name')}</label>
+            <input id="key-name" type="text" bind:value={newKeyName} maxlength="100" />
+          </div>
+          <div class="form-field">
+            <span class="field-label-block">{$t('developer.scopes')}</span>
+            <p class="pref-desc">{$t('developer.scopes_hint')}</p>
+            <div class="scope-grid">
+              {#each availableScopes as scope (scope)}
+                <label class="scope-item">
+                  <input type="checkbox" checked={newKeyScopes.includes(scope)} onchange={() => toggleKeyScope(scope)} />
+                  <span>{scope}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
+          {#if apiKeysError}<p class="modal-error">{apiKeysError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={closeCreateKey}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit" disabled={keyBusy}>{keyBusy ? '...' : $t('developer.create_key')}</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Webhook create/edit modal (P4.13) -->
+{#if showWebhookModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (showWebhookModal = false)} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{editingWebhookId !== null ? $t('developer.edit_webhook') : $t('developer.add_webhook')}</h3>
+        <button class="modal-close" onclick={() => (showWebhookModal = false)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitWebhook(); }}>
+        <div class="form-field">
+          <label for="wh-url">{$t('developer.webhook_url')}</label>
+          <input id="wh-url" type="url" bind:value={whUrl} placeholder="https://..." />
+        </div>
+        <div class="form-field">
+          <label for="wh-secret">{$t('developer.webhook_secret')}</label>
+          <input id="wh-secret" type="text" bind:value={whSecret} placeholder={editingWebhookId !== null ? $t('developer.webhook_secret_keep') : $t('developer.webhook_secret_ph')} />
+          <p class="pref-desc">{$t('developer.webhook_secret_hint')}</p>
+        </div>
+        <div class="form-field">
+          <span class="field-label-block">{$t('developer.webhook_events')}</span>
+          <div class="scope-grid">
+            {#each webhookEvents as event (event)}
+              <label class="scope-item">
+                <input type="checkbox" checked={whEvents.includes(event)} onchange={() => toggleWebhookEvent(event)} />
+                <span>{event}</span>
+              </label>
+            {/each}
+          </div>
+        </div>
+        <label class="scope-item">
+          <input type="checkbox" bind:checked={whEnabled} />
+          <span>{$t('developer.webhook_enabled')}</span>
+        </label>
+        {#if webhooksError}<p class="modal-error">{webhooksError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (showWebhookModal = false)}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-submit" disabled={webhookBusy}>{webhookBusy ? '...' : $t('common.save')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 <!-- Admin: reset user password (P1.10) -->
 {#if resetTarget}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -807,7 +1445,32 @@
   .btn-action-sm.danger:hover { background: var(--tag-red-bg); }
 
   .badge-green { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem; background: var(--tag-green-bg); color: var(--accent-green); border-radius: var(--radius-full); }
+  .badge-muted { font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.5rem; background: var(--bg-muted, var(--border-default)); color: var(--text-muted); border-radius: var(--radius-full); }
   .card-msg { font-size: 0.75rem; color: var(--accent-green); margin-top: 0.5rem; }
+  .card-msg.error { color: var(--accent-red); }
+  .card-desc { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+
+  /* Active-session list (P4.12) */
+  .session-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .session-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 0.7rem; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+  .session-info { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+  .session-ua { font-size: 0.8rem; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; gap: 0.4rem; overflow: hidden; text-overflow: ellipsis; }
+  .session-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+  /* TOTP enrollment (P4.12) */
+  .totp-uri { word-break: break-all; font-family: var(--font-mono, monospace); font-size: 0.68rem; background: var(--bg-muted, rgba(0,0,0,0.04)); padding: 0.4rem 0.5rem; border-radius: var(--radius-sm); }
+  .backup-codes { list-style: none; margin: 0.5rem 0; padding: 0.6rem 0.7rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; background: var(--bg-muted, rgba(0,0,0,0.04)); border-radius: var(--radius-md); font-family: var(--font-mono, monospace); font-size: 0.82rem; letter-spacing: 0.05em; }
+
+  /* API tab (P4.13) */
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.3rem; }
+  .field-label-block { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem; }
+  .scope-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.3rem 0.75rem; margin-top: 0.3rem; }
+  .scope-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-primary); }
+  .scope-item input { width: auto; }
+  .webhook-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+
+  /* App lock (P4.14) */
+  .lock-enable-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; }
 
   .loading-state { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
 

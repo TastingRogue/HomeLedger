@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { apiGet, apiPost } from '$lib/api/client';
-  import { analyzeAttachment, listReceipts, updateReceipt, type ReceiptAnalysis } from '$lib/api/receipts';
+  import { analyzeAttachment, listReceipts, updateReceipt, setReceiptItemCategory, createTransactionFromReceipt, type ReceiptAnalysis } from '$lib/api/receipts';
   import { listAttachments, uploadAttachment, previewAttachmentUrl, downloadAttachment as apiDownload, deleteAttachment, type Attachment } from '$lib/api/attachments';
   import { formatCurrency, formatDateShort, nowDatetimeLocal } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -24,6 +24,30 @@
   let form=$state<{merchant:string;receiptDate:string;subtotal:string;tax:string;total:string;issuerRfc:string;uuid:string}>({merchant:'',receiptDate:'',subtotal:'',tax:'',total:'',issuerRfc:'',uuid:''});
   function startEdit(){ if(!selected)return; form={ merchant:selected.merchant??'', receiptDate:selected.receiptDate?selected.receiptDate.slice(0,10):'', subtotal:selected.subtotal!=null?String(selected.subtotal):'', tax:selected.tax!=null?String(selected.tax):'', total:selected.total!=null?String(selected.total):'', issuerRfc:selected.rfc??'', uuid:selected.uuid??'' }; editing=true; }
   function cancelEdit(){ editing=false; }
+
+  // P4.6: create-transaction-from-receipt state.
+  let showCreateTx=$state(false); let creatingTx=$state(false);
+  let ctxAccountId=$state(''); let ctxCategoryId=$state('');
+  function openCreateTx(){ if(!selected)return; ctxAccountId=accounts[0]?String(accounts[0].id):''; ctxCategoryId=categories[0]?String(categories[0].id):''; showCreateTx=true; }
+  function closeCreateTx(){ showCreateTx=false; }
+  async function submitCreateTx(){
+    if(!selected)return;
+    if(!ctxAccountId||!ctxCategoryId){ error=$t('receipts.ctx_need_fields'); return; }
+    creatingTx=true; error='';
+    try{
+      const updated=await createTransactionFromReceipt(selected.id,{ accountId:Number(ctxAccountId), categoryId:Number(ctxCategoryId) });
+      receipts=receipts.map(x=>x.id===updated.id?updated:x); selected=updated; showCreateTx=false;
+    }catch(e){ error=e instanceof Error?e.message:$t('receipts.error_create_tx'); }
+    finally{ creatingTx=false; }
+  }
+  // Assign a category to a receipt line item (item-level categorization).
+  async function setItemCat(itemId:number, categoryId:string){
+    if(!selected)return;
+    try{
+      const updated=await setReceiptItemCategory(selected.id, itemId, categoryId===''?null:Number(categoryId));
+      receipts=receipts.map(x=>x.id===updated.id?updated:x); selected=updated;
+    }catch(e){ error=e instanceof Error?e.message:$t('receipts.error_save'); }
+  }
   async function saveEdit(){
     if(!selected)return; saving=true; error='';
     try{
@@ -35,7 +59,10 @@
   // True when the analyzed total and the linked transaction amount differ beyond a 1-cent rounding tolerance.
   const mismatch = $derived(!!selected && selected.total !== null && selected.transactionAmount !== null && Math.abs(Math.abs(selected.total) - Math.abs(selected.transactionAmount)) > 0.01);
   onMount(load);
-  async function load(){ loading=true; error=''; try { const [r,a]=await Promise.all([listReceipts(),listAttachments()]); receipts=r; attachments=a; } catch(e){ error=e instanceof Error?e.message:$t('receipts.error_loading'); } finally{loading=false;} }
+  async function load(){ loading=true; error=''; try { const [r,a]=await Promise.all([listReceipts(),listAttachments()]); receipts=r; attachments=a; } catch(e){ error=e instanceof Error?e.message:$t('receipts.error_loading'); } finally{loading=false;}
+    // Load accounts/categories for the detail panel's "create transaction" flow + item categorization.
+    try{ const [accs,cats]=await Promise.all([apiGet<Account[]>('/accounts'),apiGet<Category[]>('/categories')]); accounts=accs; categories=cats; }catch{ /* pickers optional */ }
+  }
   async function analyze(id:number){ analyzing=id; error=''; try{ const r=await analyzeAttachment(id); receipts=[r,...receipts.filter(x=>x.id!==r.id)]; selected=r; await preview(r); }catch(e){error=e instanceof Error?e.message:$t('receipts.error_analyze');}finally{analyzing=null;} }
   function revokePreview(){ if(previewUrl)URL.revokeObjectURL(previewUrl); previewUrl=''; }
   async function preview(r:ReceiptAnalysis){ revokePreview(); previewError=false; try{ previewUrl=await previewAttachmentUrl(r.attachmentId); }catch{ previewError=true; } }
@@ -114,6 +141,16 @@
       <label class="fld">{$t('receipts.upload_file')}
         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.xml" onchange={onUploadFile} />
       </label>
+
+      <!-- Camera capture (P4.14): on mobile this opens the rear camera directly.
+           The captured photo flows through the same upload + OCR pipeline. -->
+      <div class="camera-row">
+        <label class="camera-btn">
+          <input type="file" accept="image/*" capture="environment" onchange={onUploadFile} hidden />
+          <span aria-hidden="true">📷</span> {$t('receipts.take_photo')}
+        </label>
+        {#if uploadFile}<span class="picked-file" title={uploadFile.name}>{uploadFile.name}</span>{/if}
+      </div>
 
       <div class="mode-toggle" role="group" aria-label={$t('receipts.upload_link_mode')}>
         <button type="button" class:active={uploadMode==='existing'} onclick={()=>uploadMode='existing'} disabled={txs.length===0}>{$t('receipts.upload_existing')}</button>
@@ -209,7 +246,25 @@
             <div><span>{$t('receipts.field_confidence')}</span><strong>{Math.round(selected.confidence*100)}%</strong></div>
           </div>
           {#if selected.transactionName}<div class="match" class:match-bad={mismatch}><span>{$t('receipts.related_tx')}</span><strong>{selected.transactionName} · {selected.transactionAmount!==null?formatCurrency(selected.transactionAmount):''}</strong></div>{/if}
-          {#if selected.items.length}<section class="items"><h3>{$t('receipts.items_section')}</h3>{#each selected.items as item}<div class="item"><span>{item.description}</span><strong>{item.total!==null?formatCurrency(item.total):'—'}</strong></div>{/each}</section>{/if}
+          {#if !selected.transactionId && selected.total!==null}
+            <div class="create-tx-row"><button class="reanalyze" onclick={openCreateTx}>{$t('receipts.create_tx')}</button><span class="hint">{$t('receipts.create_tx_hint')}</span></div>
+          {/if}
+          {#if selected.items.length}
+            <section class="items">
+              <h3>{$t('receipts.items_section')}</h3>
+              {#each selected.items as item}
+                <div class="item item-cat">
+                  <span class="item-desc">{item.description}</span>
+                  <select class="item-cat-select" value={item.categoryId!=null?String(item.categoryId):''} onchange={(e)=>setItemCat(item.id,(e.currentTarget as HTMLSelectElement).value)} aria-label={$t('receipts.item_category')}>
+                    <option value="">{$t('receipts.item_no_category')}</option>
+                    {#each categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
+                  </select>
+                  <strong>{item.total!==null?formatCurrency(item.total):'—'}</strong>
+                </div>
+              {/each}
+              <p class="hint">{$t('receipts.items_split_hint')}</p>
+            </section>
+          {/if}
         {/if}
       </div>
       <div class="detail-preview">
@@ -231,7 +286,45 @@
   </div>
 </div>
 {/if}
+
+{#if showCreateTx && selected}
+<div class="overlay" role="presentation" onclick={closeCreateTx} transition:scrim>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="modal modal-sm" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()} transition:modalPanel>
+    <div class="detail-head">
+      <div><p class="eyebrow">{$t('receipts.page_eyebrow')}</p><h2>{$t('receipts.create_tx')}</h2></div>
+      <button class="close" onclick={closeCreateTx}>×</button>
+    </div>
+    <div class="upload-form">
+      <div class="ctx-summary">
+        <div><span>{$t('receipts.col_merchant')}</span><strong>{selected.merchant??'—'}</strong></div>
+        <div><span>{$t('receipts.field_total')}</span><strong>{selected.total!==null?formatCurrency(selected.total):'—'}</strong></div>
+      </div>
+      <label class="fld">{$t('receipts.form_account')}
+        <select bind:value={ctxAccountId}>{#each accounts as a (a.id)}<option value={String(a.id)}>{a.name}</option>{/each}</select>
+      </label>
+      <label class="fld">{$t('receipts.form_category')}
+        <select bind:value={ctxCategoryId}>{#each categories as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}</select>
+      </label>
+      <p class="hint">{$t('receipts.create_tx_split_hint')}</p>
+      <div class="upload-actions">
+        <button class="ghost" onclick={closeCreateTx} disabled={creatingTx}>{$t('receipts.cancel')}</button>
+        <button class="upload-btn" onclick={submitCreateTx} disabled={creatingTx}>{creatingTx?$t('receipts.saving'):$t('receipts.create_tx_confirm')}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{/if}
 <style>
+.camera-row{display:flex;align-items:center;gap:.6rem;margin:.5rem 0 .25rem;flex-wrap:wrap}
+.camera-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .8rem;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-secondary);font-size:.78rem;cursor:pointer;min-height:44px}
+.camera-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.picked-file{font-size:.72rem;color:var(--text-muted);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.create-tx-row{display:flex;align-items:center;gap:.6rem;margin:.75rem 0}
+.item-cat{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center}
+.item-cat-select{background:var(--bg-surface);border:1px solid var(--border-default);color:var(--text-primary);border-radius:var(--radius-md);padding:.3rem .45rem;font-size:.7rem;max-width:180px}
+.ctx-summary{display:flex;gap:1.5rem;margin-bottom:.75rem}.ctx-summary div{display:flex;flex-direction:column;gap:.15rem}.ctx-summary span{font-size:.6rem;text-transform:uppercase;color:var(--text-muted)}.ctx-summary strong{color:var(--text-primary);font-size:.85rem}
 .page{width:100%;margin:0}.header{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1.25rem}.eyebrow{margin:0 0 .25rem;font-size:.65rem;letter-spacing:.1em;font-weight:700;color:var(--accent-green)}h1{margin:0;font-size:1.45rem;color:var(--text-primary)}h2{margin:.1rem 0;font-size:1.05rem;color:var(--text-primary)}h3{font-size:.78rem;color:var(--text-secondary);margin:0 0 .65rem;text-transform:uppercase;letter-spacing:.05em}.subtitle,.muted{margin:.25rem 0 0;color:var(--text-muted);font-size:.78rem}.stats{display:flex;gap:.5rem;flex-wrap:wrap}.stats span{background:var(--bg-surface);border:1px solid var(--border-default);padding:.45rem .65rem;border-radius:var(--radius-md);font-size:.7rem;color:var(--text-secondary)}.toolbar{display:flex;gap:.5rem;margin-bottom:.75rem}input{flex:1;max-width:420px;background:var(--bg-surface);border:1px solid var(--border-default);color:var(--text-primary);border-radius:var(--radius-md);padding:.55rem .7rem;outline:none}button{border:1px solid var(--border-default);border-radius:var(--radius-md);padding:.5rem .7rem;font-size:.72rem;cursor:pointer}button:disabled{opacity:.5}.secondary,.view{background:var(--bg-surface);color:var(--text-secondary)}.analyze{background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.3)}.upload-btn{background:var(--accent-green);color:#fff;border-color:var(--accent-green);font-weight:600;white-space:nowrap}.upload-btn:hover:not(:disabled){opacity:.9}.upload-btn:disabled{opacity:.55;cursor:not-allowed}.danger{background:rgba(239,68,68,.12);color:#fca5a5;border-color:rgba(239,68,68,.3);white-space:nowrap;height:fit-content}.open-tab{display:inline-block;margin-top:.5rem;font-size:.72rem;color:#93c5fd;text-decoration:none}.open-tab:hover{text-decoration:underline}.table-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-lg);overflow:hidden}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th{text-align:left;padding:.65rem .8rem;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);background:var(--bg-surface);border-bottom:1px solid var(--border-default)}td{padding:.7rem .8rem;border-bottom:1px solid var(--border-subtle);color:var(--text-secondary);font-size:.72rem;white-space:nowrap}tr:last-child td{border-bottom:0}tr.clickable{cursor:pointer}tr.clickable:hover td{background:var(--bg-hover)}.merchant{color:var(--text-primary);font-weight:600}.filename{max-width:220px;overflow:hidden;text-overflow:ellipsis}.amount{color:var(--text-primary)}.status{display:inline-flex;padding:.22rem .42rem;border-radius:999px;background:rgba(148,163,184,.1);color:var(--text-muted);font-size:.6rem}.status.ok{color:#86efac;background:rgba(34,197,94,.1)}.status.bad{color:#fca5a5;background:rgba(239,68,68,.1)}.empty{min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;color:var(--text-muted);font-size:.75rem}.empty strong{color:var(--text-secondary);font-size:.85rem}.error{margin:.6rem 0;padding:.65rem .75rem;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#fca5a5;border-radius:var(--radius-md);font-size:.72rem}.overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:250;display:flex;align-items:center;justify-content:center;padding:1.5rem}.modal{position:relative;z-index:260;width:100%;max-width:1120px;max-height:calc(100vh - 3rem);overflow:auto;background:var(--bg-default);border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:1.5rem;box-shadow:0 24px 70px rgba(0,0,0,.45)}.detail-head{display:flex;justify-content:space-between;gap:1rem;margin-bottom:1rem}.detail-head-actions{display:flex;align-items:flex-start;gap:.4rem}.reanalyze{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);border-radius:var(--radius-md);padding:.4rem .7rem;font-size:.72rem;cursor:pointer;white-space:nowrap;height:fit-content}.reanalyze:disabled{opacity:.5;cursor:default}.ghost{background:var(--bg-surface);color:var(--text-secondary);white-space:nowrap;height:fit-content}
 .detail-body{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1.5rem;align-items:start}.detail-info{min-width:0}.detail-preview{min-width:0;position:sticky;top:0}
 .edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:.5rem}.edit-grid label{display:flex;flex-direction:column;gap:.25rem;font-size:.6rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted)}.edit-grid label.full{grid-column:1 / -1}.edit-grid input{background:var(--bg-surface);border:1px solid var(--border-default);color:var(--text-primary);border-radius:var(--radius-md);padding:.45rem .55rem;font-size:.8rem;outline:none;max-width:none}

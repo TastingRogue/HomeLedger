@@ -44,7 +44,7 @@ Implications for the feature list:
 
 - Target version: **1.0.0** — the P0–P3 hardening is complete (see "Definition of
   Done for v1.0.0" below); tagging/release is the maintainer's step.
-- Test suite: **549 passing, 0 failing** ✅ (499 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
+- Test suite: **637 passing, 0 failing** ✅ (587 backend/shared + 50 frontend) · lint 0 errors · CI gates in place
 - **ALL P0 BLOCKERS DONE** (P0.1–P0.5) and P1–P3 substantially complete, merged to `main`.
 - **Now working:** the **v1.x incremental depth** track (`P4.x` — see the horizon map).
 
@@ -526,101 +526,171 @@ Today a transaction has name, amount, type (`Ingreso`/`Gasto`), date, notes,
 account, category, optional subcategory. Missing the fields that make ledgers
 powerful.
 
-- [ ] `merchant` / payee, separate from the free-text description
-- [ ] Tags (many-to-many) — schema table + UI; rules already have an `addTag` action but there's no tags table yet
-- [ ] `reconciled` / cleared flag (per transaction)
-- [ ] `pending` vs `posted` status
-- [ ] External transaction id (for import matching)
-- [ ] **Duplicate detection** (by external id / date+amount+merchant heuristic)
-- [ ] Transaction audit history (who/when changed what)
-- [ ] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment (decide if these are types or flags)
+Shipped in **3 phases** (branch `p4.1-richer-transactions`). ✅ **All phases done.**
+- [x] `merchant` / payee, separate from the free-text name/notes ✅ (Phase 1)
+- [x] Tags (many-to-many) ✅ (Phase 2) — real `tags` + `transaction_tags` tables (migration `0009`), reusable per-user catalog, `addTag` rule action now writes to the M2M (was concatenating into `notes`), tag CRUD + `PUT /transactions/:id/tags`, list filter by tag, chip UI in the form + detail panel, backup round-trips both tables
+- [x] `reconciled` / cleared flag (per transaction) ✅ (Phase 1)
+- [x] `pending` vs `posted` status ✅ (Phase 1, default `posted`)
+- [x] External transaction id (for import matching) ✅ (Phase 1; importers now map the bank `reference` → `externalId`)
+- [x] **Duplicate detection** ✅ (Phase 1; dedupe on `externalId` when present, else the date+amount+name heuristic)
+- [x] Transaction audit history (who/when changed what) ✅ (Phase 3) — `transaction_audit` table (migration `0010`) records created/updated/deleted with a JSON field-level diff; `GET /transactions/:id/audit` + collapsible history in the detail panel
+- [x] More types beyond Ingreso/Gasto: refund, reimbursement, adjustment ✅ (Phase 1) — resolved as a `subtype` **flag** (not a new `type`), so balance sums by `type` are unaffected
+
+Phase 1 details (migration `0008_richer_transactions`, additive `ALTER TABLE`):
+added `merchant`, `subtype`, `reconciled`, `status`, `external_id` to `transactions`
+(+ a `(user_id, external_id)` index); validators, service create/update + new list
+filters (reconciled/status/subtype), CSV export gains a Merchant column, importer
+wires `reference`→`externalId` + `description`→`merchant` and dedupes on `externalId`;
+frontend form gets a collapsible "more details" section + detail-panel display + es/en
+i18n. Backup round-trips the new scalars automatically (full-row export + spread import).
+
+Phase 2 details (migration `0009_tags`): `tags` (per-user catalog, unique name per
+user) + `transaction_tags` (M2M, composite PK). New `TagService` (get-or-create,
+set/attach/detach, bulk-map for lists). Rules-engine `addTag` rewritten to use the
+M2M. New `tagRoutes` (`/api/v1/tags` CRUD) + `PUT /transactions/:id/tags`; list gains
+a `tagId` filter and enriches each row with its tags (bulk, no N+1). Frontend: tag-chip
+input in the form, chips in the detail panel, `Tag` type + API client. Backup: both
+tables exported/imported with FK remap (txMap + new tagMap); backup version → 1.1.0.
+
+Phase 3 details (migration `0010_transaction_audit`): `transaction_audit` (nullable
+`transaction_id` with **ON DELETE SET NULL** so a `deleted` row survives its
+transaction; `action` created/updated/deleted; JSON `changes` diff). `TransactionService`
+create/update/delete each write an audit row inside their existing atomic tx (update
+logs only the changed fields; delete snapshots before removal). `GET /transactions/:id/audit`
++ a lazily-loaded, collapsible "change history" in the detail panel (from→to per field).
+Backup exports/imports the audit table (transactionId remapped via txMap, null kept null).
+**P4.1 is now complete.**
 
 ### P4.2 — Credit card modeling
 Credit accounts exist (`type: 'Crédito'` + `creditLimit`, and utilization shows
 on the dashboard/alerts 🟡), but statement-cycle modeling is missing.
 
-- [ ] Statement balance, minimum payment, payment due date, statement closing date
-- [ ] APR / interest tracking
-- [ ] Payment handling that never double-counts (a CC payment is a transfer: checking ↓, card ↓ — not an expense)
-- [ ] Payment history + available credit surfaced clearly
+✅ **Done** (branch `p4.2-credit-cards`, migration `0011_credit_statement`).
+- [x] Statement balance, minimum payment, payment due date, statement closing date ✅ — added `statementDay`, `paymentDueDay`, `apr`, `minimumPayment` to `accounts`; `GET /accounts/:id/statement` derives owed / available credit / utilization / next statement + due dates
+- [x] APR / interest tracking ✅ — `apr` field, surfaced in the statement summary (informational)
+- [x] Payment handling that never double-counts ✅ — **fixed a real balance bug**: the credit branch of `calculateBalance` inverted transfer signs, so a payment (transfer into the card) was recorded as MORE debt. Unified the formula (negative balance = debt for all types) in both `account.service.ts` and the mirror in `transfer.service.ts`; a CC payment is a transfer (checking ↓, card debt ↓), never an expense
+- [x] Payment history + available credit surfaced clearly ✅ — the account detail drawer shows amount owed, available credit, utilization, next statement/due dates, APR, min payment, and the payment history (transfers into the card)
 
 ### P4.3 — Envelope budgeting (Actual-style)
 Budgets exist (monthly/weekly, per-category, progress 🟡). Upgrade toward
 envelope budgeting.
 
-- [ ] "Available to spend" / assign-what-you-have model
-- [ ] Rollover / carry-over of unspent budget
-- [ ] Budget by tag (in addition to category)
-- [ ] Overspending indicators + alerts
+Built in phases on `p4-feature-depth`.
+- [x] "Available to spend" / assign-what-you-have model ✅ (Phase B, light) — `getSummary` now aggregates period income (`type='Ingreso'` in the budget range) and exposes `totalIncome` + `unassigned` (income − allocated); the budgets summary row shows Income and an "Unassigned" indicator (negative = over-allocated). Kept as an informative indicator, not a full YNAB pool (per the "simplicity outranks features" principle)
+- [x] Rollover / carry-over of unspent budget ✅ (Phase A) — persisted `rolloverEnabled` + `alertThreshold` on `budgets` (migration `0012`; were accepted by the API but silently dropped before); rollover is no longer wiped to 0 on edit; the monthly cron only rolls over budgets with the flag on; form gets a rollover toggle + threshold field + a card badge
+- [x] Budget by tag (in addition to category) ✅ (Phase C) — new `budget_tags` table (migration `0013`, mirrors `budget_categories`) keyed by the P4.1 tags; spent-per-tag computed by joining `transaction_tags`; a budget can allocate by category and/or tag; totals, rollover, and backup all include tags; form gains a "tag allocations" section and the card shows per-tag progress
+- [x] Overspending indicators + alerts ✅ (Phase D) — new `AlertService.evaluateBudgetOverspend` (category **and** tag lines) using the shared SHA-256 dedup helpers with **auto-clear on recovery**, wired into the hourly `alert-evaluation` scheduler job (the old `BudgetService.evaluateAlerts` was MD5-based, never scheduled, no recovery — kept only as `@deprecated`). New `budget_threshold`/`budget_exceeded` alert types surfaced on the alerts page (config + filters + es/en labels). Overspend already color-coded per line on the budget card. **P4.3 complete.**
 
 ### P4.4 — Smart importer (local files only)
 Parsers exist (BBVA/Santander/Nu; CSV/XLSX/OFX/QIF/JSON 🟡). Make the pipeline
 robust — all on the uploaded file, no network.
 
-- [ ] Duplicate detection against existing transactions
-- [ ] Merchant normalization
-- [ ] Pending → posted matching
-- [ ] Currency + date normalization, debit/credit detection
-- [ ] Automatic account detection
-- [ ] Import history + **undo import**
+✅ **Done** (on `p4-feature-depth`, migration `0014_import_id`).
+- [x] Duplicate detection against existing transactions ✅ — dedupe on stable `externalId` when present, else an exact date+amount+name heuristic, now **scoped per account** (a transfer between two of your accounts is no longer a false dup). Surfaced in the preview (per-row `duplicate` status), not just silently skipped at confirm
+- [x] Merchant normalization ✅ — new pure `normalizeMerchant` (packages/backend/src/importers/normalize.ts): strips store/terminal numbers, `#1234`, `REF:/AUT/FOLIO/OP` codes, embedded dates/times, currency markers, and noise words (compra/pago/pos/spei…), then consistent Title-Case. Feeds the stored `merchant` (falls back to the raw description) so dedupe + rules matching are more reliable
+- [x] Pending → posted matching ✅ — when an incoming posted row matches an existing `pending` transaction (same account, type, amount, date within ±5 days) the importer **promotes** that row to `posted` instead of inserting a near-duplicate (`ImportService.findPendingMatch`). Promoted rows are deliberately NOT tagged with the import so undo can't delete a pre-existing transaction
+- [x] Currency + date normalization, debit/credit detection ✅ — `normalizeDate` parses ISO, `DD/MM[/YYYY]`, `MM/DD` (disambiguated when a part >12), 2-digit years, `YYYY/MM/DD`, and textual months (es/en); `parseAmount` handles `$1,234.56` / `1.234,56` (EU/LA), accounting `(…)` negatives, `±`, and trailing `MXN/USD/EUR`, returning `{amount, sign}` for debit/credit detection
+- [x] Automatic account detection ✅ — when the user doesn't pick a target account, `ImportService.detectAccount` infers it from the parser's bank keywords (e.g. `bbva_mx` → matches an account named/banked "BBVA") then from filename tokens. Exposed as `detectedAccountId` in the preview; the UI preselects it
+- [x] Import history + **undo import** ✅ — every inserted row is tagged with its import session (`transactions.import_id`, migration `0014`). New `ImportService.undo()` + `DELETE /api/v1/imports/:id` reverse exactly the rows a completed import inserted and mark the session `reverted`; the Import page lists history with a per-import **Undo** button. Backups strip `import_id` on restore (the `imports` table isn't part of a backup, so keeping it would dangle)
+
+Also rebuilt the frontend import flow to the real **upload → preview → confirm** pipeline (it previously POSTed once and misread the session response as counts): step 2 now shows a classified row table (new / duplicate / pending-match badges), the detected/target account picker, a "skip duplicates" toggle, and step 3 reports imported / matched / skipped. **P4.4 complete.**
 
 ### P4.5 — Rules & auto-categorization UX (builds on P2.1)
 Rules engine + UI already tracked in P2.1. Add the "feels smart without AI" bits.
 
-- [ ] "Rule learning": after the user categorizes e.g. AMAZON → Shopping, offer "apply to future AMAZON transactions?"
-- [ ] More trigger/action coverage (amount ranges, flag-for-review, mark recurring, ignore)
+✅ **Done** (on `p4-feature-depth`, no migration — reuses tags + free-form rule JSON).
+- [x] "Rule learning" ✅ — after the user changes a transaction's category, the app asks the backend (`GET /rules/suggest?transactionId=`) whether a rule is worth proposing. `RulesEngineService.suggestRuleForTransaction` suggests one only when it's useful: the tx isn't "uncategorized", **no existing enabled rule already matches it**, and there's ≥1 OTHER transaction from the same merchant (matched via `normalizeMerchant`, P4.4) not yet in that category. The transactions page shows a one-click "apply «Category» to N other «Merchant» transactions?" prompt that creates the rule (merchant/name `contains`, `setCategory`) and applies it immediately
+- [x] More trigger/action coverage ✅ — new **`merchant`** condition field (matches the P4.1 merchant, cleaned by P4.4). Amount ranges already existed via the `between` operator. New actions: **`flagReview`** (tags the tx `review`), **`markRecurring`** (tags it `recurring`) — both modeled as reusable tags so no schema change — and **`ignore`**, which **short-circuits** the rule (leaves the transaction exactly as-is, winning over any other action in the same rule) so you can protect internal transfers/known rows from auto-categorization. The importer now applies the full matched action set (was category-only) and honors `ignore`. Rules builder UI + es/en labels updated. **P4.5 complete.**
 
 ### P4.6 — CFDI / Mexican invoice flow (local file, MX differentiator)
 OCR already parses some CFDI XML 🟡. Make it a first-class local flow.
 
-- [ ] Upload CFDI XML → extract RFC, merchant, date, subtotal, IVA, total, UUID → create transaction + receipt
-- [ ] Item-level categorization from receipts (line items → categories)
+✅ **Done** (on `p4-feature-depth`, no migration — receipt tables use the runtime `ensureTables` additive pattern).
+- [x] Upload CFDI XML → extract RFC, merchant, date, subtotal, IVA, total, UUID → create transaction + receipt ✅ — `parseCfdi` already pulled RFC/merchant/date/subtotal/total/UUID/line-items; now it also extracts **IVA** (prefers the document-level `<cfdi:Impuestos TotalImpuestosTrasladados>`, else sums each `<cfdi:Traslado Importe>`, else falls back to total − subtotal). New `ReceiptService.createTransaction` + `POST /receipts/:id/transaction` turn a completed receipt into a linked expense (name = merchant, amount = total, `merchant`, `externalId = UUID` so a re-uploaded CFDI is caught by the P4.1 dedupe, date = the CFDI date), guarding against missing total / already-linked. The receipt detail panel gains a **Create transaction** button + account/category picker
+- [x] Item-level categorization from receipts (line items → categories) ✅ — new `receipt_items.category_id` (runtime additive column) + `ReceiptService.setItemCategory` + `PATCH /receipts/:id/items/:itemId`; the receipts UI shows a per-item category dropdown. When creating the transaction, if ≥2 items are categorized **and** their totals sum to the receipt total, the transaction is automatically **split** by those categories (best-effort; falls back to a single transaction otherwise). **P4.6 complete.**
 
 ### P4.7 — Subscription intelligence
 Subscriptions + auto-charge exist. Add insight (all computed locally).
 
-- [ ] Annual cost projection + last-12-months total
-- [ ] Price-increase detection ("Netflix went from $269 to $299")
+✅ **Done** (on `p4-feature-depth`, no migration — all computed locally).
+- [x] Annual cost projection + last-12-months total ✅ — `SubscriptionService.getInsights` annualizes each active subscription (weekly ×52, monthly ×12) and sums the **actual** matching charges over the last 12 months (matched by name + account + expense — the shape auto-charge writes). New `GET /subscriptions/insights` + summary cards on the subscriptions page (annual projection, last-12-months spend) and a per-row **Annual** column
+- [x] Price-increase detection ✅ — the same endpoint walks each subscription's charge history (oldest→newest, plus the current amount) and reports `priceChanges` (`from → to`, with the date); the UI shows a "↑ $269 → $299" badge on the subscription and an "increases detected" card. All offline, no network. **P4.7 complete.**
 
 ### P4.8 — Forecasting & net-worth history
 Net worth + goals exist. Add projection + history (from local data).
 
-- [ ] Goal completion forecast (target, current, monthly contribution → estimated date)
-- [ ] Net-worth history chart (1m / 6m / 1y / 5y / all) from `networth_snapshots`
+✅ **Done** (on `p4-feature-depth`, no migration — from local data).
+- [x] Goal completion forecast ✅ — `GoalService.forecast` + `GET /goals/:id/forecast?monthly=`: uses a caller-supplied monthly contribution or, when omitted, **estimates** it from `savedAmount ÷ months-since-created`; returns `remaining`, `monthsToComplete`, the projected `estimatedDate`, and `onTrackForDeadline` (vs the goal's deadline). Each active goal card now shows a 🎯 estimated-completion date with an on-track / behind badge
+- [x] Net-worth history chart (1m / 6m / 1y / 5y / all) ✅ — `NetWorthService.resolveRange` maps a named range to a `{startDate,endDate}` window (server-side; `all` → epoch) and the existing `GET /networth/history` now accepts `?range=` (explicit start/end still work). The net-worth page renders an SVG line chart of `networth_snapshots` with a 1M/6M/1Y/5Y/All range selector + first/last legend. **P4.8 complete.**
 
 ### P4.9 — Global search
-- [ ] Cross-entity search (transactions, receipts, subscriptions) with filters (date, account, category, merchant, amount, tag, type)
+✅ **Done** (on `p4-feature-depth`, no migration).
+- [x] Cross-entity search (transactions, receipts, subscriptions) with filters ✅ — new `SearchService.search` + `GET /api/v1/search` searches all three entities by a text query (transactions match name/merchant/notes; receipts match merchant/issuer name/RFC/UUID; subscriptions match name) plus structured filters: date range, account, category, merchant, amount range, **tag** (via the P4.1 M2M), and transaction type (Ingreso/Gasto). LIKE-based and fully local. A new **Buscar** page (nav + `/buscar`) offers a query box, the filter controls, and grouped result sections that link to each entity's page. (An FTS5 full-text engine over *all* entities remains the separate **v2 / L5** item.) **P4.9 complete.**
 
 ### P4.10 — Reports depth + custom reports
 Several reports exist 🟡. Extend and allow user-defined reports (rendered locally).
 
-- [ ] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports
+✅ **Done** (on `p4-feature-depth`, no migration — computed locally).
+- [x] Add: cash flow, savings rate, debt, credit utilization, merchant, custom reports ✅ — cash flow already existed; added `ReportService.getSavingsRate` (monthly income/expenses/savings + rate), `getDebtReport` (owed across credit accounts + active loans, with APR), `getCreditUtilization` (per-card owed/limit/utilization + overall), and `getMerchantReport` (top merchants by spend over a date range). New routes `GET /reports/{savings-rate,debt,credit-utilization,merchant}`. The Reports page gained **Top merchants**, **Debt overview**, and **Credit utilization** cards (savings rate was already surfaced). **Custom reports:** a runtime-ensured `custom_reports` table + `CustomReportService` (list/create/delete, type-validated) + `GET/POST/DELETE /reports/custom` lets users save a named report definition (type + config) to re-run locally. **P4.10 complete.**
 
 ### P4.11 — Multi-currency, manual-first (aligns with local-first)
-- [ ] Builds on P1.13 (v1 shipped single-currency-per-install). Add a currency dimension to every aggregation (dashboard/net worth/reports/budgets) **and** to assets/liabilities.
-- [ ] Per-account currency with a **user-entered** exchange rate (no auto-fetch by default); show converted value in base currency, and/or per-currency separate totals
-- [ ] Optional, user-enabled FX auto-fetch only (off by default) — keeps local-first default
+✅ **Done (manual-first core)** (on `p4-feature-depth`, migration `0015_multi_currency`).
+- [x] Currency dimension in every cross-account aggregation ✅ — added `accounts.exchange_rate` (rate to the instance/base currency; default 1 so single-currency installs are an exact no-op). Every consolidating total now converts `amount × exchange_rate` to base: dashboard consolidated balance + monthly summary, cash flow, trends, merchant, net worth (`getCurrent`), debt (credit owed), and credit-utilization overall totals; **budgets** sum `spent` in base to compare against base allocations. Per-account/per-card/per-category rows stay in native units. Conversion happens ONLY in the consolidators — `calculateBalance` stays native — to avoid double-conversion. **Decision:** budgets and assets/liabilities are base-currency (documented).
+- [x] Per-account currency with a **user-entered** exchange rate ✅ — the P1.13 single-currency guard is lifted: `AccountService` accepts any supported currency and stores its rate (the account form has a currency dropdown + a rate field shown only for non-base currencies). **Cross-currency transfers** record two legs — `transfers.destination_amount` is the amount entering the destination in its currency while `amount` is what leaves the source — so each side is correct in its own currency (fixes the old single-amount bug); the transfer form asks for the received amount when the two accounts' currencies differ. Same-currency transfers are unchanged (`destination_amount` null → COALESCE to `amount`).
+- [ ] Optional, user-enabled FX auto-fetch (off by default) — **deferred**: all exchange rates are entered manually (keeps local-first with zero outbound calls). This bullet can be picked up later as an opt-in.
+
+**P4.11 manual-first multi-currency complete** (FX auto-fetch intentionally deferred).
 
 ### P4.12 — Auth depth: 2FA / passkeys
 Baseline hardening is P0.4. This is the deeper account-security layer.
 
-- [ ] TOTP 2FA (offline authenticator apps — no cloud)
-- [ ] Passkeys / WebAuthn
-- [ ] Login history + revoke individual session
+- [x] TOTP 2FA (offline authenticator apps — no cloud)
+- [ ] Passkeys / WebAuthn *(deferred: needs a WebAuthn dependency + real-browser origin/RP-ID verification that can't be validated headlessly — parked like FX auto-fetch)*
+- [x] Login history + revoke individual session
+
+**P4.12 (partial) complete — TOTP 2FA + session management shipped; passkeys deferred.**
+Delivered:
+- Self-contained RFC 6238 TOTP (`utils/totp.ts`, HMAC-SHA1, 30s step, ±1 window) — **zero new dependencies, fully offline**. Verified against the RFC 6238 test vectors.
+- Opt-in enrollment (secret + `otpauth://` URI shown; 2FA stays off until a valid code confirms the authenticator), **10 one-time backup codes** (sha256-hashed at rest, shown once), and disable (requires a valid TOTP or backup code).
+- Login gains a second-factor step: when 2FA is enabled the backend replies `TOTP_REQUIRED`; the client then submits a 6-digit TOTP **or** a backup code (consumed on use). Backend loss-of-phone recovery via backup codes; admin CLI reset (P1.12) remains the last resort.
+- Session management: `refresh_tokens` now records `ip` / `user_agent` / `last_used_at`; users can list active sessions (current one flagged) and revoke individually, plus the existing "close all".
+- Migration **0016** (`users.totp_secret/totp_enabled/totp_backup_codes` + `refresh_tokens.user_agent/ip/last_used_at`) — additive/defaulted, so existing installs are a no-op (2FA off). Applied + verified in the Docker container (17 migrations).
+- Frontend: login TOTP step, and a Security tab (`/configuracion`) with enable/confirm/backup-codes/disable and the active-sessions list; i18n es + en.
+- Tests: `totp.test.ts` (17, incl. RFC vectors) + AuthService TOTP/session suite (enroll/confirm/login-with-code/backup-code-once/disable/session list+revoke). Backend **612 passing**, frontend **50 passing**.
+- QR note: to stay offline we show the secret + `otpauth://` URI as text (user pastes into their app) rather than rendering a QR via an external service or new dependency.
 
 ### P4.13 — API maturity (local endpoints)
 `/api/v1` + API keys exist. Make it a real platform surface.
 
-- [ ] OpenAPI spec + Swagger UI
-- [ ] Webhooks to a **user-configured** endpoint (e.g. Home Assistant, local script): `transaction.created`, `budget.exceeded`, `goal.completed`, `subscription.upcoming`
-- [ ] Scoped API keys
+- [x] OpenAPI spec + Swagger UI
+- [x] Webhooks to a **user-configured** endpoint (e.g. Home Assistant, local script): `transaction.created`, `budget.exceeded`, `goal.completed`, `subscription.upcoming`
+- [x] Scoped API keys
+
+**P4.13 complete.**
+Delivered:
+- **OpenAPI 3.0.3 + Swagger UI** via `@fastify/swagger` + `@fastify/swagger-ui`, registered before the routes. Browsable docs at **`/api/docs`** (spec JSON at `/api/docs/json`) — public (describes the API shape, not user data). Documents the two auth schemes (`bearerAuth` JWT + `apiKeyAuth` `X-API-Key`), the `{success,data}` / `{success,error}` envelopes, and the scope model. 121 paths auto-collected.
+- **Scoped API keys.** `api_keys.scopes` (JSON) added; scopes are `read:<resource>` / `write:<resource>` plus coarse `read:*` / `write:*` (`write:<r>` implies `read:<r>`). A key with **no scopes = full access** (back-compat). Full CRUD at `/api/v1/api-keys` (create returns the raw key once; list never returns secrets; revoke). A `requireScope()` preHandler enforces scopes on API-key requests; **JWT sessions always have full access** (scopes only ever restrict keys). Auth source + scopes are attached to the request in the auth middleware.
+- **User-configured webhooks** (per-user, new `webhooks` table). `WebhookService` create/list/update/delete/test + `deliver()` that is **fire-and-forget and best-effort** (never throws into or blocks the domain operation), with a 5s timeout and an **HMAC-SHA256 signature** header (`X-HomeLedger-Signature: sha256=…`) when a secret is set. CRUD at `/api/v1/webhooks` (+ `/:id/test`). Events fired: `transaction.created` (post-commit in `TransactionService.create`/`quickCreate`) and `budget.exceeded` / `goal.completed` / `subscription.upcoming` (emitted from `AlertService` only when the corresponding alert is newly created, so they reuse the existing dedup and fire once).
+- Migration **0017** (`api_keys.scopes` + `webhooks` table) — additive, existing keys unaffected.
+- Frontend: an **API** tab in `/configuracion` — create/list/revoke keys (pick scopes; raw key shown once with copy) and add/list/edit/delete/test webhooks (URL, optional secret, event checkboxes, enable toggle, last-status). Link to the Swagger docs. i18n es + en.
+- Tests: `config/scopes.test.ts` (13), `webhook.service.test.ts` (10, incl. HMAC signing + best-effort no-throw + event/enabled filtering), AuthService scoped-key tests. Backend **632 passing**, frontend **50 passing**.
+- Note on "user-configured": webhooks are **per-user** (own table), unlike the instance-wide `app_settings` (registration/currency), matching HomeLedger's multi-user model.
 
 ### P4.14 — PWA / mobile (offline-capable)
 Frontend is responsive. A local-first PWA is the natural mobile story.
 
-- [ ] Installable PWA + offline mode (service worker already present — verify/extend)
-- [ ] Quick-add expense (sub-5-second flow), mobile dashboard
-- [ ] Camera receipt capture (on-device), optional biometric unlock
+- [x] Installable PWA + offline mode (service worker already present — verify/extend)
+- [x] Quick-add expense (sub-5-second flow), mobile dashboard
+- [x] Camera receipt capture (on-device), optional biometric unlock
+
+**P4.14 complete.**
+Delivered:
+- **Installable PWA + offline mode.** The hand-rolled service worker (`src/service-worker.ts`, no plugin) now precaches the `prerendered` set and serves a dedicated **`/offline`** fallback page for navigations when both the network and the cached landing page miss. Verified in the production build: the emitted SW lists `/offline`, precaches it, and the navigate branch falls back to it. Manifest + icons (192/512) + head tags were already present; reconciled the duplicate `theme-color` (removed the stale `#191919` from the root layout so app.html's `#0b1118` — matching the manifest `theme_color` — is the single source of truth). Added an unobtrusive online/offline banner (`OfflineBanner`, listens to `online`/`offline`).
+- **Quick-add + mobile dashboard.** The `registro-rapido` 3-step keypad flow already existed but had no entry point; added a **floating action button** (bottom-right, safe-area aware, hidden on the quick-add page itself) in the app shell. Added a ≤640px breakpoint so the dashboard's summary/bottom/form grids stack to a single column on phones (no horizontal scroll), with bottom padding so the FAB never covers content.
+- **Camera receipt capture.** Added a "Take photo" `<input accept="image/*" capture="environment">` in the receipts upload UI (keeps the existing file/PDF picker); the captured photo flows through the same `uploadAttachment → /attachments/upload` pipeline and existing **server-side** OCR (tesseract) unchanged. Also fixed the CFDI mismatch: the client accepted `.xml` but the backend rejected it — added `application/xml` + `text/xml` to the attachment allow-list with an XML magic-byte sniff, so CFDI XML upload actually works.
+- **Optional biometric/PIN app lock.** A purely client-side, opt-in lock (`$lib/stores/lock` + `LockScreen`) gates the `(app)` subtree after login: unlock with a **WebAuthn platform authenticator** (biometric) or a **local PIN** (SHA-256 + random salt, fallback when biometrics are unavailable). Enable/disable lives in the Security tab of `/configuracion`. It is a convenience lock (like a phone app-lock) — it does **not** replace the JWT and is never server-enforced.
+- Tests: `OfflineBanner` (online/offline toggle), `LockScreen` (PIN success/failure + biometric auto-prompt), receipts camera-capture input. Frontend **57 passing** (was 50), backend **632 passing**; i18n es/en parity kept. Docker rebuilt + smoke-checked (`/manifest.json`, `/offline` both 200).
+- No new migration (P4.14 is frontend + a backend MIME allow-list change).
 
 ---
 

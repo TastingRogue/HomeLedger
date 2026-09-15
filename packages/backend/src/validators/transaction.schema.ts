@@ -59,6 +59,34 @@ export const createTransactionSchema = z.object({
     error: 'El tipo de transacción es obligatorio y debe ser válido',
   }),
 
+  // ── P4.1 richer transaction model (all optional) ──
+  merchant: z
+    .string()
+    .trim()
+    .max(100, 'El comercio no puede exceder 100 caracteres')
+    .nullable()
+    .optional(),
+
+  subtype: z
+    .enum(['refund', 'reimbursement', 'adjustment'], {
+      error: 'El subtipo no es válido',
+    })
+    .nullable()
+    .optional(),
+
+  reconciled: z.boolean().optional(),
+
+  status: z
+    .enum(['pending', 'posted'], { error: 'El estado no es válido' })
+    .optional(),
+
+  externalId: z
+    .string()
+    .trim()
+    .max(120, 'El identificador externo no puede exceder 120 caracteres')
+    .nullable()
+    .optional(),
+
   invoiceFile: z
     .string()
     .optional(),
@@ -114,6 +142,34 @@ export const updateTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType, {
     error: 'El tipo de transacción no es válido',
   }).optional(),
+
+  // ── P4.1 richer transaction model (all optional) ──
+  merchant: z
+    .string()
+    .trim()
+    .max(100, 'El comercio no puede exceder 100 caracteres')
+    .nullable()
+    .optional(),
+
+  subtype: z
+    .enum(['refund', 'reimbursement', 'adjustment'], {
+      error: 'El subtipo no es válido',
+    })
+    .nullable()
+    .optional(),
+
+  reconciled: z.boolean().optional(),
+
+  status: z
+    .enum(['pending', 'posted'], { error: 'El estado no es válido' })
+    .optional(),
+
+  externalId: z
+    .string()
+    .trim()
+    .max(120, 'El identificador externo no puede exceder 120 caracteres')
+    .nullable()
+    .optional(),
 
   invoiceFile: z
     .string()

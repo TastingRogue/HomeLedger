@@ -1,23 +1,39 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, ne, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { rules, transactions, accounts, categories } from '../db/schema.js';
 import { UNCATEGORIZED_KEY } from '../db/seed.js';
+import { TagService } from './tag.service.js';
+import { normalizeMerchant } from '../importers/normalize.js';
 import type { CreateRuleInput, UpdateRuleSchema } from '../validators/rule.schema.js';
 
 /**
  * Interfaces para el motor de reglas.
  */
 export interface RuleCondition {
-  field: 'name' | 'amount' | 'account' | 'description';
+  field: 'name' | 'amount' | 'account' | 'description' | 'merchant';
   operator: 'contains' | 'equals' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'between' | 'regex';
   value: string | number | [number, number];
   caseSensitive?: boolean;
 }
 
+export type RuleActionType =
+  | 'setCategory'
+  | 'setSubcategory'
+  | 'setType'
+  | 'addTag'
+  | 'flagReview'
+  | 'markRecurring'
+  | 'ignore';
+
 export interface RuleAction {
-  type: 'setCategory' | 'setSubcategory' | 'setType' | 'addTag';
-  value: number | string;
+  type: RuleActionType;
+  // Optional: flagReview / markRecurring / ignore carry no value.
+  value?: number | string;
 }
+
+/** Tag names used by the flag/recurring actions (P4.5). */
+export const REVIEW_TAG = 'review';
+export const RECURRING_TAG = 'recurring';
 
 export interface RuleMatch {
   ruleId: number;
@@ -49,6 +65,24 @@ export interface TestResult {
 }
 
 /**
+ * A rule-learning suggestion (P4.5): proposes creating a rule after the user
+ * categorizes a transaction, so the same category applies to other/future
+ * transactions from the same merchant.
+ */
+export interface RuleSuggestion {
+  suggested: boolean;
+  /** Which field the proposed rule would match on ('merchant' or 'name'). */
+  field?: 'merchant' | 'name';
+  /** The value to match (the normalized merchant, or the transaction name). */
+  value?: string;
+  /** Target category the rule would set. */
+  categoryId?: number;
+  categoryName?: string;
+  /** How many OTHER of the user's transactions this rule would newly affect. */
+  matchingCount?: number;
+}
+
+/**
  * Datos de transacción para evaluación de reglas.
  */
 export interface TransactionForEvaluation {
@@ -57,6 +91,7 @@ export interface TransactionForEvaluation {
   amount: number;
   notes?: string | null;
   accountName?: string;
+  merchant?: string | null;
 }
 
 /**
@@ -194,6 +229,126 @@ export class RulesEngineService {
   }
 
   /**
+   * Rule learning (P4.5): given a transaction the user just categorized, decide
+   * whether to suggest creating a rule that applies that category to other
+   * transactions from the same merchant.
+   *
+   * Suggest only when it's actually useful:
+   *  - the transaction has a stable match key (normalized merchant, else name),
+   *  - its category is a real (non-"uncategorized") category,
+   *  - NO existing enabled rule already matches this transaction, and
+   *  - there is at least one OTHER of the user's transactions with the same
+   *    merchant/name that is NOT already in that category (something to fix).
+   */
+  static suggestRuleForTransaction(userId: number, transactionId: number): RuleSuggestion {
+    const db = getDb();
+
+    const txn = db
+      .select({
+        id: transactions.id,
+        name: transactions.name,
+        amount: transactions.amount,
+        notes: transactions.notes,
+        merchant: transactions.merchant,
+        categoryId: transactions.categoryId,
+        accountId: transactions.accountId,
+      })
+      .from(transactions)
+      .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
+      .get();
+
+    if (!txn) return { suggested: false };
+
+    // Don't suggest for the "uncategorized" bucket — that's not a real choice.
+    const uncategorized = db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(eq(categories.userId, userId), eq(categories.key, UNCATEGORIZED_KEY)))
+      .get();
+    if (uncategorized && txn.categoryId === uncategorized.id) return { suggested: false };
+
+    // Derive the match key: prefer the normalized merchant, else the raw name.
+    const merchantKey = normalizeMerchant(txn.merchant ?? txn.name);
+    const field: 'merchant' | 'name' = txn.merchant ? 'merchant' : 'name';
+    const value = merchantKey || txn.name;
+    if (!value || value.trim().length < 2) return { suggested: false };
+
+    // If an existing enabled rule already matches this transaction, no need.
+    const account = db
+      .select({ name: accounts.name })
+      .from(accounts)
+      .where(eq(accounts.id, txn.accountId))
+      .get();
+    const alreadyMatched = RulesEngineService.matchesAnyEnabledRule(userId, {
+      id: txn.id,
+      name: txn.name,
+      amount: txn.amount,
+      notes: txn.notes,
+      accountName: account?.name,
+      merchant: txn.merchant,
+    });
+    if (alreadyMatched) return { suggested: false };
+
+    // Count OTHER transactions from the same merchant (by normalized merchant or
+    // name substring, case-insensitive) that are NOT yet in this category.
+    const others = db
+      .select({ id: transactions.id, name: transactions.name, merchant: transactions.merchant })
+      .from(transactions)
+      .where(and(eq(transactions.userId, userId), ne(transactions.id, txn.id), ne(transactions.categoryId, txn.categoryId)))
+      .all();
+
+    const needle = value.toLowerCase();
+    const matchingCount = others.filter((o) => {
+      const hay = normalizeMerchant(o.merchant ?? o.name).toLowerCase() || o.name.toLowerCase();
+      return hay.includes(needle) || needle.includes(hay);
+    }).length;
+
+    if (matchingCount === 0) return { suggested: false };
+
+    const category = db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories)
+      .where(and(eq(categories.id, txn.categoryId), eq(categories.userId, userId)))
+      .get();
+
+    return {
+      suggested: true,
+      field,
+      value,
+      categoryId: txn.categoryId,
+      categoryName: category?.name,
+      matchingCount,
+    };
+  }
+
+  /**
+   * Public entry point to apply a matched rule's actions to a transaction.
+   * Used by the importer so imported rows get the full action set (category,
+   * tags, flag/recurring) and honor 'ignore'. Delegates to applyActions.
+   */
+  static applyMatchActions(transactionId: number, actions: RuleAction[]): void {
+    RulesEngineService.applyActions(transactionId, actions);
+  }
+
+  /** True if any enabled rule matches the given transaction (no side effects). */
+  private static matchesAnyEnabledRule(userId: number, txn: TransactionForEvaluation): boolean {
+    const db = getDb();
+    const userRules = db
+      .select()
+      .from(rules)
+      .where(and(eq(rules.userId, userId), eq(rules.enabled, true)))
+      .all();
+
+    for (const rule of userRules) {
+      const conditions = rule.conditions as unknown as RuleCondition[];
+      if (conditions.every((c) => RulesEngineService.evaluateCondition(txn, c))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Evalúa una transacción contra todas las reglas habilitadas del usuario.
    * Las reglas se ordenan por prioridad ascendente (menor número = mayor prioridad).
    * La primera regla que coincida gana (first match wins).
@@ -269,6 +424,7 @@ export class RulesEngineService {
         name: transactions.name,
         amount: transactions.amount,
         notes: transactions.notes,
+        merchant: transactions.merchant,
         accountId: transactions.accountId,
       })
       .from(transactions)
@@ -300,12 +456,13 @@ export class RulesEngineService {
         amount: txn.amount,
         notes: txn.notes,
         accountName: account?.name,
+        merchant: txn.merchant,
       };
 
       const match = RulesEngineService.evaluate(userId, transactionForEval);
 
       if (match) {
-        // Aplicar acciones a la transacción
+        // Aplicar acciones a la transacción (applyActions short-circuits on 'ignore')
         RulesEngineService.applyActions(txn.id, match.actions);
 
         result.matched++;
@@ -342,6 +499,7 @@ export class RulesEngineService {
           name: transactions.name,
           amount: transactions.amount,
           notes: transactions.notes,
+          merchant: transactions.merchant,
           accountId: transactions.accountId,
         })
         .from(transactions)
@@ -363,6 +521,7 @@ export class RulesEngineService {
           name: transactions.name,
           amount: transactions.amount,
           notes: transactions.notes,
+          merchant: transactions.merchant,
           accountId: transactions.accountId,
         })
         .from(transactions)
@@ -392,6 +551,7 @@ export class RulesEngineService {
         amount: txn.amount,
         notes: txn.notes,
         accountName: account?.name,
+        merchant: txn.merchant,
       };
 
       const allMatch = conditions.every((condition) =>
@@ -503,6 +663,8 @@ export class RulesEngineService {
         return transaction.accountName;
       case 'description':
         return transaction.notes;
+      case 'merchant':
+        return transaction.merchant;
       default:
         return undefined;
     }
@@ -687,6 +849,12 @@ export class RulesEngineService {
   private static applyActions(transactionId: number, actions: RuleAction[]): void {
     const db = getDb();
 
+    // P4.5: an 'ignore' action means "leave this transaction exactly as it is" —
+    // it wins over any other action in the same rule (protect from changes).
+    if (actions.some((a) => a.type === 'ignore')) {
+      return;
+    }
+
     for (const action of actions) {
       switch (action.type) {
         case 'setCategory':
@@ -711,24 +879,49 @@ export class RulesEngineService {
           break;
 
         case 'addTag': {
-          // Tags se almacenan en el campo notes, separados por coma
+          // P4.1 Phase 2: tags are a real M2M entity now (was: concatenated into
+          // `notes`). Resolve the transaction's owner, get-or-create the tag for
+          // that user, and attach it (idempotent).
           const txn = db
-            .select({ notes: transactions.notes })
+            .select({ userId: transactions.userId })
             .from(transactions)
             .where(eq(transactions.id, transactionId))
             .get();
-
-          const currentNotes = txn?.notes || '';
-          const tag = String(action.value);
-          const newNotes = currentNotes ? `${currentNotes}, ${tag}` : tag;
-
-          db.update(transactions)
-            .set({ notes: newNotes, updatedAt: new Date().toISOString() })
-            .where(eq(transactions.id, transactionId))
-            .run();
+          const tagName = String(action.value ?? '').trim();
+          if (txn && tagName) {
+            const tag = TagService.getOrCreate(txn.userId, tagName);
+            TagService.attach(transactionId, tag.id, txn.userId);
+          }
           break;
         }
+
+        // P4.5: flag/recurring are modeled as reusable tags (no schema change).
+        case 'flagReview':
+          RulesEngineService.attachSystemTag(transactionId, REVIEW_TAG);
+          break;
+
+        case 'markRecurring':
+          RulesEngineService.attachSystemTag(transactionId, RECURRING_TAG);
+          break;
+
+        // 'ignore' is handled at the evaluate/apply level (short-circuit); it
+        // performs no field mutation here on purpose.
+        case 'ignore':
+          break;
       }
     }
+  }
+
+  /** Attaches a fixed system tag (review/recurring) to a transaction (P4.5). */
+  private static attachSystemTag(transactionId: number, tagName: string): void {
+    const db = getDb();
+    const txn = db
+      .select({ userId: transactions.userId })
+      .from(transactions)
+      .where(eq(transactions.id, transactionId))
+      .get();
+    if (!txn) return;
+    const tag = TagService.getOrCreate(txn.userId, tagName);
+    TagService.attach(transactionId, tag.id, txn.userId);
   }
 }

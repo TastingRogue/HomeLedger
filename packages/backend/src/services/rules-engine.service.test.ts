@@ -1,8 +1,8 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { RulesEngineService, RulesEngineError } from './rules-engine.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
-import { users, rules, transactions, accounts, categories } from '../db/schema.js';
+import { users, rules, transactions, accounts, categories, tags } from '../db/schema.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -24,6 +24,9 @@ describe('RulesEngineService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -38,8 +41,13 @@ describe('RulesEngineService', () => {
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
         credit_limit REAL,
+        statement_day INTEGER,
+        payment_due_day INTEGER,
+        apr REAL,
+        minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -76,7 +84,13 @@ describe('RulesEngineService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -99,6 +113,21 @@ describe('RulesEngineService', () => {
       );
       CREATE INDEX IF NOT EXISTS rules_user_id_idx ON rules(user_id);
       CREATE INDEX IF NOT EXISTS rules_user_id_priority_idx ON rules(user_id, priority);
+
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS tags_user_id_name_unique ON tags(user_id, name);
+
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
     `);
   });
 
@@ -721,6 +750,147 @@ describe('RulesEngineService', () => {
 
       expect(result.totalTested).toBe(3);
       expect(result.totalMatched).toBe(3);
+    });
+  });
+
+  // ── P4.5: merchant condition, new actions, ignore, rule learning ──
+  describe('P4.5 merchant condition', () => {
+    it('matches on the merchant field', () => {
+      const match = RulesEngineService.evaluate(userId, {
+        id: 1,
+        name: 'COMPRA POS 12345',
+        amount: 90,
+        merchant: 'Oxxo Gas',
+      });
+      // no rule yet
+      expect(match).toBeNull();
+
+      RulesEngineService.create(userId, {
+        name: 'Oxxo → Comida',
+        priority: 1,
+        conditions: [{ field: 'merchant', operator: 'contains', value: 'Oxxo' }],
+        actions: [{ type: 'setCategory', value: categoryId }],
+      });
+
+      const match2 = RulesEngineService.evaluate(userId, {
+        id: 2,
+        name: 'COMPRA POS 12345',
+        amount: 90,
+        merchant: 'Oxxo Gas',
+      });
+      expect(match2).not.toBeNull();
+      expect(match2!.actions[0]!.value).toBe(categoryId);
+    });
+  });
+
+  describe('P4.5 new actions (flagReview / markRecurring / ignore)', () => {
+    function insertUncategorized(name: string, merchant?: string): number {
+      const db = getDb();
+      const now = new Date().toISOString();
+      return db.insert(transactions).values({
+        userId, accountId, categoryId: defaultCategoryId,
+        name, amount: 100, type: 'Gasto', date: now, merchant: merchant ?? null,
+        createdAt: now, updatedAt: now,
+      }).returning().get().id;
+    }
+
+    it('flagReview attaches a "review" tag', () => {
+      const db = getDb();
+      insertUncategorized('Amazon MX');
+      RulesEngineService.create(userId, {
+        name: 'Flag Amazon',
+        priority: 1,
+        conditions: [{ field: 'name', operator: 'contains', value: 'Amazon' }],
+        actions: [{ type: 'flagReview' }],
+      });
+      RulesEngineService.applyToUncategorized(userId);
+
+      const reviewTag = db.select().from(tags).where(eq(tags.name, 'review')).get();
+      expect(reviewTag).toBeDefined();
+    });
+
+    it('markRecurring attaches a "recurring" tag', () => {
+      const db = getDb();
+      insertUncategorized('Netflix');
+      RulesEngineService.create(userId, {
+        name: 'Recurring Netflix',
+        priority: 1,
+        conditions: [{ field: 'name', operator: 'contains', value: 'Netflix' }],
+        actions: [{ type: 'markRecurring' }],
+      });
+      RulesEngineService.applyToUncategorized(userId);
+
+      const recTag = db.select().from(tags).where(eq(tags.name, 'recurring')).get();
+      expect(recTag).toBeDefined();
+    });
+
+    it('ignore leaves the transaction uncategorized (short-circuits other actions)', () => {
+      const db = getDb();
+      const txId = insertUncategorized('Traspaso interno');
+      RulesEngineService.create(userId, {
+        name: 'Ignore transfers',
+        priority: 1,
+        conditions: [{ field: 'name', operator: 'contains', value: 'Traspaso' }],
+        // ignore + a category action in the same rule — ignore must win.
+        actions: [{ type: 'ignore' }, { type: 'setCategory', value: categoryId }],
+      });
+      RulesEngineService.applyToUncategorized(userId);
+
+      const after = db.select().from(transactions).where(eq(transactions.id, txId)).get();
+      expect(after!.categoryId).toBe(defaultCategoryId); // unchanged
+    });
+  });
+
+  describe('P4.5 suggestRuleForTransaction()', () => {
+    function insert(name: string, catId: number, merchant?: string): number {
+      const db = getDb();
+      const now = new Date().toISOString();
+      return db.insert(transactions).values({
+        userId, accountId, categoryId: catId,
+        name, amount: 100, type: 'Gasto', date: now, merchant: merchant ?? null,
+        createdAt: now, updatedAt: now,
+      }).returning().get().id;
+    }
+
+    it('suggests a rule when other same-merchant txns are not in the category', () => {
+      // The one the user just categorized → Comida.
+      const justCategorized = insert('Amazon compra 1', categoryId, 'Amazon');
+      // Two OTHER Amazon txns still uncategorized.
+      insert('Amazon compra 2', defaultCategoryId, 'Amazon');
+      insert('Amazon compra 3', defaultCategoryId, 'Amazon');
+
+      const s = RulesEngineService.suggestRuleForTransaction(userId, justCategorized);
+      expect(s.suggested).toBe(true);
+      expect(s.field).toBe('merchant');
+      expect(s.value).toBe('Amazon');
+      expect(s.categoryId).toBe(categoryId);
+      expect(s.matchingCount).toBe(2);
+    });
+
+    it('does not suggest for an uncategorized transaction', () => {
+      const txId = insert('Amazon compra', defaultCategoryId, 'Amazon');
+      insert('Amazon otra', defaultCategoryId, 'Amazon');
+      const s = RulesEngineService.suggestRuleForTransaction(userId, txId);
+      expect(s.suggested).toBe(false);
+    });
+
+    it('does not suggest when there are no other matching transactions', () => {
+      const txId = insert('Amazon única', categoryId, 'Amazon');
+      const s = RulesEngineService.suggestRuleForTransaction(userId, txId);
+      expect(s.suggested).toBe(false);
+    });
+
+    it('does not suggest when an existing enabled rule already matches', () => {
+      const txId = insert('Amazon compra', categoryId, 'Amazon');
+      insert('Amazon otra', defaultCategoryId, 'Amazon');
+      RulesEngineService.create(userId, {
+        name: 'Amazon rule',
+        priority: 1,
+        conditions: [{ field: 'merchant', operator: 'contains', value: 'Amazon' }],
+        actions: [{ type: 'setCategory', value: categoryId }],
+      });
+      const s = RulesEngineService.suggestRuleForTransaction(userId, txId);
+      expect(s.suggested).toBe(false);
     });
   });
 });

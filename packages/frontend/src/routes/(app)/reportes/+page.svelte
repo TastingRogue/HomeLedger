@@ -17,9 +17,20 @@
 
   interface TrendEntry { month: string; income: number; expenses: number; net: number; }
 
+  interface DebtItem { id: number; name: string; kind: 'credit' | 'loan'; owed: number; apr: number | null; }
+  interface DebtReport { totalDebt: number; items: DebtItem[]; }
+  interface CreditCard { id: number; name: string; limit: number; owed: number; utilization: number; }
+  interface CreditReport { overallUtilization: number; totalOwed: number; totalLimit: number; cards: CreditCard[]; }
+  interface MerchantEntry { merchant: string; total: number; count: number; }
+  interface MerchantReport { merchants: MerchantEntry[]; totalSpend: number; }
+
   let loading = $state(true);
   let dashboard = $state<DashboardData | null>(null);
   let trends = $state<TrendEntry[]>([]);
+  // P4.10 extra reports
+  let debt = $state<DebtReport | null>(null);
+  let credit = $state<CreditReport | null>(null);
+  let merchants = $state<MerchantReport | null>(null);
 
   const catColors = ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
@@ -45,15 +56,26 @@
 
   async function loadData() {
     try {
-      const [dashRes, trendsRes] = await Promise.allSettled([
+      // Last-12-months window for the merchant report.
+      const end = new Date().toISOString().slice(0, 10);
+      const startD = new Date(); startD.setFullYear(startD.getFullYear() - 1);
+      const start = startD.toISOString().slice(0, 10);
+
+      const [dashRes, trendsRes, debtRes, creditRes, merchRes] = await Promise.allSettled([
         apiGet<DashboardData>('/reports/dashboard'),
         apiGet<{ entries: TrendEntry[] }>('/reports/trends', { months: 6 }),
+        apiGet<DebtReport>('/reports/debt'),
+        apiGet<CreditReport>('/reports/credit-utilization'),
+        apiGet<MerchantReport>('/reports/merchant', { startDate: start, endDate: end, limit: 8 }),
       ]);
       if (dashRes.status === 'fulfilled') dashboard = dashRes.value;
       if (trendsRes.status === 'fulfilled') {
         const raw = trendsRes.value as any;
         trends = raw?.entries ?? (Array.isArray(raw) ? raw : []);
       }
+      if (debtRes.status === 'fulfilled') debt = debtRes.value;
+      if (creditRes.status === 'fulfilled') credit = creditRes.value;
+      if (merchRes.status === 'fulfilled') merchants = merchRes.value;
     } catch {} finally { loading = false; }
   }
 
@@ -177,6 +199,65 @@
           <div class="sb-item"><span class="sb-label">{$t('reports.net_savings')}</span><span class="sb-value">{formatCurrency(savings)}</span></div>
         </div>
       </div>
+
+      <!-- P4.10: Top merchants (last 12 months) -->
+      <div class="chart-card">
+        <h3 class="card-title">{$t('reports.merchant_title')}</h3>
+        <p class="card-desc">{$t('reports.merchant_desc')}</p>
+        {#if merchants && merchants.merchants.length > 0}
+          <div class="rank-list">
+            {#each merchants.merchants as m}
+              <div class="rank-row">
+                <span class="rank-name">{m.merchant}</span>
+                <span class="rank-count">{m.count}×</span>
+                <span class="rank-amount">{formatCurrency(m.total)}</span>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="empty">{$t('common.no_data')}</p>
+        {/if}
+      </div>
+
+      <!-- P4.10: Debt overview -->
+      <div class="chart-card">
+        <h3 class="card-title">{$t('reports.debt_title')}</h3>
+        <p class="card-desc">{$t('reports.debt_desc')}</p>
+        {#if debt && debt.items.length > 0}
+          <div class="report-total"><span>{$t('reports.debt_total')}</span><strong class="red">{formatCurrency(debt.totalDebt)}</strong></div>
+          <div class="rank-list">
+            {#each debt.items as d}
+              <div class="rank-row">
+                <span class="rank-name">{d.name} <span class="kind-tag">{d.kind === 'loan' ? $t('reports.debt_loan') : $t('reports.debt_credit')}</span></span>
+                <span class="rank-count">{d.apr != null ? `${d.apr}%` : '—'}</span>
+                <span class="rank-amount red">{formatCurrency(d.owed)}</span>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="empty">{$t('reports.debt_none')}</p>
+        {/if}
+      </div>
+
+      <!-- P4.10: Credit utilization -->
+      <div class="chart-card">
+        <h3 class="card-title">{$t('reports.credit_title')}</h3>
+        <p class="card-desc">{$t('reports.credit_desc')}</p>
+        {#if credit && credit.cards.length > 0}
+          <div class="report-total"><span>{$t('reports.credit_overall')}</span><strong class:red={credit.overallUtilization >= 30}>{credit.overallUtilization.toFixed(1)}%</strong></div>
+          <div class="rank-list">
+            {#each credit.cards as c}
+              <div class="util-row">
+                <div class="util-head"><span class="rank-name">{c.name}</span><span class="rank-amount">{c.utilization.toFixed(1)}%</span></div>
+                <div class="util-bar"><div class="util-fill" class:high={c.utilization >= 30} style="width:{Math.min(c.utilization, 100)}%"></div></div>
+                <span class="util-sub">{formatCurrency(c.owed)} / {formatCurrency(c.limit)}</span>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="empty">{$t('reports.credit_none')}</p>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -206,6 +287,24 @@
   .card-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.15rem; }
   .card-desc { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; }
   .empty { font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 2rem; }
+
+  /* P4.10 report cards */
+  .report-total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; font-size: 0.72rem; color: var(--text-muted); }
+  .report-total strong { font-size: 1rem; color: var(--text-primary); }
+  .report-total strong.red { color: var(--accent-red); }
+  .rank-list { display: flex; flex-direction: column; gap: 0.45rem; }
+  .rank-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.6rem; font-size: 0.78rem; }
+  .rank-name { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-count { font-size: 0.68rem; color: var(--text-muted); }
+  .rank-amount { font-weight: 600; color: var(--text-primary); }
+  .rank-amount.red { color: var(--accent-red); }
+  .kind-tag { font-size: 0.58rem; text-transform: uppercase; color: var(--text-muted); background: var(--bg-elevated); padding: 0.05rem 0.35rem; border-radius: 999px; }
+  .util-row { display: flex; flex-direction: column; gap: 0.2rem; }
+  .util-head { display: flex; justify-content: space-between; font-size: 0.78rem; }
+  .util-bar { height: 5px; background: var(--border-default); border-radius: 3px; overflow: hidden; }
+  .util-fill { height: 100%; background: var(--accent-green); border-radius: 3px; }
+  .util-fill.high { background: var(--accent-red); }
+  .util-sub { font-size: 0.66rem; color: var(--text-muted); }
 
   /* Category donut */
   .donut-area { display: flex; justify-content: center; margin-bottom: 1rem; }

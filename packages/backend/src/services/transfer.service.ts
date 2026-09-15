@@ -10,6 +10,8 @@ export interface TransferRecord {
   destinationAccountId: number;
   name: string;
   amount: number;
+  /** P4.11: amount entering the destination in its currency (null = same as amount). */
+  destinationAmount: number | null;
   date: string;
   notes: string | null;
   createdAt: string;
@@ -39,7 +41,6 @@ function calculateAccountBalance(accountId: number): number {
   }
 
   const initialBalance = account.initialBalance;
-  const isCredit = account.type === 'Crédito';
 
   // Sum of incomes for this account
   const incomeResult = db
@@ -55,9 +56,10 @@ function calculateAccountBalance(accountId: number): number {
     .where(and(eq(transactions.accountId, accountId), eq(transactions.type, 'Gasto')))
     .get();
 
-  // Sum of transfers received (destination)
+  // Sum of transfers received (destination). P4.11: use destination_amount when
+  // present (cross-currency), else the source amount (same-currency back-compat).
   const transfersInResult = db
-    .select({ total: sql<number>`COALESCE(SUM(${transfers.amount}), 0)` })
+    .select({ total: sql<number>`COALESCE(SUM(COALESCE(${transfers.destinationAmount}, ${transfers.amount})), 0)` })
     .from(transfers)
     .where(eq(transfers.destinationAccountId, accountId))
     .get();
@@ -74,12 +76,9 @@ function calculateAccountBalance(accountId: number): number {
   const transfersIn = transfersInResult?.total ?? 0;
   const transfersOut = transfersOutResult?.total ?? 0;
 
-  if (isCredit) {
-    // Para cuentas de crédito: recibir una transferencia (pago) reduce la deuda,
-    // enviar una transferencia (disposición de crédito) aumenta la deuda.
-    return initialBalance + incomes - expenses - transfersIn + transfersOut;
-  }
-
+  // P4.2: unified formula (negative balance = debt for credit). Kept in sync
+  // with AccountService.calculateBalance. A payment (transfer into the card)
+  // reduces debt via +transfersIn; the old inverted credit branch was a bug.
   return initialBalance + incomes - expenses + transfersIn - transfersOut;
 }
 
@@ -141,12 +140,33 @@ export class TransferService {
       // Calculate current balance of source account
       const sourceBalance = calculateAccountBalance(input.sourceAccountId);
 
-      // Validate sufficient funds
+      // Validate sufficient funds (in the SOURCE account's own currency)
       if (sourceBalance < input.amount) {
         throw new TransferError(
           'Fondos insuficientes en la cuenta origen',
           'INSUFFICIENT_FUNDS'
         );
+      }
+
+      // P4.11: resolve the destination amount. Fetch both currencies; when they
+      // differ the caller must provide `destinationAmount` (the converted value
+      // entering the destination). When equal, store null (COALESCE → amount).
+      const currencies = db
+        .select({ id: accounts.id, currency: accounts.currency })
+        .from(accounts)
+        .where(sql`${accounts.id} IN (${input.sourceAccountId}, ${input.destinationAccountId})`)
+        .all();
+      const srcCur = currencies.find((c) => c.id === input.sourceAccountId)?.currency;
+      const dstCur = currencies.find((c) => c.id === input.destinationAccountId)?.currency;
+      let destinationAmount: number | null = null;
+      if (srcCur && dstCur && srcCur !== dstCur) {
+        if (input.destinationAmount == null || input.destinationAmount <= 0) {
+          throw new TransferError(
+            'Se requiere el monto convertido (destinationAmount) para transferencias entre monedas distintas',
+            'CROSS_CURRENCY_AMOUNT_REQUIRED',
+          );
+        }
+        destinationAmount = Math.round(input.destinationAmount * 100) / 100;
       }
 
       // Insert transfer record (balance is calculated dynamically)
@@ -160,6 +180,7 @@ export class TransferService {
           destinationAccountId: input.destinationAccountId,
           name: input.name,
           amount: input.amount,
+          destinationAmount,
           date: input.date,
           createdAt: now,
         })
@@ -259,6 +280,8 @@ export class TransferService {
         .set({
           name: input.name ?? existing.name,
           amount: input.amount ?? existing.amount,
+          // P4.11: allow updating the cross-currency destination amount.
+          ...(input.destinationAmount !== undefined && { destinationAmount: input.destinationAmount ?? null }),
           date: input.date ?? existing.date,
           sourceAccountId: sourceId,
           destinationAccountId: destId,

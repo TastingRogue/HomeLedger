@@ -1,5 +1,6 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
+import { pathToFileURL } from 'node:url';
 import { initializeDatabase, closeDatabase, getSqlite } from './db/connection.js';
 import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
@@ -7,6 +8,9 @@ import { getDefaultLocale } from './config/locale.js';
 import { seedRegistrationSettingsFromEnv } from './config/registration.js';
 import { seedCurrencySettingFromEnv, getInstanceCurrency } from './config/currency.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
+import { registerOpenApi } from './openapi.js';
+import { apiKeyRoutes } from './routes/v1/api-keys.routes.js';
+import { webhookRoutes } from './routes/v1/webhooks.routes.js';
 import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
 import { getSchedulerStatus } from './scheduler/status.js';
@@ -29,6 +33,8 @@ import { haRoutes } from './routes/v1/ha.routes.js';
 import { attachmentRoutes } from './routes/v1/attachments.routes.js';
 import { receiptRoutes } from './routes/v1/receipts.routes.js';
 import { networthRoutes } from './routes/v1/networth.routes.js';
+import { tagRoutes } from './routes/v1/tags.routes.js';
+import { searchRoutes } from './routes/v1/search.routes.js';
 import { parseTrustProxy } from './config/trust-proxy.js';
 
 export async function buildApp() {
@@ -47,6 +53,9 @@ export async function buildApp() {
     : true;
   await app.register(cors, { origin: corsOrigin, credentials: true });
   await registerRateLimitMiddleware(app);
+  // OpenAPI/Swagger must be registered BEFORE the auth middleware + routes so it
+  // can collect route schemas and serve its docs without an auth challenge.
+  await registerOpenApi(app);
   registerAuthMiddleware(app);
   registerErrorHandler(app);
   // Liveness/readiness probe with a real DB connectivity check. Returns 503 when
@@ -94,6 +103,10 @@ export async function buildApp() {
   await app.register(attachmentRoutes, { prefix: '/api/v1/attachments' });
   await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
   await app.register(networthRoutes, { prefix: '/api/v1/networth' });
+  await app.register(tagRoutes, { prefix: '/api/v1/tags' });
+  await app.register(searchRoutes, { prefix: '/api/v1/search' });
+  await app.register(apiKeyRoutes, { prefix: '/api/v1/api-keys' });
+  await app.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
 
   try {
     // SvelteKit (adapter-node) generates this file during the frontend build.
@@ -178,4 +191,20 @@ async function start(): Promise<void> {
   }
 }
 
-start();
+// Only boot the server when this module is run as the entrypoint (prod:
+// `node dist/server.js`, dev: `tsx src/server.ts`). Importing `buildApp` from
+// tests must NOT trigger a full boot (migrate + seed + listen + process.exit on
+// error) — that caused a shared-DB migration race across test suites.
+const isEntrypoint = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isEntrypoint) {
+  start();
+}

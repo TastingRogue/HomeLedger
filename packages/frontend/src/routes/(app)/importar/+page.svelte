@@ -1,7 +1,18 @@
 <script lang="ts">
-  import { apiPost, apiUpload } from '$lib/api/client';
-  import { browser } from '$app/environment';
+  import { apiPost } from '$lib/api/client';
+  import { onMount } from 'svelte';
   import { t } from '$lib/i18n';
+  import { listAccounts, type AccountData } from '$lib/api/accounts';
+  import {
+    uploadImport,
+    previewImport,
+    confirmImport,
+    undoImport,
+    getImportHistory,
+    type ImportPreview,
+    type ImportResult,
+    type ImportSession,
+  } from '$lib/api/imports';
 
   let step = $state(1);
   let activeTab: 'import' | 'export' = $state('import');
@@ -11,10 +22,61 @@
   let importResult = $state<{ imported: number; skipped: number; errors: number } | null>(null);
   let importError = $state<string | null>(null);
 
+  // Smart-importer (CSV/bank-file) state (P4.4)
+  let accounts = $state<AccountData[]>([]);
+  let selectedAccountId = $state<number | null>(null);
+  let bankPreview = $state<ImportPreview | null>(null);
+  let sessionId = $state<number | null>(null);
+  let skipDuplicates = $state(true);
+  let bankResult = $state<ImportResult | null>(null);
+
+  // Import history + undo
+  let history = $state<ImportSession[]>([]);
+  let undoingId = $state<number | null>(null);
+
   // Export state
   let exporting = $state(false);
   let exportSuccess = $state(false);
   let exportError = $state<string | null>(null);
+
+  function computeIsBankFile(f: File | null): boolean {
+    return f != null && !f.name.toLowerCase().endsWith('.json');
+  }
+  const isBankFile = $derived(computeIsBankFile(file));
+
+  onMount(async () => {
+    try {
+      accounts = await listAccounts();
+    } catch { /* accounts optional for the JSON path */ }
+    await loadHistory();
+  });
+
+  async function loadHistory() {
+    try {
+      history = await getImportHistory();
+    } catch { /* non-fatal */ }
+  }
+
+  async function undo(id: number) {
+    undoingId = id;
+    try {
+      await undoImport(id);
+      await loadHistory();
+    } catch (e: unknown) {
+      importError = e instanceof Error ? e.message : $t('import.error_importing');
+    } finally {
+      undoingId = null;
+    }
+  }
+
+  function statusLabel(s: string): string {
+    switch (s) {
+      case 'completed': return $t('import.hist_completed');
+      case 'reverted': return $t('import.hist_reverted');
+      case 'failed': return $t('import.hist_failed');
+      default: return $t('import.hist_pending');
+    }
+  }
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
@@ -37,7 +99,12 @@
     }
     file = f;
     importError = null;
+    bankPreview = null;
+    bankResult = null;
+    sessionId = null;
     step = 2;
+    // Bank files use the real upload→preview pipeline; JSON stays client-side.
+    if (isBankFile) void runBankPreview();
   }
 
   function reset() {
@@ -45,6 +112,32 @@
     file = null;
     importResult = null;
     importError = null;
+    bankPreview = null;
+    bankResult = null;
+    sessionId = null;
+    selectedAccountId = null;
+  }
+
+  /**
+   * For bank files (CSV/XLSX/OFX): upload to create a session, then fetch the
+   * annotated preview (per-row new/duplicate/pending status + detected account).
+   */
+  async function runBankPreview() {
+    if (!file) return;
+    importing = true;
+    importError = null;
+    try {
+      const session = await uploadImport(file);
+      sessionId = session.id;
+      const preview = await previewImport(session.id);
+      bankPreview = preview;
+      // Preselect the detected account, else the first account.
+      selectedAccountId = preview.detectedAccountId ?? accounts[0]?.id ?? null;
+    } catch (e: unknown) {
+      importError = e instanceof Error ? e.message : $t('import.analyze_error');
+    } finally {
+      importing = false;
+    }
   }
 
   async function previewFile(): Promise<{ stats: { label: string; value: string | number }[]; columns: string[]; sample: Record<string, any>[]; warnings: string[] } | null> {
@@ -115,17 +208,36 @@
     importError = null;
 
     try {
-      // Check if it's a JSON backup restore
-      if (file.name.endsWith('.json')) {
+      if (file.name.toLowerCase().endsWith('.json')) {
+        // JSON backup restore (client parses, backend imports).
         const text = await file.text();
         const parsed = JSON.parse(text);
         await apiPost('/backup/import', { backup: parsed, confirmed: true });
         importResult = { imported: 1, skipped: 0, errors: 0 };
       } else {
-        const formData = new FormData();
-        formData.append('file', file);
-        const body = await apiUpload<{ imported?: number; skipped?: number; errors?: number }>('/imports/upload', formData);
-        importResult = { imported: body.imported ?? 0, skipped: body.skipped ?? 0, errors: body.errors ?? 0 };
+        // Bank file: confirm the previewed session.
+        if (sessionId == null) throw new Error($t('import.error_importing'));
+        if (selectedAccountId == null) throw new Error($t('import.select_account_required'));
+
+        // When "skip duplicates" is on, only send the new + pending-match rows.
+        let selectedTransactionIds: number[] | undefined;
+        if (skipDuplicates && bankPreview) {
+          selectedTransactionIds = bankPreview.transactions
+            .filter((r) => r.status !== 'duplicate')
+            .map((r) => r.index);
+        }
+
+        const result = await confirmImport(sessionId, {
+          accountId: selectedAccountId,
+          ...(selectedTransactionIds ? { selectedTransactionIds } : {}),
+        });
+        bankResult = result;
+        importResult = {
+          imported: result.importedCount + result.matchedCount,
+          skipped: result.duplicateCount,
+          errors: result.skippedCount,
+        };
+        await loadHistory();
       }
       step = 3;
     } catch (e: unknown) {
@@ -263,7 +375,79 @@
         <button class="btn-change" onclick={reset}>{$t('import.change_file')}</button>
       </div>
 
-      <!-- File content preview -->
+      {#if isBankFile}
+        <!-- Bank file: real upload→preview with per-row classification (P4.4) -->
+        {#if importing && !bankPreview}
+          <div class="preview-loading">{$t('import.analyzing')}</div>
+        {:else if bankPreview}
+          <div class="preview-section">
+            <h4>📊 {$t('import.preview_summary')}</h4>
+            <div class="preview-stats">
+              <div class="preview-stat"><span class="ps-value">{bankPreview.totalCount}</span><span class="ps-label">{$t('import.stat_total')}</span></div>
+              <div class="preview-stat"><span class="ps-value green">{bankPreview.newCount}</span><span class="ps-label">{$t('import.status_new')}</span></div>
+              <div class="preview-stat"><span class="ps-value yellow">{bankPreview.duplicateCount}</span><span class="ps-label">{$t('import.status_duplicate')}</span></div>
+              <div class="preview-stat"><span class="ps-value blue">{bankPreview.pendingMatchCount}</span><span class="ps-label">{$t('import.status_pending_match')}</span></div>
+            </div>
+            <p class="parser-note">{$t('import.detected_parser')}: <strong>{bankPreview.parser}</strong></p>
+          </div>
+
+          <!-- Target account -->
+          <div class="account-picker">
+            <label for="import-account">{$t('import.target_account')}</label>
+            <select id="import-account" bind:value={selectedAccountId}>
+              {#if accounts.length === 0}
+                <option value={null}>{$t('import.no_accounts')}</option>
+              {/if}
+              {#each accounts as acc}
+                <option value={acc.id}>{acc.name}{acc.bank ? ` — ${acc.bank}` : ''}</option>
+              {/each}
+            </select>
+            {#if bankPreview.detectedAccountId}
+              <span class="detected-hint">✓ {$t('import.account_autodetected')}</span>
+            {/if}
+          </div>
+
+          <label class="skip-dup-toggle">
+            <input type="checkbox" bind:checked={skipDuplicates} />
+            <span>{$t('import.skip_duplicates')}</span>
+          </label>
+
+          <!-- Row table with status badges -->
+          <div class="preview-table-wrap">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>{$t('import.col_status')}</th>
+                  <th>{$t('import.col_date')}</th>
+                  <th>{$t('import.col_merchant')}</th>
+                  <th style="text-align:right">{$t('import.col_amount')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each bankPreview.transactions.slice(0, 50) as row}
+                  <tr class:row-dup={row.status === 'duplicate'}>
+                    <td>
+                      <span class="badge badge-{row.status}">
+                        {row.status === 'new' ? $t('import.status_new') : row.status === 'duplicate' ? $t('import.status_duplicate') : $t('import.status_pending_match')}
+                      </span>
+                    </td>
+                    <td>{row.normalizedDate.slice(0, 10)}</td>
+                    <td>{row.normalizedMerchant || row.description}</td>
+                    <td style="text-align:right" class:neg={row.type === 'expense'}>
+                      {row.type === 'expense' ? '−' : '+'}{row.amount.toFixed(2)}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+            {#if bankPreview.transactions.length > 50}
+              <p class="preview-note">{$t('import.more_rows', { n: bankPreview.transactions.length - 50 })}</p>
+            {/if}
+          </div>
+        {/if}
+
+      <!-- JSON backup: client-side preview -->
+      {:else}
       {#await previewFile()}
         <div class="preview-loading">{$t('import.analyzing')}</div>
       {:then preview}
@@ -314,6 +498,7 @@
       {:catch}
         <p class="preview-note">{$t('import.analyze_error')}</p>
       {/await}
+      {/if}
 
       <div class="review-notice">
         <span class="notice-icon">🔒</span>
@@ -326,7 +511,11 @@
 
       <div class="review-actions">
         <button class="btn-secondary" onclick={reset}>{$t('common.cancel')}</button>
-        <button class="btn-primary" onclick={startImport} disabled={importing}>
+        <button
+          class="btn-primary"
+          onclick={startImport}
+          disabled={importing || (isBankFile && (!bankPreview || selectedAccountId == null))}
+        >
           {importing ? $t('import.importing') : $t('import.confirm_btn')}
         </button>
       </div>
@@ -343,6 +532,12 @@
             <span class="stat-value green">{importResult.imported}</span>
             <span class="stat-label">{$t('import.imported')}</span>
           </div>
+          {#if bankResult && bankResult.matchedCount > 0}
+            <div class="stat">
+              <span class="stat-value blue">{bankResult.matchedCount}</span>
+              <span class="stat-label">{$t('import.matched')}</span>
+            </div>
+          {/if}
           <div class="stat">
             <span class="stat-value yellow">{importResult.skipped}</span>
             <span class="stat-label">{$t('import.skipped')}</span>
@@ -354,6 +549,32 @@
         </div>
       {/if}
       <button class="btn-primary" onclick={reset}>{$t('import.import_another')}</button>
+    </div>
+  {/if}
+
+  <!-- Import history + undo (P4.4) -->
+  {#if history.length > 0}
+    <div class="history-card">
+      <h3>{$t('import.history_title')}</h3>
+      <div class="history-list">
+        {#each history as h}
+          <div class="history-row">
+            <div class="hist-main">
+              <span class="hist-file">{h.filename}</span>
+              <span class="hist-meta">
+                {new Date(h.createdAt).toLocaleDateString()} · {h.parser}
+                {#if h.recordCount != null} · {h.recordCount} {$t('import.imported').toLowerCase()}{/if}
+              </span>
+            </div>
+            <span class="hist-status hist-{h.status}">{statusLabel(h.status)}</span>
+            {#if h.status === 'completed'}
+              <button class="btn-undo" onclick={() => undo(h.id)} disabled={undoingId === h.id}>
+                {undoingId === h.id ? $t('import.undoing') : $t('import.undo')}
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
   {/if}
@@ -459,5 +680,43 @@
   .stat-value.green { color: var(--accent-green); }
   .stat-value.yellow { color: var(--accent-orange); }
   .stat-value.red { color: var(--accent-red); }
+  .stat-value.blue { color: var(--accent-blue); }
   .stat-label { font-size: 0.7rem; color: var(--text-muted); }
+
+  /* Smart-importer preview (P4.4) */
+  .ps-value.green { color: var(--accent-green); }
+  .ps-value.yellow { color: var(--accent-orange); }
+  .ps-value.blue { color: var(--accent-blue); }
+  .parser-note { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.6rem; }
+
+  .account-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .account-picker label { font-size: 0.78rem; color: var(--text-secondary); font-weight: 500; }
+  .account-picker select { flex: 1; min-width: 180px; padding: 0.4rem 0.6rem; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); font-size: 0.78rem; color: var(--text-primary); }
+  .detected-hint { font-size: 0.68rem; color: var(--accent-green); }
+
+  .skip-dup-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.75rem; cursor: pointer; }
+
+  .badge { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px; font-size: 0.62rem; font-weight: 600; }
+  .badge-new { background: rgba(16, 185, 129, 0.12); color: var(--accent-green); }
+  .badge-duplicate { background: rgba(245, 158, 11, 0.12); color: var(--accent-orange); }
+  .badge-pending_match { background: rgba(59, 130, 246, 0.12); color: var(--accent-blue); }
+  .preview-table td.neg { color: var(--accent-red); }
+  .preview-table tr.row-dup { opacity: 0.55; }
+
+  /* Import history */
+  .history-card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
+  .history-card h3 { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem; }
+  .history-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .history-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; background: var(--bg-elevated); border-radius: var(--radius-md); }
+  .hist-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .hist-file { font-size: 0.8rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-meta { font-size: 0.66rem; color: var(--text-muted); }
+  .hist-status { font-size: 0.66rem; font-weight: 600; padding: 0.12rem 0.5rem; border-radius: 999px; }
+  .hist-completed { background: rgba(16, 185, 129, 0.12); color: var(--accent-green); }
+  .hist-reverted { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); }
+  .hist-failed { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); }
+  .hist-pending { background: rgba(59, 130, 246, 0.12); color: var(--accent-blue); }
+  .btn-undo { padding: 0.3rem 0.6rem; background: none; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 0.7rem; color: var(--text-secondary); cursor: pointer; }
+  .btn-undo:hover:not(:disabled) { border-color: var(--accent-red); color: var(--accent-red); }
+  .btn-undo:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

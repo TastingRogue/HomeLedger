@@ -76,3 +76,24 @@ export function fundGoal(id: number, payload: FundGoalPayload): Promise<FundGoal
 export function withdrawGoal(id: number, payload: FundGoalPayload): Promise<WithdrawGoalResponse> {
   return apiPost<WithdrawGoalResponse>(`/goals/${id}/withdraw`, payload);
 }
+
+// ─── Forecast (P4.8) ───
+
+export interface GoalForecast {
+  goalId: number;
+  targetAmount: number;
+  savedAmount: number;
+  remaining: number;
+  monthlyContribution: number;
+  estimated: boolean;
+  monthsToComplete: number | null;
+  estimatedDate: string | null;
+  deadline: string | null;
+  onTrackForDeadline: boolean | null;
+  alreadyComplete: boolean;
+}
+
+/** Goal completion forecast; optionally pass a planned monthly contribution. */
+export function getGoalForecast(id: number, monthly?: number): Promise<GoalForecast> {
+  return apiGet<GoalForecast>(`/goals/${id}/forecast`, monthly != null ? { monthly } : undefined);
+}

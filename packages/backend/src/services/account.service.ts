@@ -1,14 +1,19 @@
-import { eq, and, ne, sql } from 'drizzle-orm';
+import { eq, and, ne, desc, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { accounts, transactions, transfers, creditSubscriptions, subscriptions } from '../db/schema.js';
 import type { CreateAccountSchema, UpdateAccountSchema } from '../validators/account.schema.js';
 import { roundMoney } from '../utils/money.js';
-import { getInstanceCurrency } from '../config/currency.js';
+import { getInstanceCurrency, isSupportedCurrency } from '../config/currency.js';
 
 /**
  * Tipo de estado de salud crediticia.
  */
 export type CreditHealthStatus = 'saludable' | 'moderado' | 'crítico';
+
+/** Rounds an exchange rate to 6 decimals (enough precision for FX). */
+function roundRate(rate: number): number {
+  return Math.round(rate * 1e6) / 1e6;
+}
 
 /**
  * Error personalizado para operaciones de cuentas.
@@ -31,22 +36,34 @@ export class AccountError extends Error {
  */
 export class AccountService {
   /**
-   * Resolves the account currency for the single-currency-per-install model.
-   * If a currency is provided it MUST equal the instance currency (mixing
-   * currencies is unsupported and would make totals wrong); when omitted it
-   * defaults to the instance currency.
+   * Resolves the account currency (P4.11 multi-currency). Any supported currency
+   * is allowed; when omitted it defaults to the instance/base currency. A
+   * non-base currency must be paired with an exchange rate (validated by the
+   * caller) so aggregations can convert to base.
    *
-   * @throws AccountError CURRENCY_MISMATCH if a different currency is requested
+   * @throws AccountError INVALID_CURRENCY if an unsupported currency is requested
    */
   private static resolveCurrency(requested?: string | null): string {
-    const instance = getInstanceCurrency();
-    if (requested && requested.toUpperCase() !== instance) {
+    if (requested == null || requested === '') return getInstanceCurrency();
+    const normalized = requested.toUpperCase();
+    if (!isSupportedCurrency(normalized)) {
       throw new AccountError(
-        `Esta instancia usa una sola moneda (${instance}). No se admiten cuentas en otra moneda.`,
-        'CURRENCY_MISMATCH',
+        `Moneda no soportada: ${requested}.`,
+        'INVALID_CURRENCY',
       );
     }
-    return instance;
+    return normalized;
+  }
+
+  /**
+   * Resolves the exchange rate to base for an account (P4.11). A base-currency
+   * account is always rate 1; a foreign-currency account uses the provided rate
+   * (must be > 0) or falls back to 1 when none is given.
+   */
+  private static resolveExchangeRate(currency: string, requestedRate?: number | null): number {
+    if (currency === getInstanceCurrency()) return 1;
+    if (requestedRate != null && requestedRate > 0) return roundRate(requestedRate);
+    return 1;
   }
 
   /**
@@ -68,6 +85,7 @@ export class AccountService {
     }
 
     const now = new Date().toISOString();
+    const resolvedCurrency = AccountService.resolveCurrency(input.currency);
 
     const result = db
       .insert(accounts)
@@ -79,8 +97,14 @@ export class AccountService {
         initialBalance: input.initialBalance,
         balanceLimit: input.balanceLimit ?? null,
         creditLimit: input.creditLimit ?? null,
+        // P4.2 statement fields (credit-only; null for other types)
+        statementDay: input.statementDay ?? null,
+        paymentDueDay: input.paymentDueDay ?? null,
+        apr: input.apr ?? null,
+        minimumPayment: input.minimumPayment ?? null,
         status: 'Activo',
-        currency: AccountService.resolveCurrency(input.currency),
+        currency: resolvedCurrency,
+        exchangeRate: AccountService.resolveExchangeRate(resolvedCurrency, input.exchangeRate),
         createdAt: now,
         updatedAt: now,
       })
@@ -127,6 +151,20 @@ export class AccountService {
 
     const now = new Date().toISOString();
 
+    // P4.11: currency + exchangeRate move together. If either is provided,
+    // recompute the effective currency and its rate (base currency → rate 1).
+    let currencyUpdate: { currency: string; exchangeRate: number } | undefined;
+    if (input.currency !== undefined || input.exchangeRate !== undefined) {
+      const currency = input.currency !== undefined
+        ? AccountService.resolveCurrency(input.currency)
+        : existing.currency;
+      const rate = AccountService.resolveExchangeRate(
+        currency,
+        input.exchangeRate !== undefined ? input.exchangeRate : existing.exchangeRate,
+      );
+      currencyUpdate = { currency, exchangeRate: rate };
+    }
+
     const result = db
       .update(accounts)
       .set({
@@ -136,7 +174,12 @@ export class AccountService {
         ...(input.initialBalance !== undefined && { initialBalance: input.initialBalance }),
         ...(input.balanceLimit !== undefined && { balanceLimit: input.balanceLimit ?? null }),
         ...(input.creditLimit !== undefined && { creditLimit: input.creditLimit ?? null }),
-        ...(input.currency !== undefined && { currency: AccountService.resolveCurrency(input.currency) }),
+        // P4.2 statement fields
+        ...(input.statementDay !== undefined && { statementDay: input.statementDay ?? null }),
+        ...(input.paymentDueDay !== undefined && { paymentDueDay: input.paymentDueDay ?? null }),
+        ...(input.apr !== undefined && { apr: input.apr ?? null }),
+        ...(input.minimumPayment !== undefined && { minimumPayment: input.minimumPayment ?? null }),
+        ...(currencyUpdate !== undefined && currencyUpdate),
         updatedAt: now,
       })
       .where(and(eq(accounts.id, id), eq(accounts.userId, userId)))
@@ -223,9 +266,9 @@ export class AccountService {
   static async calculateBalance(id: number): Promise<number> {
     const db = getDb();
 
-    // Obtener la cuenta con tipo para determinar la lógica de balance
+    // Balance is computed the same for all account types (P4.2 unified formula).
     const account = db
-      .select({ initialBalance: accounts.initialBalance, type: accounts.type })
+      .select({ initialBalance: accounts.initialBalance })
       .from(accounts)
       .where(eq(accounts.id, id))
       .get();
@@ -233,8 +276,6 @@ export class AccountService {
     if (!account) {
       throw new AccountError('Cuenta no encontrada', 'ACCOUNT_NOT_FOUND');
     }
-
-    const isCredit = account.type === 'Crédito';
 
     // Sumar ingresos
     const incomeResult = db
@@ -260,9 +301,10 @@ export class AccountService {
       )
       .get();
 
-    // Sumar transferencias recibidas (cuenta es destino)
+    // Sumar transferencias recibidas (cuenta es destino). P4.11: usa
+    // destination_amount cuando existe (cross-currency), si no el amount origen.
     const transfersInResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transfers.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(COALESCE(${transfers.destinationAmount}, ${transfers.amount})), 0)` })
       .from(transfers)
       .where(eq(transfers.destinationAccountId, id))
       .get();
@@ -279,12 +321,12 @@ export class AccountService {
     const transfersIn = transfersInResult?.total ?? 0;
     const transfersOut = transfersOutResult?.total ?? 0;
 
-    if (isCredit) {
-      // Para cuentas de crédito: recibir una transferencia (pago) reduce la deuda,
-      // enviar una transferencia (disposición de crédito) aumenta la deuda.
-      return roundMoney(account.initialBalance + incomes - expenses - transfersIn + transfersOut);
-    }
-
+    // P4.2: unified formula for ALL account types under the negative-balance =
+    // debt convention used everywhere (dashboard/alerts/utilization via
+    // Math.abs). A credit card's balance is negative (amount owed); an expense
+    // makes it more negative, and a PAYMENT (transfer INTO the card) moves it
+    // toward zero (reduces debt). The old credit branch inverted the transfer
+    // signs, which double-counted a payment as MORE debt — that bug is removed.
     return roundMoney(account.initialBalance + incomes - expenses + transfersIn - transfersOut);
   }
 
@@ -396,6 +438,120 @@ export class AccountService {
     }
 
     return { utilization, status };
+  }
+
+  /**
+   * Computes the statement summary for a credit account (P4.2): amount owed,
+   * available credit, utilization, and the next statement-close / payment-due
+   * dates derived from the configured day-of-month. Payment history (incoming
+   * transfers) is surfaced separately by the route.
+   *
+   * @throws AccountError if the account doesn't exist or isn't a credit account.
+   */
+  static async getCreditStatement(id: number): Promise<{
+    creditLimit: number | null;
+    owed: number;
+    availableCredit: number | null;
+    utilization: number | null;
+    statementDay: number | null;
+    paymentDueDay: number | null;
+    apr: number | null;
+    minimumPayment: number | null;
+    nextStatementDate: string | null;
+    nextDueDate: string | null;
+  }> {
+    const db = getDb();
+
+    const account = db
+      .select({
+        type: accounts.type,
+        creditLimit: accounts.creditLimit,
+        statementDay: accounts.statementDay,
+        paymentDueDay: accounts.paymentDueDay,
+        apr: accounts.apr,
+        minimumPayment: accounts.minimumPayment,
+      })
+      .from(accounts)
+      .where(eq(accounts.id, id))
+      .get();
+
+    if (!account) {
+      throw new AccountError('Cuenta no encontrada', 'ACCOUNT_NOT_FOUND');
+    }
+    if (account.type !== 'Crédito') {
+      throw new AccountError('La cuenta no es de tipo Crédito', 'NOT_CREDIT_ACCOUNT');
+    }
+
+    const balance = await AccountService.calculateBalance(id);
+    // Under the negative-balance convention, owed = the negative part of the
+    // balance (a positive/zero balance means nothing is owed).
+    const owed = roundMoney(Math.max(0, -balance));
+    const availableCredit = account.creditLimit != null
+      ? roundMoney(Math.max(0, account.creditLimit - owed))
+      : null;
+    const utilization = account.creditLimit && account.creditLimit > 0
+      ? Math.round((owed / account.creditLimit) * 10000) / 100
+      : null;
+
+    return {
+      creditLimit: account.creditLimit ?? null,
+      owed,
+      availableCredit,
+      utilization,
+      statementDay: account.statementDay ?? null,
+      paymentDueDay: account.paymentDueDay ?? null,
+      apr: account.apr ?? null,
+      minimumPayment: account.minimumPayment ?? null,
+      nextStatementDate: AccountService.nextDateForDayOfMonth(account.statementDay ?? null),
+      nextDueDate: AccountService.nextDateForDayOfMonth(account.paymentDueDay ?? null),
+    };
+  }
+
+  /**
+   * Given a day-of-month (1–31), returns the next occurrence as YYYY-MM-DD (today
+   * if it matches, else this month or next), clamped to the month's length.
+   * Returns null when no day is configured.
+   */
+  static nextDateForDayOfMonth(day: number | null): string | null {
+    if (day == null) return null;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const today = now.getDate();
+    // Clamp the target day to the number of days in the candidate month.
+    const clamp = (year: number, month: number) => {
+      const last = new Date(year, month + 1, 0).getDate();
+      return Math.min(day, last);
+    };
+    let targetY = y;
+    let targetM = m;
+    if (clamp(y, m) < today) {
+      // This month's occurrence already passed → roll to next month.
+      targetM = m + 1;
+      if (targetM > 11) { targetM = 0; targetY = y + 1; }
+    }
+    const d = clamp(targetY, targetM);
+    return `${targetY}-${String(targetM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  /**
+   * Returns the payment history of a credit account (P4.2): transfers INTO this
+   * account (i.e. payments toward the card), newest first, scoped by user.
+   */
+  static getCreditPayments(id: number, userId: number) {
+    const db = getDb();
+    return db
+      .select({
+        id: transfers.id,
+        name: transfers.name,
+        amount: transfers.amount,
+        date: transfers.date,
+        sourceAccountId: transfers.sourceAccountId,
+      })
+      .from(transfers)
+      .where(and(eq(transfers.destinationAccountId, id), eq(transfers.userId, userId)))
+      .orderBy(desc(transfers.date))
+      .all();
   }
 
   /**

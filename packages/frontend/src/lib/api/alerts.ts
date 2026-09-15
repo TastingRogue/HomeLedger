@@ -12,7 +12,9 @@ export type AlertType =
   | 'credit_high'
   | 'payment_due'
   | 'payment_overdue'
-  | 'goal_completed';
+  | 'goal_completed'
+  | 'budget_threshold'
+  | 'budget_exceeded';
 
 export type AlertSeverity = 'warning' | 'critical' | 'info';
 

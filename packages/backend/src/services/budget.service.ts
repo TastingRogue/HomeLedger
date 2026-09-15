@@ -1,11 +1,15 @@
-import { eq, and, gte, lte, sql, sum } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
-import { budgets, budgetCategories, transactions, alerts, categories } from '../db/schema.js';
+import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories, accounts } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
 import { BudgetPeriod, AlertType, AlertSeverity } from '@homeledger/shared';
-import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType } from '@homeledger/shared';
+import type { BudgetWithProgress, BudgetSummary, BudgetCategory as BudgetCategoryType, BudgetTag as BudgetTagType } from '@homeledger/shared';
 import crypto from 'node:crypto';
 import { roundMoney } from '../utils/money.js';
+
+// P4.11: budgets are base-currency. Spent is summed as amount×account.exchange_rate
+// (join transactions→accounts) so it's comparable to the base-currency allocation.
+const spentInBase = sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)`;
 
 // ============================================
 // Types
@@ -76,6 +80,64 @@ export class BudgetService {
   }
 
   /**
+   * P4.3 Phase C: total spent on transactions carrying `tagId` within a period.
+   * Joins transaction_tags → transactions (Gasto only, in the date range).
+   */
+  private static spentByTag(userId: number, tagId: number, startDate: string, endDate: string): number {
+    const db = getDb();
+    const row = db
+      .select({ total: spentInBase })
+      .from(transactionTags)
+      .innerJoin(transactions, eq(transactionTags.transactionId, transactions.id))
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+      .where(
+        and(
+          eq(transactionTags.tagId, tagId),
+          eq(transactions.userId, userId),
+          eq(transactions.type, 'Gasto'),
+          gte(transactions.date, startDate),
+          lte(transactions.date, endDate)
+        )
+      )
+      .get();
+    return roundMoney(Number(row?.total ?? 0));
+  }
+
+  /**
+   * Builds the per-tag progress array for a budget (allocated/spent/rollover/
+   * remaining + resolved tag name). P4.3 Phase C.
+   */
+  private static tagProgress(userId: number, budgetId: number, startDate: string, endDate: string): BudgetTagType[] {
+    const db = getDb();
+    const rows = db
+      .select({
+        id: budgetTags.id,
+        budgetId: budgetTags.budgetId,
+        tagId: budgetTags.tagId,
+        allocated: budgetTags.allocated,
+        rollover: budgetTags.rollover,
+        tagName: tags.name,
+      })
+      .from(budgetTags)
+      .innerJoin(tags, eq(budgetTags.tagId, tags.id))
+      .where(eq(budgetTags.budgetId, budgetId))
+      .all();
+    return rows.map((bt) => {
+      const spent = BudgetService.spentByTag(userId, bt.tagId, startDate, endDate);
+      return {
+        id: bt.id,
+        budgetId: bt.budgetId,
+        tagId: bt.tagId,
+        tagName: bt.tagName,
+        allocated: bt.allocated,
+        spent,
+        rollover: bt.rollover,
+        remaining: roundMoney((bt.allocated + bt.rollover) - spent),
+      };
+    });
+  }
+
+  /**
    * Crea un nuevo presupuesto con sus asignaciones de categorías.
    * Inserta el registro del presupuesto y luego las categorías asignadas de forma atómica.
    *
@@ -93,8 +155,11 @@ export class BudgetService {
       );
     }
 
-    // Validate that all categories exist AND are usable by this user (system or own)
-    for (const cat of input.categories) {
+    // Validate that all categories exist AND are usable by this user (system or own).
+    // Tolerate a caller that didn't go through the Zod schema (tests) where
+    // categories/tags may be undefined.
+    const inputCategories = input.categories ?? [];
+    for (const cat of inputCategories) {
       const existing = db
         .select({ id: categories.id })
         .from(categories)
@@ -109,11 +174,24 @@ export class BudgetService {
       }
     }
 
+    // P4.3 Phase C: validate tag allocations belong to the user.
+    const inputTags = input.tags ?? [];
+    for (const t of inputTags) {
+      const existing = db
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.id, t.tagId), eq(tags.userId, userId)))
+        .get();
+      if (!existing) {
+        throw new BudgetError(`La etiqueta con ID ${t.tagId} no existe`, 'TAG_NOT_FOUND');
+      }
+    }
+
     const startDate = input.startDate.split('T')[0]!;
     const endDate = BudgetService.calculateEndDate(startDate, dbPeriod);
     const now = new Date().toISOString();
 
-    const result = sqlite.transaction(() => {
+    const newBudgetId = sqlite.transaction(() => {
       // Insert the budget record
       const newBudget = db
         .insert(budgets)
@@ -123,54 +201,39 @@ export class BudgetService {
           period: dbPeriod,
           startDate,
           endDate,
+          // P4.3: persist the settings (were dropped before).
+          rolloverEnabled: input.rolloverEnabled ?? false,
+          alertThreshold: input.alertThreshold ?? 80,
           createdAt: now,
           updatedAt: now,
         })
-        .returning()
+        .returning({ id: budgets.id })
         .get();
 
       // Insert budget category allocations
-      const insertedCategories = input.categories.map((cat) => {
-        return db
-          .insert(budgetCategories)
-          .values({
-            budgetId: newBudget.id,
-            categoryId: cat.categoryId,
-            allocated: cat.allocated,
-            rollover: 0,
-          })
-          .returning()
-          .get();
-      });
+      for (const cat of inputCategories) {
+        db.insert(budgetCategories).values({
+          budgetId: newBudget.id,
+          categoryId: cat.categoryId,
+          allocated: cat.allocated,
+          rollover: 0,
+        }).run();
+      }
+      // P4.3 Phase C: insert budget tag allocations
+      for (const t of inputTags) {
+        db.insert(budgetTags).values({
+          budgetId: newBudget.id,
+          tagId: t.tagId,
+          allocated: t.allocated,
+          rollover: 0,
+        }).run();
+      }
 
-      return { budget: newBudget, categories: insertedCategories };
+      return newBudget.id;
     })();
 
-    const totalAllocated = input.categories.reduce((sum, c) => sum + c.allocated, 0);
-
-    return {
-      id: result.budget.id,
-      userId: result.budget.userId,
-      name: result.budget.name,
-      period: PERIOD_FROM_DB[result.budget.period] ?? result.budget.period,
-      startDate: result.budget.startDate,
-      endDate: result.budget.endDate,
-      totalAllocated,
-      totalSpent: 0,
-      rolloverEnabled: input.rolloverEnabled ?? false,
-      alertThreshold: input.alertThreshold ?? 80,
-      createdAt: result.budget.createdAt,
-      updatedAt: result.budget.updatedAt,
-      categories: result.categories.map((c) => ({
-        id: c.id,
-        budgetId: c.budgetId,
-        categoryId: c.categoryId,
-        allocated: c.allocated,
-        spent: 0,
-        rollover: c.rollover,
-        remaining: c.allocated + c.rollover,
-      })),
-    };
+    // Return the full budget with progress (categories + tags) computed uniformly.
+    return BudgetService.getById(newBudgetId, userId)!;
   }
 
   /**
@@ -209,10 +272,11 @@ export class BudgetService {
 
       // For each budget category, calculate spent from transactions
       const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
-        // Sum of Gasto transactions for this category within the budget period
+        // Sum of Gasto transactions for this category within the budget period (base currency)
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, userId),
@@ -238,8 +302,17 @@ export class BudgetService {
         };
       });
 
-      const totalAllocated = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.allocated, 0));
-      const totalSpent = roundMoney(categoriesWithSpent.reduce((s, c) => s + c.spent, 0));
+      // P4.3 Phase C: per-tag allocations for this budget.
+      const tagsWithSpent = BudgetService.tagProgress(userId, budget.id, budget.startDate, budget.endDate);
+
+      const totalAllocated = roundMoney(
+        categoriesWithSpent.reduce((s, c) => s + c.allocated, 0) +
+        tagsWithSpent.reduce((s, t) => s + t.allocated, 0)
+      );
+      const totalSpent = roundMoney(
+        categoriesWithSpent.reduce((s, c) => s + c.spent, 0) +
+        tagsWithSpent.reduce((s, t) => s + t.spent, 0)
+      );
       const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
       return {
@@ -251,11 +324,12 @@ export class BudgetService {
         endDate: budget.endDate,
         totalAllocated,
         totalSpent,
-        rolloverEnabled: false, // Stored at schema level; could be extended
-        alertThreshold: 80,    // Default; could be persisted per budget
+        rolloverEnabled: budget.rolloverEnabled, // P4.3: persisted
+        alertThreshold: budget.alertThreshold,   // P4.3: persisted
         createdAt: budget.createdAt,
         updatedAt: budget.updatedAt,
         categories: categoriesWithSpent,
+        tags: tagsWithSpent,
         percentUsed: Math.round(percentUsed * 100) / 100,
       };
     });
@@ -301,6 +375,7 @@ export class BudgetService {
 
     let totalAllocated = 0;
     let totalSpent = 0;
+    let totalIncome = 0;
 
     for (const budget of targetBudgets) {
       const budgetCats = db
@@ -313,8 +388,9 @@ export class BudgetService {
         totalAllocated += bc.allocated;
 
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, userId),
@@ -328,17 +404,50 @@ export class BudgetService {
 
         totalSpent += Number(spentResult?.total ?? 0);
       }
+
+      // P4.3 Phase C: include tag allocations + their spent in the totals.
+      const budgetTagRows = db
+        .select()
+        .from(budgetTags)
+        .where(eq(budgetTags.budgetId, budget.id))
+        .all();
+      for (const bt of budgetTagRows) {
+        totalAllocated += bt.allocated;
+        totalSpent += BudgetService.spentByTag(userId, bt.tagId, budget.startDate, budget.endDate);
+      }
+
+      // P4.3 Phase B ("available to spend", light): income earned within the
+      // budget's period, so the UI can show income − allocated = unassigned.
+      const incomeResult = db
+        .select({ total: spentInBase })
+        .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            eq(transactions.type, 'Ingreso'),
+            gte(transactions.date, budget.startDate),
+            lte(transactions.date, budget.endDate)
+          )
+        )
+        .get();
+      totalIncome += Number(incomeResult?.total ?? 0);
     }
 
     totalAllocated = roundMoney(totalAllocated);
     totalSpent = roundMoney(totalSpent);
+    totalIncome = roundMoney(totalIncome);
     const totalRemaining = roundMoney(totalAllocated - totalSpent);
+    // Unassigned = income not yet given a job. Negative means over-allocated.
+    const unassigned = roundMoney(totalIncome - totalAllocated);
     const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
     return {
       totalAllocated,
       totalSpent,
       totalRemaining,
+      totalIncome,
+      unassigned,
       percentUsed: Math.round(percentUsed * 100) / 100,
     };
   }
@@ -393,10 +502,11 @@ export class BudgetService {
 
     sqlite.transaction(() => {
       for (const bc of budgetCats) {
-        // Calculate spent for this category in the current period
+        // Calculate spent for this category in the current period (base currency)
         const spentResult = db
-          .select({ total: sum(transactions.amount) })
+          .select({ total: spentInBase })
           .from(transactions)
+          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
           .where(
             and(
               eq(transactions.userId, budget.userId),
@@ -436,20 +546,41 @@ export class BudgetService {
           }
         }
       }
+
+      // P4.3 Phase C: roll over unused TAG budget into the next period's matching tag.
+      const budgetTagRows = db.select().from(budgetTags).where(eq(budgetTags.budgetId, budgetId)).all();
+      for (const bt of budgetTagRows) {
+        const spent = BudgetService.spentByTag(budget.userId, bt.tagId, budget.startDate, budget.endDate);
+        const unused = roundMoney((bt.allocated + bt.rollover) - spent);
+        if (unused > 0) {
+          const nextTag = db
+            .select()
+            .from(budgetTags)
+            .where(and(eq(budgetTags.budgetId, nextBudget.id), eq(budgetTags.tagId, bt.tagId)))
+            .get();
+          if (nextTag) {
+            db.update(budgetTags)
+              .set({ rollover: sql`${budgetTags.rollover} + ${unused}` })
+              .where(eq(budgetTags.id, nextTag.id))
+              .run();
+          }
+        }
+      }
     })();
   }
 
   /**
-   * Evalúa alertas de presupuesto para el usuario.
-   * Genera alertas cuando:
-   * - El gasto excede el umbral de alerta (alertThreshold %) → alerta de advertencia
-   * - El gasto excede el 100% del presupuesto asignado → alerta crítica de exceso
+   * @deprecated Superseded by `AlertService.evaluateBudgetOverspend` (P4.3 Phase D),
+   * which uses the shared SHA-256 dedup helpers, auto-clears on recovery, covers
+   * tag lines too, and is wired into the hourly alert-evaluation scheduler job.
+   * This MD5-based, never-scheduled version is kept only for backward-compatible
+   * callers/tests and returns the same category-only overspend list without the
+   * recovery/auto-clear behavior. Prefer the AlertService method.
    *
-   * Usa deduplicación basada en hash para evitar alertas duplicadas.
-   *
+   * Evalúa alertas de presupuesto para el usuario (solo por categoría).
    * Requirements: 7.2
    */
-  static evaluateAlerts(userId: number, alertThreshold: number = 80): BudgetAlert[] {
+  static evaluateAlerts(userId: number): BudgetAlert[] {
     const db = getDb();
     const sqlite = getSqlite();
 
@@ -472,6 +603,8 @@ export class BudgetService {
 
     sqlite.transaction(() => {
       for (const budget of activeBudgets) {
+        // P4.3: each budget carries its own warning threshold.
+        const alertThreshold = budget.alertThreshold;
         const budgetCats = db
           .select()
           .from(budgetCategories)
@@ -488,10 +621,11 @@ export class BudgetService {
 
           const categoryName = category?.name ?? `Categoría ${bc.categoryId}`;
 
-          // Calculate spent
+          // Calculate spent (base currency)
           const spentResult = db
-            .select({ total: sum(transactions.amount) })
+            .select({ total: spentInBase })
             .from(transactions)
+            .innerJoin(accounts, eq(transactions.accountId, accounts.id))
             .where(
               and(
                 eq(transactions.userId, userId),
@@ -633,8 +767,9 @@ export class BudgetService {
 
     const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
       const spentResult = db
-        .select({ total: sum(transactions.amount) })
+        .select({ total: spentInBase })
         .from(transactions)
+        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
         .where(
           and(
             eq(transactions.userId, userId),
@@ -660,8 +795,17 @@ export class BudgetService {
       };
     });
 
-    const totalAllocated = categoriesWithSpent.reduce((s, c) => s + c.allocated, 0);
-    const totalSpent = categoriesWithSpent.reduce((s, c) => s + c.spent, 0);
+    // P4.3 Phase C: per-tag allocations.
+    const tagsWithSpent = BudgetService.tagProgress(userId, budget.id, budget.startDate, budget.endDate);
+
+    const totalAllocated = roundMoney(
+      categoriesWithSpent.reduce((s, c) => s + c.allocated, 0) +
+      tagsWithSpent.reduce((s, t) => s + t.allocated, 0)
+    );
+    const totalSpent = roundMoney(
+      categoriesWithSpent.reduce((s, c) => s + c.spent, 0) +
+      tagsWithSpent.reduce((s, t) => s + t.spent, 0)
+    );
     const percentUsed = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
     return {
@@ -673,11 +817,12 @@ export class BudgetService {
       endDate: budget.endDate,
       totalAllocated,
       totalSpent,
-      rolloverEnabled: false,
-      alertThreshold: 80,
+      rolloverEnabled: budget.rolloverEnabled, // P4.3: persisted
+      alertThreshold: budget.alertThreshold,   // P4.3: persisted
       createdAt: budget.createdAt,
       updatedAt: budget.updatedAt,
       categories: categoriesWithSpent,
+      tags: tagsWithSpent,
       percentUsed: Math.round(percentUsed * 100) / 100,
     };
   }
@@ -749,6 +894,14 @@ export class BudgetService {
         updateData['endDate'] = BudgetService.calculateEndDate(startDate, period);
       }
 
+      // P4.3: persist the settings (were dropped before).
+      if (input.rolloverEnabled !== undefined) {
+        updateData['rolloverEnabled'] = input.rolloverEnabled;
+      }
+      if (input.alertThreshold !== undefined) {
+        updateData['alertThreshold'] = input.alertThreshold;
+      }
+
       db.update(budgets)
         .set(updateData)
         .where(eq(budgets.id, id))
@@ -756,6 +909,13 @@ export class BudgetService {
 
       // Update categories if provided
       if (input.categories) {
+        // P4.3: preserve any accumulated rollover per category across the edit
+        // (previously it was wiped to 0, discarding carried-over budget).
+        const priorRollover = new Map<number, number>();
+        for (const bc of db.select().from(budgetCategories).where(eq(budgetCategories.budgetId, id)).all()) {
+          priorRollover.set(bc.categoryId, bc.rollover);
+        }
+
         // Remove existing budget categories
         db.delete(budgetCategories)
           .where(eq(budgetCategories.budgetId, id))
@@ -776,9 +936,34 @@ export class BudgetService {
               budgetId: id,
               categoryId: cat.categoryId,
               allocated: cat.allocated,
-              rollover: 0,
+              rollover: priorRollover.get(cat.categoryId) ?? 0,
             })
             .run();
+        }
+      }
+
+      // P4.3 Phase C: update tag allocations if provided (same rollover-preserve).
+      if (input.tags) {
+        const priorTagRollover = new Map<number, number>();
+        for (const bt of db.select().from(budgetTags).where(eq(budgetTags.budgetId, id)).all()) {
+          priorTagRollover.set(bt.tagId, bt.rollover);
+        }
+        db.delete(budgetTags).where(eq(budgetTags.budgetId, id)).run();
+        for (const t of input.tags) {
+          const okTag = db
+            .select({ id: tags.id })
+            .from(tags)
+            .where(and(eq(tags.id, t.tagId), eq(tags.userId, userId)))
+            .get();
+          if (!okTag) {
+            throw new BudgetError(`La etiqueta con ID ${t.tagId} no existe`, 'TAG_NOT_FOUND');
+          }
+          db.insert(budgetTags).values({
+            budgetId: id,
+            tagId: t.tagId,
+            allocated: t.allocated,
+            rollover: priorTagRollover.get(t.tagId) ?? 0,
+          }).run();
         }
       }
     })();

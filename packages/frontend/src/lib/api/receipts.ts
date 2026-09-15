@@ -17,6 +17,7 @@ export interface ReceiptItem {
 	quantity: number | null;
 	unitPrice: number | null;
 	total: number | null;
+	categoryId: number | null;
 }
 
 export interface ReceiptAnalysis {
@@ -76,5 +77,24 @@ export async function analyzeAttachment(attachmentId: number): Promise<ReceiptAn
 
 export async function updateReceipt(id: number, fields: ReceiptEditableFields): Promise<ReceiptAnalysis> {
 	const receipt = await apiPatch<ReceiptApiResponse>(`/receipts/${id}`, fields);
+	return normalizeReceipt(receipt);
+}
+
+/** P4.6: assign (or clear) a receipt line item's category. */
+export async function setReceiptItemCategory(
+	receiptId: number,
+	itemId: number,
+	categoryId: number | null,
+): Promise<ReceiptAnalysis> {
+	const receipt = await apiPatch<ReceiptApiResponse>(`/receipts/${receiptId}/items/${itemId}`, { categoryId });
+	return normalizeReceipt(receipt);
+}
+
+/** P4.6: create a transaction (+ optional item splits) from a receipt/CFDI. */
+export async function createTransactionFromReceipt(
+	receiptId: number,
+	body: { accountId: number; categoryId: number; date?: string },
+): Promise<ReceiptAnalysis> {
+	const receipt = await apiPost<ReceiptApiResponse>(`/receipts/${receiptId}/transaction`, body);
 	return normalizeReceipt(receipt);
 }

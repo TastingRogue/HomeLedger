@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
-  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, type TransactionSplit } from '$lib/api/transactions';
+  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '$lib/api/transactions';
+  import { suggestRule, createRule, applyRules, type RuleSuggestion } from '$lib/api/rules';
   import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
   import Dropdown from '$lib/components/Dropdown.svelte';
@@ -16,6 +17,11 @@
   let categories = $state<Category[]>([]);
   let loading = $state(true);
   let error = $state('');
+
+  // Rule-learning suggestion (P4.5): shown after a category change.
+  let ruleSuggestion = $state<RuleSuggestion | null>(null);
+  let suggestionCreating = $state(false);
+  let suggestionDone = $state(false);
 
   let currentPage = $state(1);
   let totalPages = $state(1);
@@ -74,6 +80,14 @@
   let formAmount = $state('');
   let formType = $state<'Ingreso' | 'Gasto'>('Gasto');
   let formDate = $state('');
+  // ── P4.1 richer transaction model form fields ──
+  let formMerchant = $state('');
+  let formSubtype = $state('');           // '' = none | refund | reimbursement | adjustment
+  let formReconciled = $state(false);
+  let formStatus = $state<'pending' | 'posted'>('posted');
+  let formTags = $state<string[]>([]);    // tag names attached to this transaction
+  let formTagInput = $state('');          // the in-progress tag being typed
+  let formDetailsOpen = $state(false);    // collapsible "more details" section
   let formErrors = $state<Record<string, string>>({});
   let formSubmitting = $state(false);
 
@@ -240,12 +254,62 @@
   }
 
   // --- Detail Popup ---
+  // Audit history (P4.1 Phase 3): lazily loaded when the user expands it.
+  let auditOpen = $state(false);
+  let auditRows = $state<TransactionAudit[]>([]);
+  let auditLoading = $state(false);
+  let auditLoaded = $state(false);
+
   function openDetail(tx: Transaction) {
     selectedTransaction = tx;
+    auditOpen = false; auditRows = []; auditLoaded = false;
   }
 
   function closePanel() {
     selectedTransaction = null;
+    auditOpen = false; auditRows = []; auditLoaded = false;
+  }
+
+  async function toggleAudit() {
+    auditOpen = !auditOpen;
+    if (auditOpen && !auditLoaded && selectedTransaction) {
+      auditLoading = true;
+      try {
+        auditRows = await getTransactionAudit(selectedTransaction.id);
+        auditLoaded = true;
+      } catch {
+        auditRows = [];
+      } finally {
+        auditLoading = false;
+      }
+    }
+  }
+
+  // Human-readable label for a changed field key.
+  function auditFieldLabel(key: string): string {
+    const map: Record<string, string> = {
+      name: $t('transactions.form_name'), amount: $t('transactions.form_amount'),
+      type: $t('transactions.form_type'), date: $t('transactions.form_date'),
+      categoryId: $t('common.category'), subcategoryId: $t('transactions.form_subcategory'),
+      accountId: $t('common.account'), notes: $t('transactions.form_notes'),
+      merchant: $t('transactions.merchant'), subtype: $t('transactions.subtype'),
+      reconciled: $t('transactions.reconciled'), status: $t('transactions.status'),
+      externalId: 'externalId',
+    };
+    return map[key] ?? key;
+  }
+
+  // Render an audit value compactly (booleans/nulls/dates → readable text).
+  function auditValue(v: unknown): string {
+    if (v === null || v === undefined || v === '') return '—';
+    if (typeof v === 'boolean') return v ? $t('common.yes') : $t('common.no');
+    return String(v);
+  }
+
+  // For an 'updated' entry, the list of changed fields; for created/deleted, [].
+  function auditChangedFields(row: TransactionAudit): string[] {
+    if (row.action !== 'updated' || !row.changes) return [];
+    return Object.keys(row.changes);
   }
 
   function toggleMonth(key: string) {
@@ -265,7 +329,10 @@
     formName = ''; formAccountId = accounts.length > 0 ? String(accounts[0].id) : '';
     formCategoryId = categories.length > 0 ? String(categories[0].id) : '';
     formSubcategoryId = '';
-    formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal(); formErrors = {};
+    formAmount = ''; formType = 'Gasto'; formDate = nowDatetimeLocal();
+    formMerchant = ''; formSubtype = ''; formReconciled = false; formStatus = 'posted';
+    formTags = []; formTagInput = ''; formDetailsOpen = false;
+    formErrors = {};
     showFormModal = true;
   }
 
@@ -274,7 +341,41 @@
     formName = tx.name; formAccountId = String(tx.accountId); formCategoryId = String(tx.categoryId);
     formSubcategoryId = tx.subcategoryId != null ? String(tx.subcategoryId) : '';
     formAmount = String(tx.amount); formType = tx.type as 'Ingreso' | 'Gasto'; formDate = toDatetimeLocal(tx.date);
+    formMerchant = tx.merchant ?? '';
+    formSubtype = tx.subtype ?? '';
+    formReconciled = tx.reconciled ?? false;
+    formStatus = tx.status ?? 'posted';
+    formTags = (tx.tags ?? []).map((t) => t.name);
+    formTagInput = '';
+    // Auto-expand the details section when the tx already carries any richer data.
+    formDetailsOpen = !!(tx.merchant || tx.subtype || tx.reconciled || (tx.status && tx.status !== 'posted') || formTags.length > 0);
     formErrors = {}; showFormModal = true;
+  }
+
+  // --- Tag chip helpers (form) ---
+  function addFormTag() {
+    const raw = formTagInput.trim();
+    if (!raw) return;
+    // Allow comma-separated bulk entry.
+    for (const part of raw.split(',')) {
+      const n = part.trim();
+      if (n && !formTags.some((t) => t.toLowerCase() === n.toLowerCase())) {
+        formTags = [...formTags, n];
+      }
+    }
+    formTagInput = '';
+  }
+  function removeFormTag(name: string) {
+    formTags = formTags.filter((t) => t !== name);
+  }
+  function onTagKeydown(e: KeyboardEvent) {
+    // Enter or comma commits the current tag; Backspace on empty removes the last.
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addFormTag();
+    } else if (e.key === 'Backspace' && formTagInput === '' && formTags.length > 0) {
+      formTags = formTags.slice(0, -1);
+    }
   }
 
   function closeFormModal() { showFormModal = false; editingTransaction = null; formErrors = {}; }
@@ -305,11 +406,32 @@
         subcategoryId: formSubcategoryId ? parseInt(formSubcategoryId, 10) : null,
         amount: parseFloat(parseFloat(String(formAmount ?? '')).toFixed(2)),
         type: formType,
-        date: new Date(formDate).toISOString()
+        date: new Date(formDate).toISOString(),
+        // P4.1 richer fields. Empty strings normalize to null / defaults.
+        merchant: formMerchant.trim() || null,
+        subtype: (formSubtype || null) as 'refund' | 'reimbursement' | 'adjustment' | null,
+        reconciled: formReconciled,
+        status: formStatus,
       };
-      if (isEditing && editingTransaction) await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
-      else await apiPost<Transaction>('/transactions', payload);
+      // Fold any tag still in the input box into the list before saving.
+      if (formTagInput.trim()) addFormTag();
+      // Track whether the category actually changed (drives rule-learning).
+      const prevCategoryId = isEditing && editingTransaction ? editingTransaction.categoryId : null;
+      const categoryChanged = payload.categoryId !== prevCategoryId;
+      let txId: number;
+      if (isEditing && editingTransaction) {
+        await apiPut<Transaction>(`/transactions/${editingTransaction.id}`, payload);
+        txId = editingTransaction.id;
+      } else {
+        const created = await apiPost<Transaction>('/transactions', payload);
+        txId = created.id;
+      }
+      // Persist tags via the dedicated endpoint (creates missing ones). (P4.1 Phase 2)
+      await setTransactionTags(txId, formTags);
       closeFormModal(); await loadTransactions();
+      // Rule learning (P4.5): if the category changed, ask the backend whether a
+      // rule is worth suggesting for this merchant. Best-effort, never blocks.
+      if (categoryChanged) void maybeSuggestRule(txId);
     } catch (e) {
       if (e instanceof ApiError) {
         formErrors = e.details
@@ -318,6 +440,38 @@
       } else formErrors = { general: $t('transactions.error_saving') };
     } finally { formSubmitting = false; }
   }
+
+  // --- Rule learning (P4.5) ---
+  async function maybeSuggestRule(txId: number) {
+    try {
+      const s = await suggestRule(txId);
+      if (s.suggested) { ruleSuggestion = s; suggestionDone = false; }
+    } catch { /* suggestions are best-effort */ }
+  }
+
+  async function createSuggestedRule() {
+    if (!ruleSuggestion || !ruleSuggestion.categoryId || !ruleSuggestion.value) return;
+    suggestionCreating = true;
+    try {
+      await createRule({
+        name: `${ruleSuggestion.categoryName ?? 'Auto'}: ${ruleSuggestion.value}`.slice(0, 100),
+        priority: 100,
+        conditions: [{ field: ruleSuggestion.field ?? 'merchant', operator: 'contains', value: ruleSuggestion.value }],
+        actions: [{ type: 'setCategory', value: ruleSuggestion.categoryId }],
+        enabled: true,
+      });
+      // Apply immediately to the user's uncategorized transactions.
+      await applyRules();
+      suggestionDone = true;
+      await loadTransactions();
+    } catch {
+      /* leave the prompt open on failure */
+    } finally {
+      suggestionCreating = false;
+    }
+  }
+
+  function dismissSuggestion() { ruleSuggestion = null; }
 
   function openDeleteModal(tx: Transaction) { deletingTransaction = tx; showDeleteModal = true; }
   function closeDeleteModal() { showDeleteModal = false; deletingTransaction = null; }
@@ -456,6 +610,27 @@
       <button class="btn-new" onclick={openCreateForm}>{$t('common.new')}</button>
     </div>
   </header>
+
+  <!-- Rule-learning prompt (P4.5) -->
+  {#if ruleSuggestion}
+    <div class="rule-suggest" role="status">
+      <span class="rs-icon">✨</span>
+      <div class="rs-body">
+        <strong>{$t('rules.suggest_title')}</strong>
+        {#if suggestionDone}
+          <span class="rs-done">{$t('rules.suggest_created')}</span>
+        {:else}
+          <span class="rs-text">{$t('rules.suggest_body', { category: ruleSuggestion.categoryName ?? '', n: ruleSuggestion.matchingCount ?? 0, merchant: ruleSuggestion.value ?? '' })}</span>
+        {/if}
+      </div>
+      {#if suggestionDone}
+        <button class="rs-btn rs-dismiss" onclick={dismissSuggestion}>{$t('common.close')}</button>
+      {:else}
+        <button class="rs-btn rs-create" onclick={createSuggestedRule} disabled={suggestionCreating}>{$t('rules.suggest_create')}</button>
+        <button class="rs-btn rs-dismiss" onclick={dismissSuggestion}>{$t('rules.suggest_dismiss')}</button>
+      {/if}
+    </div>
+  {/if}
 
   <!-- Filters - Always Visible -->
   <div class="filters-bar">
@@ -675,7 +850,83 @@
             <span class="prop-label">{$t('common.account')}</span>
             <span class="prop-value">{getAccountName(selectedTransaction.accountId)}</span>
           </div>
+          {#if selectedTransaction.merchant}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.merchant')}</span>
+              <span class="prop-value">{selectedTransaction.merchant}</span>
+            </div>
+          {/if}
+          {#if selectedTransaction.subtype}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.subtype')}</span>
+              <span class="prop-value"><span class="tag tag-blue">{$t('transactions.subtype_' + selectedTransaction.subtype)}</span></span>
+            </div>
+          {/if}
+          <div class="detail-prop">
+            <span class="prop-label">{$t('transactions.status')}</span>
+            <span class="prop-value">
+              <span class="tag {selectedTransaction.status === 'pending' ? 'tag-amber' : 'tag-green'}">
+                {$t('transactions.status_' + (selectedTransaction.status ?? 'posted'))}
+              </span>
+            </span>
+          </div>
+          <div class="detail-prop">
+            <span class="prop-label">{$t('transactions.reconciled')}</span>
+            <span class="prop-value">{selectedTransaction.reconciled ? $t('common.yes') : $t('common.no')}</span>
+          </div>
+          {#if selectedTransaction.tags && selectedTransaction.tags.length > 0}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.tags')}</span>
+              <span class="prop-value tag-chips">
+                {#each selectedTransaction.tags as tag (tag.id)}
+                  <span class="tag-chip readonly">{tag.name}</span>
+                {/each}
+              </span>
+            </div>
+          {/if}
+          {#if selectedTransaction.notes}
+            <div class="detail-prop">
+              <span class="prop-label">{$t('transactions.form_notes')}</span>
+              <span class="prop-value">{selectedTransaction.notes}</span>
+            </div>
+          {/if}
         </div>
+
+        <!-- P4.1 Phase 3: change history -->
+        <button type="button" class="audit-toggle" onclick={toggleAudit} aria-expanded={auditOpen}>
+          {auditOpen ? '−' : '+'} {$t('transactions.history')}
+        </button>
+        {#if auditOpen}
+          <div class="audit-list">
+            {#if auditLoading}
+              <p class="audit-empty">{$t('common.loading')}</p>
+            {:else if auditRows.length === 0}
+              <p class="audit-empty">{$t('transactions.history_empty')}</p>
+            {:else}
+              {#each auditRows as row (row.id)}
+                <div class="audit-row">
+                  <div class="audit-head">
+                    <span class="audit-action audit-{row.action}">{$t('transactions.audit_' + row.action)}</span>
+                    <span class="audit-date">{formatCardDate(row.createdAt)}</span>
+                  </div>
+                  {#if row.action === 'updated'}
+                    <ul class="audit-changes">
+                      {#each auditChangedFields(row) as field}
+                        {@const change = (row.changes as Record<string, { from: unknown; to: unknown }>)[field]}
+                        <li>
+                          <span class="audit-field">{auditFieldLabel(field)}:</span>
+                          <span class="audit-from">{auditValue(change.from)}</span>
+                          <span class="audit-arrow">→</span>
+                          <span class="audit-to">{auditValue(change.to)}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
+                </div>
+              {/each}
+            {/if}
+          </div>
+        {/if}
       </div>
       <footer class="modal-footer-actions">
         <button class="btn-edit" onclick={handlePanelEditClick}>✎ {$t('common.edit')}</button>
@@ -771,6 +1022,61 @@
           <label for="fm-date">{$t('transactions.form_date')}</label>
           <DatePicker bind:value={formDate} showTime={true} />
         </div>
+
+        <!-- P4.1: collapsible richer-model section (all optional) -->
+        <button type="button" class="details-toggle" onclick={() => (formDetailsOpen = !formDetailsOpen)} aria-expanded={formDetailsOpen}>
+          {formDetailsOpen ? '−' : '+'} {$t('transactions.more_details')}
+        </button>
+        {#if formDetailsOpen}
+          <div class="details-section">
+            <div class="field">
+              <label for="fm-merchant">{$t('transactions.merchant')} <span class="opt">{$t('transactions.optional')}</span></label>
+              <input id="fm-merchant" type="text" bind:value={formMerchant} maxlength={100} placeholder={$t('transactions.merchant_placeholder')} />
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="fm-subtype">{$t('transactions.subtype')} <span class="opt">{$t('transactions.optional')}</span></label>
+                <select id="fm-subtype" bind:value={formSubtype}>
+                  <option value="">{$t('transactions.subtype_none')}</option>
+                  <option value="refund">{$t('transactions.subtype_refund')}</option>
+                  <option value="reimbursement">{$t('transactions.subtype_reimbursement')}</option>
+                  <option value="adjustment">{$t('transactions.subtype_adjustment')}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fm-status">{$t('transactions.status')}</label>
+                <select id="fm-status" bind:value={formStatus}>
+                  <option value="posted">{$t('transactions.status_posted')}</option>
+                  <option value="pending">{$t('transactions.status_pending')}</option>
+                </select>
+              </div>
+            </div>
+            <label class="check-field">
+              <input type="checkbox" bind:checked={formReconciled} />
+              <span>{$t('transactions.reconciled_label')}</span>
+            </label>
+            <div class="field">
+              <label for="fm-tags">{$t('transactions.tags')} <span class="opt">{$t('transactions.optional')}</span></label>
+              <div class="tag-input">
+                {#each formTags as tag (tag)}
+                  <span class="tag-chip">
+                    {tag}
+                    <button type="button" class="tag-chip-x" onclick={() => removeFormTag(tag)} aria-label={$t('common.delete')}>×</button>
+                  </span>
+                {/each}
+                <input
+                  id="fm-tags"
+                  type="text"
+                  bind:value={formTagInput}
+                  onkeydown={onTagKeydown}
+                  onblur={addFormTag}
+                  placeholder={formTags.length === 0 ? $t('transactions.tags_placeholder') : ''}
+                />
+              </div>
+            </div>
+          </div>
+        {/if}
+
         <div class="form-buttons">
           <button type="button" class="btn-cancel" onclick={closeFormModal}>{$t('common.cancel')}</button>
           <button type="submit" class="btn-submit" disabled={formSubmitting}>
@@ -855,6 +1161,18 @@
   .no-accounts-examples-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.35rem; }
   .no-accounts-examples { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.35rem; }
   .no-accounts-examples li { font-size: 0.8rem; color: var(--text-primary); padding: 0.4rem 0.6rem; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+
+  /* --- Rule-learning prompt (P4.5) --- */
+  .rule-suggest { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1rem; margin-bottom: 1rem; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: var(--radius-md); }
+  .rs-icon { font-size: 1.1rem; }
+  .rs-body { flex: 1; display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+  .rs-body strong { font-size: 0.8rem; color: var(--text-primary); }
+  .rs-text { font-size: 0.75rem; color: var(--text-secondary); }
+  .rs-done { font-size: 0.75rem; color: var(--accent-green); }
+  .rs-btn { padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .rs-create { background: var(--accent-purple); color: #fff; }
+  .rs-create:disabled { opacity: 0.6; cursor: not-allowed; }
+  .rs-dismiss { background: none; border-color: var(--border-default); color: var(--text-secondary); }
 
   /* --- Layout --- */
   .page { width: 100%; margin: 0; }
@@ -991,6 +1309,40 @@
   .tag-blue { background: var(--tag-blue-bg); color: var(--accent-blue); }
   .tag-green { background: var(--tag-green-bg); color: var(--accent-green); }
   .tag-red { background: var(--tag-red-bg); color: var(--accent-red); }
+  .tag-amber { background: var(--tag-orange-bg); color: var(--accent-orange); }
+
+  /* P4.1 richer-model form controls */
+  .details-toggle { align-self: flex-start; background: none; border: none; color: var(--accent-blue); font-size: 0.72rem; font-weight: 500; cursor: pointer; padding: 0.15rem 0; margin-top: 0.2rem; }
+  .details-section { border-top: 1px solid var(--border-default); padding-top: 0.7rem; margin-top: 0.2rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .field .opt { text-transform: none; letter-spacing: 0; color: var(--text-muted); font-weight: 400; }
+  .check-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer; }
+  .check-field input { width: auto; margin: 0; cursor: pointer; }
+
+  /* Tag chip input (form) + read-only chips (detail) */
+  .tag-input { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 0.35rem 0.4rem; }
+  .tag-input input { flex: 1; min-width: 90px; border: none; background: transparent; padding: 0.15rem; outline: none; color: var(--text-primary); font-size: 0.8rem; }
+  .tag-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .tag-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: var(--tag-blue-bg); color: var(--accent-blue); font-size: 0.7rem; font-weight: 500; padding: 0.1rem 0.45rem; border-radius: var(--radius-full); }
+  .tag-chip-x { background: none; border: none; color: inherit; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; opacity: 0.7; }
+  .tag-chip-x:hover { opacity: 1; }
+
+  /* Audit history (detail panel, P4.1 Phase 3) */
+  .audit-toggle { background: none; border: none; color: var(--accent-blue); font-size: 0.72rem; font-weight: 500; cursor: pointer; padding: 0.4rem 0 0.2rem; }
+  .audit-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.3rem; max-height: 220px; overflow-y: auto; }
+  .audit-empty { font-size: 0.72rem; color: var(--text-muted); padding: 0.3rem 0; }
+  .audit-row { border-left: 2px solid var(--border-default); padding: 0.15rem 0 0.15rem 0.55rem; }
+  .audit-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .audit-action { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.05rem 0.35rem; border-radius: var(--radius-full); }
+  .audit-created { background: var(--tag-green-bg); color: var(--accent-green); }
+  .audit-updated { background: var(--tag-blue-bg); color: var(--accent-blue); }
+  .audit-deleted { background: var(--tag-red-bg); color: var(--accent-red); }
+  .audit-date { font-size: 0.65rem; color: var(--text-muted); }
+  .audit-changes { list-style: none; margin: 0.2rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+  .audit-changes li { font-size: 0.68rem; color: var(--text-secondary); }
+  .audit-field { color: var(--text-muted); }
+  .audit-from { text-decoration: line-through; opacity: 0.7; }
+  .audit-arrow { color: var(--text-muted); margin: 0 0.15rem; }
+  .audit-to { color: var(--text-primary); font-weight: 500; }
 
   .btn-action { background: none; border: none; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm); }
   .btn-action:hover { background: var(--bg-hover); color: var(--text-primary); }

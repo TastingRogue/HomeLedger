@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex, index, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // ============================================
 // USERS & AUTH
@@ -12,6 +12,12 @@ export const users = sqliteTable('users', {
   role: text('role', { enum: ['admin', 'user', 'viewer'] }).notNull().default('user'),
   // When true, the user cannot log in (admin can disable an account without deleting it).
   disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
+  // TOTP 2FA (P4.12): opt-in, offline (RFC 6238). Secret is stored on enrollment
+  // but only becomes active once the user confirms a valid code (totpEnabled=1).
+  totpSecret: text('totp_secret'),
+  totpEnabled: integer('totp_enabled', { mode: 'boolean' }).notNull().default(false),
+  // JSON array of sha256-hashed one-time recovery codes (shown once, in plaintext).
+  totpBackupCodes: text('totp_backup_codes'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -23,11 +29,36 @@ export const apiKeys = sqliteTable('api_keys', {
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   key: text('key').notNull(),
+  // Scoped API keys (P4.13): JSON array of scope strings (e.g. ["read:transactions"]).
+  // NULL or an empty array = full access (back-compat with pre-P4.13 keys).
+  scopes: text('scopes'),
   createdAt: text('created_at').notNull(),
   lastUsedAt: text('last_used_at'),
 }, (table) => [
   uniqueIndex('api_keys_key_unique').on(table.key),
   index('api_keys_user_id_idx').on(table.userId),
+]);
+
+/**
+ * User-configured outbound webhooks (P4.13). Fire-and-forget POST to a
+ * user-owned endpoint (e.g. Home Assistant, a local script) on domain events.
+ */
+export const webhooks = sqliteTable('webhooks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  // Optional shared secret; when set, deliveries carry an HMAC-SHA256 signature.
+  secret: text('secret'),
+  // JSON array of subscribed event names (e.g. ["transaction.created"]).
+  events: text('events').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  // Last-delivery bookkeeping (best-effort; surfaced in the UI).
+  lastStatus: text('last_status'),
+  lastAttemptAt: text('last_attempt_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  index('webhooks_user_id_idx').on(table.userId),
 ]);
 
 export const refreshTokens = sqliteTable('refresh_tokens', {
@@ -36,6 +67,10 @@ export const refreshTokens = sqliteTable('refresh_tokens', {
   token: text('token').notNull(),
   expiresAt: text('expires_at').notNull(),
   createdAt: text('created_at').notNull(),
+  // Session metadata (P4.12) so users can review + revoke individual sessions.
+  userAgent: text('user_agent'),
+  ip: text('ip'),
+  lastUsedAt: text('last_used_at'),
 }, (table) => [
   uniqueIndex('refresh_tokens_token_unique').on(table.token),
   index('refresh_tokens_user_id_idx').on(table.userId),
@@ -54,8 +89,19 @@ export const accounts = sqliteTable('accounts', {
   initialBalance: real('initial_balance').notNull().default(0),
   balanceLimit: real('balance_limit'),
   creditLimit: real('credit_limit'),
+  // ── P4.2 credit-card statement modeling (credit accounts only; all optional) ──
+  // Day of month (1–31) the statement closes and the payment is due.
+  statementDay: integer('statement_day'),
+  paymentDueDay: integer('payment_due_day'),
+  // Annual percentage rate (e.g. 36.5 for 36.5%). Informational.
+  apr: real('apr'),
+  // Minimum payment for the current statement (user-entered).
+  minimumPayment: real('minimum_payment'),
   status: text('status', { enum: ['Activo', 'Inactivo'] }).notNull().default('Activo'),
   currency: text('currency').notNull().default('MXN'),
+  // P4.11 multi-currency: rate to convert this account's native amount into the
+  // instance/base currency. 1 = same as base (default; single-currency no-op).
+  exchangeRate: real('exchange_rate').notNull().default(1),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -112,7 +158,24 @@ export const transactions = sqliteTable('transactions', {
   type: text('type', { enum: ['Ingreso', 'Gasto'] }).notNull(),
   date: text('date').notNull(),
   notes: text('notes'),
+  // ── P4.1 richer transaction model (all additive/optional) ──
+  // Payee / merchant, separate from the free-text name/notes.
+  merchant: text('merchant'),
+  // Finer classification WITHOUT touching `type` (balance sums by type, so a
+  // refund is still an 'Ingreso' with subtype 'refund'). null = plain income/expense.
+  subtype: text('subtype', { enum: ['refund', 'reimbursement', 'adjustment'] }),
+  // Cleared/reconciled against a statement. Default false (not yet reconciled).
+  reconciled: integer('reconciled', { mode: 'boolean' }).notNull().default(false),
+  // Lifecycle: a manually-entered tx already happened → 'posted'; imports may
+  // mark 'pending' until they clear.
+  status: text('status', { enum: ['pending', 'posted'] }).notNull().default('posted'),
+  // Stable id from an imported source (bank reference), used for dedupe on re-import.
+  externalId: text('external_id'),
   attachmentId: integer('attachment_id'),
+  // P4.4: the import session that created this row (null for manual entries).
+  // Enables "undo import" (reverse exactly the rows a session inserted). Plain
+  // integer at the DB level (SQLite ADD COLUMN can't add a FK), enforced by the app.
+  importId: integer('import_id'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -125,6 +188,10 @@ export const transactions = sqliteTable('transactions', {
   // Composite for AccountService.calculateBalance's per-account income/expense
   // SUMs (filter account_id AND type). Added in migration 0006.
   index('transactions_account_id_type_idx').on(table.accountId, table.type),
+  // P4.1: fast lookup for import dedupe by source id (scoped per user+account).
+  index('transactions_user_id_external_id_idx').on(table.userId, table.externalId),
+  // P4.4: fast lookup for undo-import (all rows a session created).
+  index('transactions_import_id_idx').on(table.importId),
 ]);
 
 export const transactionSplits = sqliteTable('transaction_splits', {
@@ -138,6 +205,53 @@ export const transactionSplits = sqliteTable('transaction_splits', {
 ]);
 
 // ============================================
+// TAGS (P4.1 Phase 2) — reusable per-user labels + M2M join to transactions
+// ============================================
+
+export const tags = sqliteTable('tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  color: text('color'),
+  createdAt: text('created_at').notNull(),
+}, (table) => [
+  index('tags_user_id_idx').on(table.userId),
+  // A user can't have two tags with the same name (case-sensitive at the DB
+  // level; the service normalizes/trims before comparing).
+  uniqueIndex('tags_user_id_name_unique').on(table.userId, table.name),
+]);
+
+export const transactionTags = sqliteTable('transaction_tags', {
+  transactionId: integer('transaction_id').notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+}, (table) => [
+  // Composite PK: a tag is attached to a transaction at most once.
+  primaryKey({ columns: [table.transactionId, table.tagId] }),
+  index('transaction_tags_transaction_id_idx').on(table.transactionId),
+  index('transaction_tags_tag_id_idx').on(table.tagId),
+]);
+
+// ============================================
+// TRANSACTION AUDIT (P4.1 Phase 3) — who/when changed what
+// ============================================
+
+export const transactionAudit = sqliteTable('transaction_audit', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // Nullable + `set null` (NOT cascade) on purpose: a `deleted` audit row must
+  // survive after its transaction is gone. Kept scoped by userId regardless.
+  transactionId: integer('transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action', { enum: ['created', 'updated', 'deleted'] }).notNull(),
+  // JSON: for 'updated', a { field: { from, to } } diff; for 'created'/'deleted'
+  // a snapshot of the relevant fields. Null when there's nothing meaningful.
+  changes: text('changes', { mode: 'json' }),
+  createdAt: text('created_at').notNull(),
+}, (table) => [
+  index('transaction_audit_transaction_id_idx').on(table.transactionId),
+  index('transaction_audit_user_id_idx').on(table.userId),
+]);
+
+// ============================================
 // TRANSFERS
 // ============================================
 
@@ -147,7 +261,11 @@ export const transfers = sqliteTable('transfers', {
   sourceAccountId: integer('source_account_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
   destinationAccountId: integer('destination_account_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
   name: text('name').notNull(),
+  // Amount that LEAVES the source account, in the source account's currency.
   amount: real('amount').notNull(),
+  // P4.11: amount that ENTERS the destination account, in the destination's
+  // currency. NULL → same currency, use `amount` for both legs (back-compat).
+  destinationAmount: real('destination_amount'),
   date: text('date').notNull(),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
@@ -169,6 +287,11 @@ export const budgets = sqliteTable('budgets', {
   period: text('period', { enum: ['monthly', 'weekly'] }).notNull(),
   startDate: text('start_date').notNull(),
   endDate: text('end_date').notNull(),
+  // ── P4.3 envelope budgeting (persisted; were previously hardcoded on read) ──
+  // When true, unused budget carries over to the next period (see processRollover).
+  rolloverEnabled: integer('rollover_enabled', { mode: 'boolean' }).notNull().default(false),
+  // % of the allocation at which a "near limit" warning alert fires (0–100).
+  alertThreshold: real('alert_threshold').notNull().default(80),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 }, (table) => [
@@ -185,6 +308,19 @@ export const budgetCategories = sqliteTable('budget_categories', {
 }, (table) => [
   index('budget_categories_budget_id_idx').on(table.budgetId),
   index('budget_categories_category_id_idx').on(table.categoryId),
+]);
+
+// P4.3 Phase C: budget allocations keyed by TAG (in addition to category).
+// Mirrors budget_categories; spent is computed by joining transaction_tags.
+export const budgetTags = sqliteTable('budget_tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  budgetId: integer('budget_id').notNull().references(() => budgets.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'restrict' }),
+  allocated: real('allocated').notNull(),
+  rollover: real('rollover').notNull().default(0),
+}, (table) => [
+  index('budget_tags_budget_id_idx').on(table.budgetId),
+  index('budget_tags_tag_id_idx').on(table.tagId),
 ]);
 
 // ============================================
@@ -260,7 +396,8 @@ export const imports = sqliteTable('imports', {
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   filename: text('filename').notNull(),
   parser: text('parser').notNull(),
-  status: text('status', { enum: ['pending', 'completed', 'failed'] }).notNull().default('pending'),
+  // 'reverted' (P4.4): a completed import whose inserted rows were undone.
+  status: text('status', { enum: ['pending', 'completed', 'failed', 'reverted'] }).notNull().default('pending'),
   recordCount: integer('record_count'),
   createdAt: text('created_at').notNull(),
 }, (table) => [

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { BackupService, BackupError, APP_VERSION } from './backup.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, categories, goals } from '../db/schema.js';
@@ -21,6 +21,9 @@ describe('BackupService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -35,8 +38,13 @@ describe('BackupService', () => {
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
         credit_limit REAL,
+        statement_day INTEGER,
+        payment_due_day INTEGER,
+        apr REAL,
+        minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -75,7 +83,13 @@ describe('BackupService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -93,6 +107,34 @@ describe('BackupService', () => {
       );
       CREATE INDEX IF NOT EXISTS transaction_splits_transaction_id_idx ON transaction_splits(transaction_id);
 
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS tags_user_id_idx ON tags(user_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS tags_user_id_name_unique ON tags(user_id, name);
+
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
+      CREATE INDEX IF NOT EXISTS transaction_tags_transaction_id_idx ON transaction_tags(transaction_id);
+
+      CREATE TABLE IF NOT EXISTS transaction_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        action TEXT NOT NULL,
+        changes TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS transaction_audit_transaction_id_idx ON transaction_audit(transaction_id);
+      CREATE INDEX IF NOT EXISTS transaction_audit_user_id_idx ON transaction_audit(user_id);
+
       CREATE TABLE IF NOT EXISTS transfers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -100,6 +142,7 @@ describe('BackupService', () => {
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         date TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL
@@ -113,6 +156,8 @@ describe('BackupService', () => {
         period TEXT NOT NULL,
         start_date TEXT NOT NULL,
         end_date TEXT NOT NULL,
+        rollover_enabled INTEGER NOT NULL DEFAULT 0,
+        alert_threshold REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -126,6 +171,15 @@ describe('BackupService', () => {
         rollover REAL NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS budget_categories_budget_id_idx ON budget_categories(budget_id);
+
+      CREATE TABLE IF NOT EXISTS budget_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+        allocated REAL NOT NULL,
+        rollover REAL NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS budget_tags_budget_id_idx ON budget_tags(budget_id);
 
       CREATE TABLE IF NOT EXISTS subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -280,6 +334,7 @@ describe('BackupService', () => {
         tax REAL,
         total REAL,
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         document_type TEXT NOT NULL DEFAULT 'unknown',
         source_type TEXT NOT NULL DEFAULT 'unknown',
         status TEXT NOT NULL DEFAULT 'pending',

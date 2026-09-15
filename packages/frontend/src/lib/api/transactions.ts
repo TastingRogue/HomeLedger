@@ -11,6 +11,11 @@ export interface TransactionSplit {
 	note: string | null;
 }
 
+/** Finer classification that does NOT change `type` (balance sums by type). */
+export type TransactionSubtype = 'refund' | 'reimbursement' | 'adjustment';
+/** Lifecycle status of a transaction. */
+export type TransactionStatus = 'pending' | 'posted';
+
 export interface Transaction {
 	id: number;
 	name: string;
@@ -22,8 +27,15 @@ export interface Transaction {
 	subcategoryId?: number | null;
 	accountId: number;
 	accountName?: string;
-	description?: string;
+	notes?: string | null;
+	// ── P4.1 richer transaction model ──
+	merchant?: string | null;
+	subtype?: TransactionSubtype | null;
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	externalId?: string | null;
 	splits?: TransactionSplit[];
+	tags?: { id: number; name: string; color: string | null }[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -36,6 +48,12 @@ export interface CreateTransactionInput {
 	categoryId: number;
 	subcategoryId?: number | null;
 	accountId: number;
+	// ── P4.1 richer transaction model (all optional) ──
+	merchant?: string | null;
+	subtype?: TransactionSubtype | null;
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	externalId?: string | null;
 }
 
 /** One split row when saving a transaction split. */
@@ -58,8 +76,21 @@ export interface TransactionFilters {
 	type?: TransactionType;
 	startDate?: string;
 	endDate?: string;
+	// ── P4.1 richer transaction model filters ──
+	reconciled?: boolean;
+	status?: TransactionStatus;
+	subtype?: TransactionSubtype;
+	tagId?: number;
 	page?: number;
 	pageSize?: number;
+}
+
+/** A reusable per-user label (P4.1 Phase 2). */
+export interface Tag {
+	id: number;
+	name: string;
+	color: string | null;
+	createdAt?: string;
 }
 
 export interface PaginatedTransactions {
@@ -127,4 +158,44 @@ export function exportTransactionsCsv(filters?: TransactionFilters): Promise<Blo
 	}
 	const query = params.toString() ? `?${params.toString()}` : '';
 	return apiFetchBlob(`/transactions/export.csv${query}`);
+}
+
+// ── Tags (P4.1 Phase 2) ──
+
+/** List the user's tag catalog. */
+export function getTags(): Promise<Tag[]> {
+	return apiGet<Tag[]>('/tags');
+}
+
+/** Create (or get existing) a tag by name. */
+export function createTag(name: string, color?: string | null): Promise<Tag> {
+	return apiPost<Tag>('/tags', { name, color });
+}
+
+/** Delete a tag from the catalog (removes it from all transactions). */
+export async function deleteTag(id: number): Promise<void> {
+	await apiDelete(`/tags/${id}`);
+}
+
+/** Replace the full set of tags on a transaction by name (creates missing ones). */
+export function setTransactionTags(id: number, tags: string[]): Promise<Tag[]> {
+	return apiPut<Tag[]>(`/transactions/${id}/tags`, { tags });
+}
+
+// ── Audit history (P4.1 Phase 3) ──
+
+/** One recorded change to a transaction. */
+export interface TransactionAudit {
+	id: number;
+	transactionId: number | null;
+	userId: number;
+	action: 'created' | 'updated' | 'deleted';
+	/** For 'updated': { field: { from, to } }; for created/deleted: a snapshot. */
+	changes: Record<string, unknown> | null;
+	createdAt: string;
+}
+
+/** Fetch a transaction's change history (newest first). */
+export function getTransactionAudit(id: number): Promise<TransactionAudit[]> {
+	return apiGet<TransactionAudit[]>(`/transactions/${id}/audit`);
 }

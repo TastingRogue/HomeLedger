@@ -57,6 +57,76 @@
       "when": 1787696600000,
       "tag": "0007_per_user_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787696700000,
+      "tag": "0008_richer_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787696800000,
+      "tag": "0009_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787696900000,
+      "tag": "0010_transaction_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1787697000000,
+      "tag": "0011_credit_statement",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1787697100000,
+      "tag": "0012_budget_rollover_threshold",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1787697200000,
+      "tag": "0013_budget_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1787697300000,
+      "tag": "0014_import_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1787697400000,
+      "tag": "0015_multi_currency",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1787697500000,
+      "tag": "0016_totp_and_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1787697600000,
+      "tag": "0017_api_maturity",
+      "breakpoints": true
     }
   ]
 }

@@ -20,10 +20,32 @@ export interface AccountData {
   calculatedBalance?: number;
   balanceLimit: number | null;
   creditLimit: number | null;
+  // ── P4.2 credit-card statement fields ──
+  statementDay: number | null;
+  paymentDueDay: number | null;
+  apr: number | null;
+  minimumPayment: number | null;
   status: string;
   currency: string;
+  // P4.11: rate to convert this account's currency to the instance/base currency.
+  exchangeRate: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Credit-card statement summary (GET /accounts/:id/statement). P4.2 */
+export interface CreditStatement {
+  creditLimit: number | null;
+  owed: number;
+  availableCredit: number | null;
+  utilization: number | null;
+  statementDay: number | null;
+  paymentDueDay: number | null;
+  apr: number | null;
+  minimumPayment: number | null;
+  nextStatementDate: string | null;
+  nextDueDate: string | null;
+  payments: { id: number; name: string; amount: number; date: string; sourceAccountId: number }[];
 }
 
 export interface LinkedSubscription {
@@ -48,10 +70,16 @@ export interface CreateAccountPayload {
   name: string;
   initialBalance: number;
   currency?: string;
+  exchangeRate?: number;
   type: AccountType;
   bank?: string;
   balanceLimit?: number | null;
   creditLimit?: number | null;
+  // ── P4.2 credit-card statement fields ──
+  statementDay?: number | null;
+  paymentDueDay?: number | null;
+  apr?: number | null;
+  minimumPayment?: number | null;
   linkedSubscriptionIds?: number[];
 }
 
@@ -59,9 +87,15 @@ export interface UpdateAccountPayload {
   name?: string;
   initialBalance?: number;
   type?: AccountType;
+  currency?: string;
+  exchangeRate?: number;
   bank?: string;
   balanceLimit?: number | null;
   creditLimit?: number | null;
+  statementDay?: number | null;
+  paymentDueDay?: number | null;
+  apr?: number | null;
+  minimumPayment?: number | null;
 }
 
 // Aliases for backward compat
@@ -79,6 +113,11 @@ export function listAccounts(): Promise<AccountData[]> {
 /** Get account detail with calculated balance and credit info */
 export function getAccount(id: number): Promise<AccountDetail> {
   return apiGet<AccountDetail>(`/accounts/${id}`);
+}
+
+/** Get the credit-card statement summary + payment history (P4.2). */
+export function getCreditStatement(id: number): Promise<CreditStatement> {
+  return apiGet<CreditStatement>(`/accounts/${id}/statement`);
 }
 
 /** Alias for listAccounts */

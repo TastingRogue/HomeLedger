@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { NetWorthService, NetWorthError } from './networth.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, accounts, transactions, transfers, assets, liabilities, networthSnapshots } from '../db/schema.js';
@@ -20,6 +20,9 @@ describe('NetWorthService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -34,8 +37,13 @@ describe('NetWorthService', () => {
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
         credit_limit REAL,
+        statement_day INTEGER,
+        payment_due_day INTEGER,
+        apr REAL,
+        minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -51,9 +59,15 @@ describe('NetWorthService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         invoice_path TEXT,
         parent_id INTEGER,
         is_reimbursed INTEGER NOT NULL DEFAULT 0,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -64,6 +78,7 @@ describe('NetWorthService', () => {
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
+        destination_amount REAL,
         source_account_id INTEGER NOT NULL REFERENCES accounts(id),
         destination_account_id INTEGER NOT NULL REFERENCES accounts(id),
         date TEXT NOT NULL,
@@ -486,6 +501,57 @@ describe('NetWorthService', () => {
       expect(snapshot.totalLiabilities).toBe(30000);
       expect(snapshot.netWorth).toBe(95000); // 125000 - 30000
       expect(snapshot.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+  });
+
+  // ── P4.8: named history ranges ──
+  describe('resolveRange()', () => {
+    function monthsBetween(startIso: string, endIso: string): number {
+      const s = new Date(startIso); const e = new Date(endIso);
+      return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+    }
+
+    it('endDate is today for every named range', () => {
+      const today = new Date().toISOString().slice(0, 10);
+      for (const r of ['1m', '6m', '1y', '5y', 'all']) {
+        expect(NetWorthService.resolveRange(r).endDate).toBe(today);
+      }
+    });
+
+    function daysBetween(startIso: string, endIso: string): number {
+      return Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Day-based tolerances (robust to month-end setMonth clamping regardless of
+    // the date the test runs on).
+    it('1m ≈ 28-31 days back', () => {
+      const r = NetWorthService.resolveRange('1m');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(28);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(31);
+    });
+    it('6m ≈ 181-184 days back', () => {
+      const r = NetWorthService.resolveRange('6m');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(178);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(185);
+    });
+    it('1y ≈ 365-366 days back', () => {
+      const r = NetWorthService.resolveRange('1y');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(365);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(366);
+    });
+    it('5y ≈ 5 years back', () => {
+      const r = NetWorthService.resolveRange('5y');
+      expect(daysBetween(r.startDate, r.endDate)).toBeGreaterThanOrEqual(1825);
+      expect(daysBetween(r.startDate, r.endDate)).toBeLessThanOrEqual(1827);
+    });
+
+    it('all starts at the epoch', () => {
+      expect(NetWorthService.resolveRange('all').startDate).toBe('1970-01-01');
+    });
+
+    it('unknown range falls back to 1y', () => {
+      const r = NetWorthService.resolveRange('bogus');
+      expect(monthsBetween(r.startDate, r.endDate)).toBe(12);
     });
   });
 });

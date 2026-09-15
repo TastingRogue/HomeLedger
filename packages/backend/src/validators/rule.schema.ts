@@ -22,6 +22,7 @@ const ruleConditionFieldEnum = z.enum([
   'amount',
   'account',
   'description',
+  'merchant',
 ]);
 
 /**
@@ -32,6 +33,10 @@ const ruleActionTypeEnum = z.enum([
   'setSubcategory',
   'setType',
   'addTag',
+  // P4.5: more action coverage
+  'flagReview',     // tag the transaction for later review (tag "review")
+  'markRecurring',  // tag as recurring (tag "recurring")
+  'ignore',         // leave the transaction as-is (protect from auto-categorization)
 ]);
 
 /**
@@ -53,7 +58,9 @@ const ruleConditionSchema = z.object({
  */
 const ruleActionSchema = z.object({
   type: ruleActionTypeEnum,
-  value: z.union([z.number(), z.string()]),
+  // Optional: flagReview / markRecurring / ignore carry no value; setCategory /
+  // setSubcategory / setType / addTag do.
+  value: z.union([z.number(), z.string()]).optional(),
 });
 
 /**

@@ -26,6 +26,7 @@ function getImportErrorStatusCode(code: string): number {
     case 'SESSION_DATA_EXPIRED':
       return 404;
     case 'IMPORT_ALREADY_CONFIRMED':
+    case 'IMPORT_NOT_COMPLETED':
       return 409;
     case 'PARSER_NOT_FOUND':
     case 'UNSUPPORTED_FORMAT':
@@ -249,6 +250,39 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
             code: error.code,
             message: error.message,
           },
+        });
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * DELETE /api/v1/imports/:id
+   * Undo a completed import: reverse exactly the transactions it created.
+   */
+  app.delete('/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+
+    if (isNaN(id) || id <= 0) {
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: 'INVALID_PARAM',
+          message: 'El ID de importación debe ser un número válido',
+        },
+      });
+    }
+
+    try {
+      const result = ImportService.undo(id, user.userId);
+      return reply.status(200).send({ success: true, data: result });
+    } catch (error) {
+      if (error instanceof ImportError) {
+        const statusCode = getImportErrorStatusCode(error.code);
+        return reply.status(statusCode).send({
+          success: false,
+          error: { code: error.code, message: error.message },
         });
       }
       throw error;

@@ -112,9 +112,25 @@ export function getSqlite(): Database.Database {
  */
 export function initializeDatabase(): void {
   const db = getDb();
+  const sqliteConn = getSqlite();
   const migrationsFolder = getMigrationsPath();
 
-  migrate(db, { migrationsFolder });
+  // Disable foreign-key enforcement for the duration of the migration run.
+  // Several migrations use the SQLite "12-step table rebuild" pattern (e.g.
+  // 0007_per_user_categories: DROP TABLE categories → recreate → rename). Those
+  // files begin with `PRAGMA foreign_keys=OFF`, but that pragma is a NO-OP
+  // inside a transaction — and Drizzle's migrator wraps every migration in one.
+  // So FK enforcement stayed ON and `DROP TABLE categories` failed on any DB
+  // that still had child rows, aborting the whole batch (leaving 0007+ unapplied
+  // and columns like transactions.merchant missing). Toggling the pragma HERE,
+  // outside any transaction, actually takes effect for the migrate() run. We
+  // restore it right after so normal runtime keeps FK integrity.
+  sqliteConn.pragma('foreign_keys = OFF');
+  try {
+    migrate(db, { migrationsFolder });
+  } finally {
+    sqliteConn.pragma('foreign_keys = ON');
+  }
 
   // Reconcile the `attachments` table with schema.ts. The base migration (0000)
   // created it without `transfer_id` / `original_name` and without the

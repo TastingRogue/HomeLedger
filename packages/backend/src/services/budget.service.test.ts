@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { BudgetService, BudgetError } from './budget.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
@@ -23,6 +23,9 @@ describe('BudgetService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -50,8 +53,13 @@ describe('BudgetService', () => {
         initial_balance REAL NOT NULL DEFAULT 0,
         balance_limit REAL,
         credit_limit REAL,
+        statement_day INTEGER,
+        payment_due_day INTEGER,
+        apr REAL,
+        minimum_payment REAL,
         status TEXT NOT NULL DEFAULT 'Activo',
         currency TEXT NOT NULL DEFAULT 'MXN',
+        exchange_rate REAL NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -68,7 +76,13 @@ describe('BudgetService', () => {
         type TEXT NOT NULL,
         date TEXT NOT NULL,
         notes TEXT,
+        merchant TEXT,
+        subtype TEXT,
+        reconciled INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'posted',
+        external_id TEXT,
         attachment_id INTEGER,
+        import_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -86,6 +100,8 @@ describe('BudgetService', () => {
         period TEXT NOT NULL,
         start_date TEXT NOT NULL,
         end_date TEXT NOT NULL,
+        rollover_enabled INTEGER NOT NULL DEFAULT 0,
+        alert_threshold REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -101,6 +117,28 @@ describe('BudgetService', () => {
       );
       CREATE INDEX IF NOT EXISTS budget_categories_budget_id_idx ON budget_categories(budget_id);
       CREATE INDEX IF NOT EXISTS budget_categories_category_id_idx ON budget_categories(category_id);
+
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT,
+        created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS transaction_tags (
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (transaction_id, tag_id)
+      );
+      CREATE TABLE IF NOT EXISTS budget_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+        allocated REAL NOT NULL,
+        rollover REAL NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS budget_tags_budget_id_idx ON budget_tags(budget_id);
+      CREATE INDEX IF NOT EXISTS budget_tags_tag_id_idx ON budget_tags(tag_id);
 
       CREATE TABLE IF NOT EXISTS alerts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,14 +200,15 @@ describe('BudgetService', () => {
 
   afterAll(() => {
     closeDatabase();
-    const dbPath = path.resolve('./data/test-budget/homeledger.db');
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-    const walPath = dbPath + '-wal';
-    if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
-    const shmPath = dbPath + '-shm';
-    if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
-    const dir = path.resolve('./data/test-budget');
-    if (fs.existsSync(dir)) fs.rmdirSync(dir);
+    // Best-effort cleanup. On Windows the DB file can stay briefly locked after
+    // closeDatabase() (or be reopened by another suite sharing the connection
+    // singleton), so a hard unlink/rmdir would throw EBUSY/ENOTEMPTY and fail the
+    // suite over harmless leftover temp files. rmSync recursive+force + try/catch
+    // makes teardown robust without masking real test failures.
+    try {
+      const dir = path.resolve('./data/test-budget');
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch { /* leftover temp DB files are harmless */ }
   });
 
   describe('create()', () => {
@@ -269,7 +308,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Test',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -337,7 +376,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Summary',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -424,7 +463,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Rollover',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -515,7 +554,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Alertas',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -538,7 +577,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
 
       expect(alertsResult.length).toBeGreaterThanOrEqual(1);
       const thresholdAlert = alertsResult.find(a => a.alertType === 'threshold');
@@ -571,7 +610,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Excedida',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -594,7 +633,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
 
       expect(alertsResult.length).toBeGreaterThanOrEqual(1);
       const exceededAlert = alertsResult.find(a => a.alertType === 'exceeded');
@@ -627,7 +666,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Baja',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -642,7 +681,7 @@ describe('BudgetService', () => {
         userId,
         accountId: account.id,
         categoryId: categoryId1,
-        name: 'Gasto Peque�o',
+        name: 'Gasto Peque?o',
         amount: 500,
         type: 'Gasto',
         date: today,
@@ -650,7 +689,7 @@ describe('BudgetService', () => {
         updatedAt: now,
       }).run();
 
-      const alertsResult = BudgetService.evaluateAlerts(userId, 80);
+      const alertsResult = BudgetService.evaluateAlerts(userId);
       expect(alertsResult).toHaveLength(0);
     });
 
@@ -678,7 +717,7 @@ describe('BudgetService', () => {
         .values({
           userId,
           name: 'Cuenta Dedup',
-          type: 'Débito',
+          type: 'D�bito',
           initialBalance: 50000,
           status: 'Activo',
           currency: 'MXN',
@@ -701,8 +740,8 @@ describe('BudgetService', () => {
       }).run();
 
       // Call evaluateAlerts twice
-      BudgetService.evaluateAlerts(userId, 80);
-      BudgetService.evaluateAlerts(userId, 80);
+      BudgetService.evaluateAlerts(userId);
+      BudgetService.evaluateAlerts(userId);
 
       // Should only have 1 alert per budget+category combination, not duplicated
       const allAlerts = db.select().from(alerts).all();

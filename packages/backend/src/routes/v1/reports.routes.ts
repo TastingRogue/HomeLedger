@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ReportService } from '../../services/report.service.js';
+import { CustomReportService, CustomReportError } from '../../services/custom-report.service.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 
 /**
@@ -119,5 +120,85 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
       success: true,
       data,
     });
+  });
+
+  // ── P4.10: reports depth ──
+
+  /** GET /api/v1/reports/savings-rate?startDate=&endDate= */
+  app.get('/savings-rate', async (request: FastifyRequest<{ Querystring: { startDate?: string; endDate?: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const { startDate, endDate } = request.query;
+    if (!startDate || !endDate) {
+      return reply.status(400).send({ success: false, error: { code: 'MISSING_PARAMS', message: 'Los parámetros startDate y endDate son requeridos' } });
+    }
+    return reply.status(200).send({ success: true, data: ReportService.getSavingsRate(user.userId, { startDate, endDate }) });
+  });
+
+  /** GET /api/v1/reports/debt */
+  app.get('/debt', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const data = await ReportService.getDebtReport(user.userId);
+    return reply.status(200).send({ success: true, data });
+  });
+
+  /** GET /api/v1/reports/credit-utilization */
+  app.get('/credit-utilization', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const data = await ReportService.getCreditUtilization(user.userId);
+    return reply.status(200).send({ success: true, data });
+  });
+
+  /** GET /api/v1/reports/merchant?startDate=&endDate=&limit= */
+  app.get('/merchant', async (request: FastifyRequest<{ Querystring: { startDate?: string; endDate?: string; limit?: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const { startDate, endDate, limit } = request.query;
+    if (!startDate || !endDate) {
+      return reply.status(400).send({ success: false, error: { code: 'MISSING_PARAMS', message: 'Los parámetros startDate y endDate son requeridos' } });
+    }
+    const n = limit ? parseInt(limit, 10) : undefined;
+    return reply.status(200).send({ success: true, data: ReportService.getMerchantReport(user.userId, { startDate, endDate }, Number.isFinite(n) ? n : undefined) });
+  });
+
+  // ── P4.10: custom (saved) reports ──
+
+  /** GET /api/v1/reports/custom — list saved report definitions. */
+  app.get('/custom', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    return reply.status(200).send({ success: true, data: CustomReportService.list(user.userId) });
+  });
+
+  /** POST /api/v1/reports/custom — save a report definition. */
+  app.post('/custom', async (request: FastifyRequest<{ Body: { name?: string; type?: string; config?: Record<string, unknown> } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const body = request.body ?? {};
+    try {
+      const created = CustomReportService.create(user.userId, { name: body.name ?? '', type: body.type ?? '', config: body.config });
+      return reply.status(201).send({ success: true, data: created });
+    } catch (error) {
+      if (error instanceof CustomReportError) {
+        const status = error.code === 'NOT_FOUND' ? 404 : 400;
+        return reply.status(status).send({ success: false, error: { code: error.code, message: error.message } });
+      }
+      throw error;
+    }
+  });
+
+  /** DELETE /api/v1/reports/custom/:id */
+  app.delete('/custom/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const user = request.user as TokenPayload;
+    const id = parseInt(request.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+      return reply.status(400).send({ success: false, error: { code: 'BAD_REQUEST', message: 'ID inválido' } });
+    }
+    try {
+      CustomReportService.delete(id, user.userId);
+      return reply.status(200).send({ success: true, data: { message: 'Reporte eliminado' } });
+    } catch (error) {
+      if (error instanceof CustomReportError) {
+        const status = error.code === 'NOT_FOUND' ? 404 : 400;
+        return reply.status(status).send({ success: false, error: { code: error.code, message: error.message } });
+      }
+      throw error;
+    }
   });
 }

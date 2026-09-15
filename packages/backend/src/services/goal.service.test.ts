@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { GoalService, GoalError } from './goal.service.js';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, goals } from '../db/schema.js';
@@ -20,6 +20,9 @@ describe('GoalService', () => {
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
         disabled INTEGER NOT NULL DEFAULT 0,
+        totp_secret TEXT,
+        totp_enabled INTEGER NOT NULL DEFAULT 0,
+        totp_backup_codes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -383,6 +386,67 @@ describe('GoalService', () => {
       expect(() =>
         GoalService.update(99999, userId, { name: 'No Existe' })
       ).toThrow(GoalError);
+    });
+  });
+
+  // ── P4.8: goal completion forecast ──
+  describe('forecast()', () => {
+    it('uses a provided monthly contribution to project months + date', () => {
+      const goal = GoalService.create(userId, { name: 'Fondo', targetAmount: 12000, type: 'Lista de Deseos' as any });
+      GoalService.fund(goal.id, userId, { amount: 2000 });
+
+      const f = GoalService.forecast(goal.id, userId, 1000);
+      expect(f.remaining).toBe(10000);
+      expect(f.monthlyContribution).toBe(1000);
+      expect(f.estimated).toBe(false);
+      expect(f.monthsToComplete).toBe(10); // 10000 / 1000
+      expect(f.estimatedDate).not.toBeNull();
+    });
+
+    it('estimates the monthly contribution from saved amount when none is given', () => {
+      const goal = GoalService.create(userId, { name: 'Auto', targetAmount: 10000, type: 'Lista de Deseos' as any });
+      GoalService.fund(goal.id, userId, { amount: 2500 });
+
+      const f = GoalService.forecast(goal.id, userId);
+      expect(f.estimated).toBe(true);
+      // Fresh goal (<1 month old) → monthsSinceCreated floored to 1 → estimate = saved/1.
+      expect(f.monthlyContribution).toBe(2500);
+      expect(f.remaining).toBe(7500);
+      expect(f.monthsToComplete).toBe(3); // ceil(7500/2500)
+    });
+
+    it('reports on-track vs a comfortable deadline', () => {
+      const farDeadline = new Date(); farDeadline.setFullYear(farDeadline.getFullYear() + 5);
+      const goal = GoalService.create(userId, {
+        name: 'Meta con fecha', targetAmount: 12000, type: 'Lista de Deseos' as any,
+        deadline: farDeadline.toISOString().slice(0, 10),
+      });
+      GoalService.fund(goal.id, userId, { amount: 1000 });
+      const f = GoalService.forecast(goal.id, userId, 5000); // fast → well before deadline
+      expect(f.onTrackForDeadline).toBe(true);
+    });
+
+    it('reports behind schedule when the pace misses the deadline', () => {
+      const soonDeadline = new Date(); soonDeadline.setMonth(soonDeadline.getMonth() + 1);
+      const goal = GoalService.create(userId, {
+        name: 'Meta apretada', targetAmount: 120000, type: 'Lista de Deseos' as any,
+        deadline: soonDeadline.toISOString().slice(0, 10),
+      });
+      const f = GoalService.forecast(goal.id, userId, 1000); // 120 months ≫ 1 month
+      expect(f.onTrackForDeadline).toBe(false);
+    });
+
+    it('marks an already-complete goal', () => {
+      const goal = GoalService.create(userId, { name: 'Lista', targetAmount: 1000, type: 'Lista de Deseos' as any });
+      GoalService.fund(goal.id, userId, { amount: 1000 });
+      const f = GoalService.forecast(goal.id, userId, 500);
+      expect(f.alreadyComplete).toBe(true);
+      expect(f.remaining).toBe(0);
+      expect(f.monthsToComplete).toBe(0);
+    });
+
+    it('throws for a non-existent goal', () => {
+      expect(() => GoalService.forecast(99999, userId)).toThrow(GoalError);
     });
   });
 });

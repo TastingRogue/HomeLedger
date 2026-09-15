@@ -5,6 +5,9 @@
   import { hasToken, clearTokens } from '$lib/api';
   import '$lib/styles/shared.css';
   import Icon from '$lib/components/Icon.svelte';
+  import OfflineBanner from '$lib/components/OfflineBanner.svelte';
+  import LockScreen from '$lib/components/LockScreen.svelte';
+  import { isLockEnabled } from '$lib/stores/lock';
   import { t } from '$lib/i18n';
   import { userProfile, loadUserProfile } from '$lib/stores/user';
   import type { Snippet } from 'svelte';
@@ -12,15 +15,23 @@
   let { children }: { children: Snippet } = $props();
   let ready = $state(false);
   let sidebarOpen = $state(false);
+  // Optional client-side app lock (P4.14): when enabled, the app UI stays hidden
+  // behind LockScreen until the user unlocks (biometric or PIN).
+  let locked = $state(false);
 
   onMount(() => {
     if (hasToken()) {
+      locked = isLockEnabled();
       ready = true;
       loadUserProfile();
     } else {
       window.location.href = '/login';
     }
   });
+
+  function unlock() {
+    locked = false;
+  }
 
   function handleLogout() {
     clearTokens();
@@ -41,6 +52,7 @@
       color: 'var(--accent-orange)',
       items: [
         { href: '/dashboard', label: $t('nav.dashboard'), icon: 'layout-dashboard' },
+        { href: '/buscar', label: $t('nav.search'), icon: 'search' },
         { href: '/cuentas', label: $t('nav.accounts'), icon: 'building' },
         { href: '/transacciones', label: $t('nav.transactions'), icon: 'coins' },
         { href: '/transferencias', label: $t('nav.transfers'), icon: 'arrow-left-right' },
@@ -77,9 +89,17 @@
       ],
     },
   ]);
+
+  // Quick-add FAB: hide it on the quick-add screen itself.
+  const showFab = $derived($page.url.pathname !== '/registro-rapido');
 </script>
 
+{#if ready && locked}
+  <LockScreen onUnlocked={unlock} />
+{/if}
+
 {#if ready}
+  <OfflineBanner />
   <div class="app-layout">
     <!-- Sidebar overlay (mobile) -->
     {#if sidebarOpen}
@@ -147,6 +167,13 @@
         <span>{$t('footer.rights')}</span>
       </footer>
     </main>
+
+    <!-- Quick-add floating action button (P4.14) -->
+    {#if showFab}
+      <a href="/registro-rapido" class="quick-fab" aria-label={$t('nav.quick_add')} title={$t('nav.quick_add')}>
+        <Icon name="plus-circle" size={24} />
+      </a>
+    {/if}
   </div>
 {:else}
   <div class="auth-check">
@@ -417,6 +444,43 @@
     border-top: 1px solid var(--border-subtle);
   }
 
+  /* ─── Quick-add FAB (P4.14) ─── */
+  .quick-fab {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 120;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-blue);
+    color: #fff;
+    box-shadow: var(--shadow-lg, 0 6px 20px rgba(0, 0, 0, 0.35));
+    text-decoration: none;
+    transition: transform var(--transition-fast, 0.15s ease), background var(--transition-fast, 0.15s ease);
+  }
+  .quick-fab:hover {
+    background: var(--color-primary-hover, #2563eb);
+    transform: translateY(-1px);
+  }
+  /* Keep clear of the safe-area on notched phones. */
+  @supports (padding: max(0px)) {
+    .quick-fab {
+      right: max(1rem, env(safe-area-inset-right));
+      bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+  }
+  /* On wide screens the sidebar is sticky; nudge the FAB so it never overlaps. */
+  @media (min-width: 1024px) {
+    .quick-fab {
+      right: 1.5rem;
+      bottom: 1.5rem;
+    }
+  }
+
   /* ─── Auth Check ─── */
   .auth-check {
     display: flex;
@@ -484,6 +548,14 @@
   @media (min-width: 1920px) {
     .main-content {
       padding: 1.25rem 2rem;
+    }
+  }
+
+  /* Phones: leave room at the bottom so the quick-add FAB never covers content
+     or the footer. (P4.14) */
+  @media (max-width: 640px) {
+    .main-content {
+      padding-bottom: 5rem;
     }
   }
 </style>

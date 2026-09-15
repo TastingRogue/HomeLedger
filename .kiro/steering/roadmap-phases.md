@@ -37,6 +37,21 @@ have collided before and caused work to start on the wrong one. Do not repeat th
    `main` for future-track features. Keep migration numbering contiguous only within
    the track that will actually ship it.
 
+## Branch strategy for P4 (agreed with the maintainer)
+
+- **One integrator branch for the whole `P4` phase: `p4-feature-depth`.** Every
+  `P4.x` sub-item is built ON this branch (stacked commits), NOT on separate branches
+  merged individually. Migrations stay contiguous (0008, 0009, … on this one branch).
+- **Do NOT merge `p4-feature-depth` to `main` until ALL of P4 (the sub-items the
+  maintainer wants) is done.** The merge to `main` happens once, at the end of the
+  phase, as a single integration — never per sub-item.
+- History note: `p4.1-richer-transactions` and `p4.2-credit-cards` were the original
+  per-sub-item branches; their work now lives in `p4-feature-depth` (which was cut
+  from the tip of `p4.2-credit-cards`, so it already contains P4.1 + P4.2). Continue
+  P4.3+ directly on `p4-feature-depth`.
+- The same pattern applies to future multi-sub-item phases: one integrator branch per
+  phase, merged to `main` only when the phase is complete.
+
 ## When starting any roadmap task
 
 - Restate which track (`P#` vs `L#`) and which exact sub-item you believe is meant,

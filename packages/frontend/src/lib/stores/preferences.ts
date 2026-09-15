@@ -52,7 +52,7 @@ preferences.subscribe((value) => {
   saveToStorage(value);
 });
 
-const SUPPORTED_CURRENCIES: SupportedCurrency[] = ['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'];
+export const SUPPORTED_CURRENCIES: SupportedCurrency[] = ['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'];
 
 /**
  * Applies instance config from GET /api/v1/config at startup:

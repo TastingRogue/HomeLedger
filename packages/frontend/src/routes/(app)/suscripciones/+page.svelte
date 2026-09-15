@@ -7,10 +7,13 @@
     deactivateSubscription,
     deleteSubscription,
     getSubscriptionCalendar,
+    getSubscriptionInsights,
     type Subscription,
     type SubscriptionCalendarEntry,
     type SubscriptionCycle,
     type CreateSubscriptionPayload,
+    type SubscriptionInsightsResult,
+    type SubscriptionInsight,
   } from '$lib/api/subscriptions';
   import { listAccounts, type AccountData } from '$lib/api/accounts';
   import { apiGet } from '$lib/api/client';
@@ -29,6 +32,13 @@
   // ─── State ───
   let subscriptionsList: Subscription[] = $state([]);
   let calendar: SubscriptionCalendarEntry[] = $state([]);
+  let insights: SubscriptionInsightsResult | null = $state(null);
+  function buildInsightMap(res: SubscriptionInsightsResult | null): Map<number, SubscriptionInsight> {
+    const m = new Map<number, SubscriptionInsight>();
+    for (const i of res?.subscriptions ?? []) m.set(i.id, i);
+    return m;
+  }
+  const insightById = $derived(buildInsightMap(insights));
   let accounts: AccountData[] = $state([]);
   let categories: Category[] = $state([]);
   let loading = $state(true);
@@ -139,16 +149,18 @@
     loading = true;
     error = null;
     try {
-      const [subs, cal, accts, cats] = await Promise.all([
+      const [subs, cal, accts, cats, ins] = await Promise.all([
         listSubscriptions(),
         getSubscriptionCalendar(),
         listAccounts(),
         apiGet<Category[]>('/categories'),
+        getSubscriptionInsights(),
       ]);
       subscriptionsList = subs;
       calendar = cal;
       accounts = accts;
       categories = cats;
+      insights = ins;
     } catch (e: unknown) {
       error = e instanceof ApiError ? e.message : $t('subscriptions.error_loading');
     } finally {
@@ -301,6 +313,28 @@
     <span>{$t('subscriptions.auto_charge_info')}</span>
   </div>
 
+  {#if insights && insights.subscriptions.length > 0}
+    <div class="insights-cards">
+      <div class="insight-card">
+        <span class="ic-label">{$t('subscriptions.insight_annual')}</span>
+        <span class="ic-value">{formatCurrency(insights.totalAnnualProjected)}</span>
+        <span class="ic-hint">{$t('subscriptions.insight_annual_hint')}</span>
+      </div>
+      <div class="insight-card">
+        <span class="ic-label">{$t('subscriptions.insight_last12')}</span>
+        <span class="ic-value">{formatCurrency(insights.totalLast12Months)}</span>
+        <span class="ic-hint">{$t('subscriptions.insight_last12_hint')}</span>
+      </div>
+      {#if insights.increasesDetected > 0}
+        <div class="insight-card insight-warn">
+          <span class="ic-label">{$t('subscriptions.insight_increases')}</span>
+          <span class="ic-value">{insights.increasesDetected}</span>
+          <span class="ic-hint">{$t('subscriptions.insight_increases_hint')}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- View Tabs -->
   <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
   <nav class="view-tabs" role="tablist" aria-label={$t('a11y.subscriptions_views')}>
@@ -344,6 +378,7 @@
             <tr>
               <th>{$t('subscriptions.col_name')}</th>
               <th>{$t('subscriptions.col_amount')}</th>
+              <th>{$t('subscriptions.col_annual')}</th>
               <th>{$t('subscriptions.col_cycle')}</th>
               <th>{$t('subscriptions.col_days')}</th>
               <th>{$t('subscriptions.col_status')}</th>
@@ -354,9 +389,17 @@
           <tbody>
             {#each subscriptionsList as sub (sub.id)}
               {@const days = getDaysRemaining(sub)}
+              {@const ins = insightById.get(sub.id)}
+              {@const lastIncrease = ins?.priceChanges.filter((p) => p.to > p.from).at(-1)}
               <tr class="clickable-row" onclick={() => openEditForm(sub)}>
-                <td class="cell-name">{sub.name}</td>
+                <td class="cell-name">
+                  {sub.name}
+                  {#if lastIncrease}
+                    <span class="price-up" title={$t('subscriptions.price_up', { from: formatCurrency(lastIncrease.from), to: formatCurrency(lastIncrease.to) })}>↑ {formatCurrency(lastIncrease.from)} → {formatCurrency(lastIncrease.to)}</span>
+                  {/if}
+                </td>
                 <td class="cell-amount">{formatCurrency(sub.amount)}</td>
+                <td class="cell-amount">{ins ? formatCurrency(ins.annualCost) : '—'}</td>
                 <td>{sub.cycle}</td>
                 <td>
                   <span class="days-badge {getUrgencyClass(days)}">
@@ -561,6 +604,15 @@
 
   .info-banner { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.6rem 0.85rem; background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; }
   .info-icon { color: var(--accent-blue); font-size: 0.9rem; flex-shrink: 0; margin-top: 0.05rem; }
+
+  /* Subscription intelligence (P4.7) */
+  .insights-cards { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
+  .insight-card { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 0.15rem; padding: 0.75rem 1rem; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+  .insight-card.insight-warn { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.06); }
+  .ic-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .ic-value { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+  .ic-hint { font-size: 0.66rem; color: var(--text-muted); }
+  .price-up { display: inline-block; margin-left: 0.4rem; padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.6rem; font-weight: 600; background: rgba(245, 158, 11, 0.12); color: var(--accent-orange); white-space: nowrap; }
 
   /* Tabs */
   .view-tabs { display: flex; gap: 0; margin-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-default); }

@@ -40,13 +40,16 @@ export async function networthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // GET /history?startDate=&endDate= - Net worth snapshots in range
-  app.get('/history', async (request: FastifyRequest<{ Querystring: { startDate?: string; endDate?: string } }>, reply: FastifyReply) => {
+  app.get('/history', async (request: FastifyRequest<{ Querystring: { startDate?: string; endDate?: string; range?: string } }>, reply: FastifyReply) => {
     const user = request.user as TokenPayload;
-    const { startDate, endDate } = request.query;
-    const range = {
-      startDate: startDate || '1970-01-01',
-      endDate: endDate || new Date().toISOString().split('T')[0]!,
-    };
+    const { startDate, endDate, range: rangeName } = request.query;
+    // P4.8: a named range (1m/6m/1y/5y/all) wins; else explicit start/end (back-compat).
+    const range = rangeName
+      ? NetWorthService.resolveRange(rangeName)
+      : {
+          startDate: startDate || '1970-01-01',
+          endDate: endDate || new Date().toISOString().split('T')[0]!,
+        };
     return reply.send({ success: true, data: NetWorthService.getHistory(user.userId, range) });
   });
 

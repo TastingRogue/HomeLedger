@@ -26,6 +26,15 @@ export const createTransferSchema = z
       .max(999999999.99, 'El monto no puede exceder 999,999,999.99')
       .refine(hasAtMostTwoDecimals, { message: 'El monto no puede tener más de 2 decimales' }),
 
+    // P4.11: for cross-currency transfers, the amount entering the destination
+    // in its own currency. Omit/null when both accounts share a currency.
+    destinationAmount: z
+      .number()
+      .positive('El monto destino debe ser mayor a 0')
+      .max(999999999.99, 'El monto destino no puede exceder 999,999,999.99')
+      .refine(hasAtMostTwoDecimals, { message: 'El monto destino no puede tener más de 2 decimales' })
+      .optional(),
+
     sourceAccountId: z
       .number({ error: 'La cuenta origen es obligatoria y debe ser un número' })
       .int('El ID de cuenta origen debe ser un número entero')

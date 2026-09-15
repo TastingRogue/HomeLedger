@@ -3,10 +3,12 @@ import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { getSqlite } from '../db/connection.js';
 import { AttachmentService, type AttachmentRecord } from './attachment.service.js';
+import { TransactionService } from './transaction.service.js';
+import { TransactionType } from '@homeledger/shared';
 
 export type ReceiptSourceType = 'cfdi_xml' | 'pdf_text' | 'ocr' | 'unknown';
 
-export interface ReceiptItem { id: number; analysisId: number; description: string; quantity: number | null; unitPrice: number | null; total: number | null; }
+export interface ReceiptItem { id: number; analysisId: number; description: string; quantity: number | null; unitPrice: number | null; total: number | null; categoryId: number | null; }
 export interface ReceiptAnalysis {
   id: number; attachmentId: number; userId: number; transactionId: number | null;
   merchant: string | null; receiptDate: string | null; subtotal: number | null; tax: number | null; total: number | null;
@@ -32,7 +34,7 @@ function ensureTables(): void {
     CREATE INDEX IF NOT EXISTS receipt_analyses_transaction_id_idx ON receipt_analyses(transaction_id);
     CREATE TABLE IF NOT EXISTS receipt_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT, analysis_id INTEGER NOT NULL REFERENCES receipt_analyses(id) ON DELETE CASCADE,
-      description TEXT NOT NULL, quantity REAL, unit_price REAL, total REAL
+      description TEXT NOT NULL, quantity REAL, unit_price REAL, total REAL, category_id INTEGER
     );
     CREATE INDEX IF NOT EXISTS receipt_items_analysis_id_idx ON receipt_items(analysis_id);
   `);
@@ -40,6 +42,9 @@ function ensureTables(): void {
   const columns = (getSqlite().prepare('PRAGMA table_info(receipt_analyses)').all() as { name: string }[]).map(c => c.name);
   if (!columns.includes('source_type')) getSqlite().exec("ALTER TABLE receipt_analyses ADD COLUMN source_type TEXT NOT NULL DEFAULT 'unknown'");
   if (!columns.includes('error')) getSqlite().exec('ALTER TABLE receipt_analyses ADD COLUMN error TEXT');
+  // P4.6: per-item category for item-level categorization of receipts.
+  const itemColumns = (getSqlite().prepare('PRAGMA table_info(receipt_items)').all() as { name: string }[]).map(c => c.name);
+  if (!itemColumns.includes('category_id')) getSqlite().exec('ALTER TABLE receipt_items ADD COLUMN category_id INTEGER');
 }
 
 export function numberValue(value: string | null | undefined): number | null {
@@ -123,6 +128,31 @@ export function parseCfdi(xml: string): ParsedReceipt {
   const uuid = firstMatch(xml, [/<tfd:TimbreFiscalDigital\b[^>]*\bUUID="([^"]+)"/i]);
   const issuerRfc = firstMatch(emisor, [/\bRfc="([^"]+)"/i]);
   const issuerName = firstMatch(emisor, [/\bNombre="([^"]+)"/i]);
+
+  // IVA / trasladados: prefer the document-level <cfdi:Impuestos TotalImpuestosTrasladados>,
+  // else sum each <cfdi:Traslado Importe="..."> (concepto- and doc-level), else
+  // fall back to total − subtotal. All parsed with numberValue.
+  const totalNum = numberValue(total);
+  const subtotalNum = numberValue(subtotal);
+  let taxNum: number | null = null;
+  const impuestos = /<cfdi:Impuestos\b([^>]*)>/i.exec(xml)?.[1] ?? '';
+  const totalTrasladados = firstMatch(impuestos, [/\bTotalImpuestosTrasladados="([^"]+)"/i]);
+  if (totalTrasladados) {
+    taxNum = numberValue(totalTrasladados);
+  } else {
+    const trasladoRegex = /<cfdi:Traslado\b([^>]*)\/?>/gi;
+    let tMatch: RegExpExecArray | null;
+    let sum = 0;
+    let found = false;
+    while ((tMatch = trasladoRegex.exec(xml))) {
+      const importe = numberValue(firstMatch(tMatch[1] ?? '', [/\bImporte="([^"]+)"/i]));
+      if (importe != null) { sum += importe; found = true; }
+    }
+    if (found) taxNum = Math.round(sum * 100) / 100;
+  }
+  if (taxNum == null && totalNum != null && subtotalNum != null && totalNum > subtotalNum) {
+    taxNum = Math.round((totalNum - subtotalNum) * 100) / 100;
+  }
   const items: ParsedReceipt['items'] = [];
   const conceptRegex = /<cfdi:Concepto\b([^>]*)\/?>(?:.*?<\/cfdi:Concepto>)?/gis;
   let match: RegExpExecArray | null;
@@ -131,9 +161,9 @@ export function parseCfdi(xml: string): ParsedReceipt {
     if (!attrs) continue;
     const description = firstMatch(attrs, [/\bDescripcion="([^"]+)"/i]);
     if (!description) continue;
-    items.push({ description: decodeXml(description), quantity: numberValue(firstMatch(attrs, [/\bCantidad="([^"]+)"/i])), unitPrice: numberValue(firstMatch(attrs, [/\bValorUnitario="([^"]+)"/i])), total: numberValue(firstMatch(attrs, [/\bImporte="([^"]+)"/i])) });
+    items.push({ description: decodeXml(description), quantity: numberValue(firstMatch(attrs, [/\bCantidad="([^"]+)"/i])), unitPrice: numberValue(firstMatch(attrs, [/\bValorUnitario="([^"]+)"/i])), total: numberValue(firstMatch(attrs, [/\bImporte="([^"]+)"/i])), categoryId: null });
   }
-  return { merchant: issuerName ? decodeXml(issuerName) : null, receiptDate: parseDate(date), subtotal: numberValue(subtotal), tax: null, total: numberValue(total), currency: decodeXml(currency), documentType: 'cfdi', sourceType: 'cfdi_xml', confidence: 1, rawText: xml, uuid, issuerRfc, issuerName: issuerName ? decodeXml(issuerName) : null, items };
+  return { merchant: issuerName ? decodeXml(issuerName) : null, receiptDate: parseDate(date), subtotal: subtotalNum, tax: taxNum, total: totalNum, currency: decodeXml(currency), documentType: 'cfdi', sourceType: 'cfdi_xml', confidence: 1, rawText: xml, uuid, issuerRfc, issuerName: issuerName ? decodeXml(issuerName) : null, items };
 }
 
 export function parsePlainText(text: string, sourceType: ReceiptSourceType): ParsedReceipt {
@@ -211,6 +241,83 @@ export class ReceiptService {
     }
     return this.get(id, userId);
   }
+  /**
+   * P4.6: assign (or clear) the category of a single receipt line item, for
+   * item-level categorization. Validates that the item belongs to a receipt
+   * owned by the user.
+   */
+  static setItemCategory(receiptId: number, itemId: number, userId: number, categoryId: number | null): ReceiptAnalysis | null {
+    ensureTables();
+    const sqlite = getSqlite();
+    const analysis = sqlite.prepare('SELECT id FROM receipt_analyses WHERE id = ? AND user_id = ?').get(receiptId, userId) as { id: number } | undefined;
+    if (!analysis) return null;
+    const item = sqlite.prepare('SELECT id FROM receipt_items WHERE id = ? AND analysis_id = ?').get(itemId, receiptId) as { id: number } | undefined;
+    if (!item) return null;
+    sqlite.prepare('UPDATE receipt_items SET category_id = ? WHERE id = ?').run(categoryId, itemId);
+    sqlite.prepare('UPDATE receipt_analyses SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), receiptId);
+    return this.get(receiptId, userId);
+  }
+
+  /**
+   * P4.6: create a transaction from a completed receipt/CFDI and link them.
+   * The transaction is an expense with name = merchant, amount = total,
+   * date = the receipt date (or now), merchant, and externalId = UUID (so a
+   * re-imported/duplicate CFDI is caught by the P4.1 dedupe). If ≥2 items are
+   * categorized and their totals sum to the receipt total, the transaction is
+   * also split by those categories (item-level categorization → splits).
+   *
+   * @throws Error on: receipt not found, no total, or already linked.
+   */
+  static createTransaction(
+    receiptId: number,
+    userId: number,
+    options: { accountId: number; categoryId: number; date?: string },
+  ): ReceiptAnalysis {
+    ensureTables();
+    const sqlite = getSqlite();
+    const receipt = this.get(receiptId, userId);
+    if (!receipt) throw new Error('Análisis no encontrado');
+    if (receipt.transactionId) throw new Error('Este comprobante ya tiene una transacción asociada');
+    if (receipt.total == null || receipt.total <= 0) throw new Error('El comprobante no tiene un total válido; corrige el total antes de crear la transacción');
+
+    const name = (receipt.merchant || receipt.issuerName || 'Comprobante').substring(0, 100);
+    const date = options.date ?? (receipt.receiptDate ? `${receipt.receiptDate}T12:00:00.000Z` : new Date().toISOString());
+    const amount = Math.round(receipt.total * 100) / 100;
+
+    const tx = TransactionService.create(userId, {
+      name,
+      accountId: options.accountId,
+      categoryId: options.categoryId,
+      amount,
+      type: TransactionType.Gasto,
+      date,
+      merchant: receipt.merchant ?? receipt.issuerName ?? null,
+      externalId: receipt.uuid ?? null,
+    });
+
+    // Item-level categorization → splits (best-effort). Only when at least two
+    // items carry a category and their totals add up to the receipt total.
+    const categorized = receipt.items.filter((i) => i.categoryId != null && i.total != null && i.total > 0);
+    if (categorized.length >= 2) {
+      const sum = Math.round(categorized.reduce((s, i) => s + (i.total ?? 0), 0) * 100) / 100;
+      if (sum === amount) {
+        try {
+          TransactionService.split(
+            tx.id,
+            userId,
+            categorized.map((i) => ({ categoryId: i.categoryId as number, amount: Math.round((i.total as number) * 100) / 100, note: i.description.substring(0, 200) })),
+          );
+        } catch {
+          // If the split is rejected (rounding / invalid category), keep the
+          // single transaction — categorization is a best-effort enhancement.
+        }
+      }
+    }
+
+    sqlite.prepare('UPDATE receipt_analyses SET transaction_id = ?, updated_at = ? WHERE id = ? AND user_id = ?').run(tx.id, new Date().toISOString(), receiptId, userId);
+    return this.get(receiptId, userId)!;
+  }
+
   static async analyze(attachmentId: number, userId: number): Promise<ReceiptAnalysis> {
     ensureTables(); const attachment = AttachmentService.getById(attachmentId, userId); if (!attachment) throw new Error('Archivo no encontrado');
     const sqlite = getSqlite(); const existing = sqlite.prepare('SELECT id FROM receipt_analyses WHERE attachment_id = ? AND user_id = ?').get(attachmentId, userId) as { id: number } | undefined;
@@ -251,7 +358,7 @@ export class ReceiptService {
     throw new Error(`Tipo de archivo no soportado para análisis: ${attachment.mimeType || ext}`);
   }
   private static hydrate(row: Record<string, unknown>): ReceiptAnalysis {
-    const items = getSqlite().prepare('SELECT id, analysis_id as analysisId, description, quantity, unit_price as unitPrice, total FROM receipt_items WHERE analysis_id = ? ORDER BY id').all(row.id) as ReceiptItem[];
+    const items = getSqlite().prepare('SELECT id, analysis_id as analysisId, description, quantity, unit_price as unitPrice, total, category_id as categoryId FROM receipt_items WHERE analysis_id = ? ORDER BY id').all(row.id) as ReceiptItem[];
     return { id: Number(row.id), attachmentId: Number(row.attachment_id), userId: Number(row.user_id), transactionId: row.transaction_id == null ? null : Number(row.transaction_id), merchant: row.merchant as string | null, receiptDate: row.receipt_date as string | null, subtotal: row.subtotal == null ? null : Number(row.subtotal), tax: row.tax == null ? null : Number(row.tax), total: row.total == null ? null : Number(row.total), currency: String(row.currency ?? 'MXN'), documentType: String(row.document_type ?? 'unknown') as ReceiptAnalysis['documentType'], sourceType: String(row.source_type ?? 'unknown') as ReceiptSourceType, status: String(row.status ?? 'pending') as ReceiptAnalysis['status'], confidence: Number(row.confidence ?? 0), rawText: row.raw_text as string | null, uuid: row.uuid as string | null, issuerRfc: row.issuer_rfc as string | null, issuerName: row.issuer_name as string | null, error: row.error as string | null, filename: (row.att_original_name as string | null) ?? null, mimeType: String(row.att_mime_type ?? ''), transactionName: (row.tx_name as string | null) ?? null, transactionAmount: row.tx_amount == null ? null : Number(row.tx_amount), createdAt: String(row.created_at), updatedAt: String(row.updated_at), items };
   }
 }

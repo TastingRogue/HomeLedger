@@ -12,6 +12,11 @@
   let emailError = $state('');
   let passwordError = $state('');
 
+  // Second-factor (TOTP) step: shown after the backend replies TOTP_REQUIRED.
+  let totpRequired = $state(false);
+  let totpCode = $state('');
+  let totpError = $state('');
+
   function validateForm(): boolean {
     let valid = true;
     emailError = '';
@@ -36,13 +41,24 @@
   async function handleLogin(e: Event) {
     e.preventDefault();
     error = '';
+    totpError = '';
 
-    if (!validateForm()) return;
+    // Skip email/password validation once we're on the second-factor step.
+    if (!totpRequired && !validateForm()) return;
+
+    if (totpRequired && !totpCode.trim()) {
+      totpError = $t('auth.totp_required_error');
+      return;
+    }
 
     loading = true;
 
     try {
-      const response = await authApi.login({ email: email.trim(), password });
+      const response = await authApi.login({
+        email: email.trim(),
+        password,
+        totpCode: totpRequired ? totpCode.trim() : undefined,
+      });
       authStore.login(
         { id: 0, name: '', email: email.trim(), role: '' },
         response.accessToken,
@@ -55,7 +71,14 @@
       await goto('/dashboard');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        if (err.code === 'INVALID_CREDENTIALS') {
+        if (err.code === 'TOTP_REQUIRED') {
+          // Move to the second-factor step (first time the backend asks for it).
+          totpRequired = true;
+          error = '';
+        } else if (err.code === 'TOTP_INVALID') {
+          totpRequired = true;
+          totpError = $t('auth.totp_invalid');
+        } else if (err.code === 'INVALID_CREDENTIALS') {
           error = $t('auth.invalid_credentials');
         } else {
           error = err.message;
@@ -66,6 +89,13 @@
     } finally {
       loading = false;
     }
+  }
+
+  function cancelTotp() {
+    totpRequired = false;
+    totpCode = '';
+    totpError = '';
+    error = '';
   }
 </script>
 
@@ -84,56 +114,85 @@
     {/if}
 
     <form onsubmit={handleLogin} novalidate>
-      <div class="form-group">
-        <label for="email">{$t('auth.email_label')}</label>
-        <input
-          id="email"
-          type="email"
-          bind:value={email}
-          placeholder={$t('auth.email_placeholder')}
-          autocomplete="email"
-          disabled={loading}
-          class:input-error={emailError}
-          aria-describedby={emailError ? 'email-error' : undefined}
-          aria-invalid={emailError ? 'true' : undefined}
-        />
-        {#if emailError}
-          <span id="email-error" class="field-error" role="alert">{emailError}</span>
-        {/if}
-      </div>
+      {#if !totpRequired}
+        <div class="form-group">
+          <label for="email">{$t('auth.email_label')}</label>
+          <input
+            id="email"
+            type="email"
+            bind:value={email}
+            placeholder={$t('auth.email_placeholder')}
+            autocomplete="email"
+            disabled={loading}
+            class:input-error={emailError}
+            aria-describedby={emailError ? 'email-error' : undefined}
+            aria-invalid={emailError ? 'true' : undefined}
+          />
+          {#if emailError}
+            <span id="email-error" class="field-error" role="alert">{emailError}</span>
+          {/if}
+        </div>
 
-      <div class="form-group">
-        <label for="password">{$t('auth.password_label')}</label>
-        <input
-          id="password"
-          type="password"
-          bind:value={password}
-          placeholder={$t('auth.password_placeholder')}
-          autocomplete="current-password"
-          disabled={loading}
-          class:input-error={passwordError}
-          aria-describedby={passwordError ? 'password-error' : undefined}
-          aria-invalid={passwordError ? 'true' : undefined}
-        />
-        {#if passwordError}
-          <span id="password-error" class="field-error" role="alert">{passwordError}</span>
-        {/if}
-      </div>
+        <div class="form-group">
+          <label for="password">{$t('auth.password_label')}</label>
+          <input
+            id="password"
+            type="password"
+            bind:value={password}
+            placeholder={$t('auth.password_placeholder')}
+            autocomplete="current-password"
+            disabled={loading}
+            class:input-error={passwordError}
+            aria-describedby={passwordError ? 'password-error' : undefined}
+            aria-invalid={passwordError ? 'true' : undefined}
+          />
+          {#if passwordError}
+            <span id="password-error" class="field-error" role="alert">{passwordError}</span>
+          {/if}
+        </div>
+      {:else}
+        <div class="form-group">
+          <label for="totp">{$t('auth.totp_label')}</label>
+          <input
+            id="totp"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            bind:value={totpCode}
+            placeholder={$t('auth.totp_placeholder')}
+            disabled={loading}
+            class:input-error={totpError}
+            aria-describedby={totpError ? 'totp-error' : 'totp-hint'}
+            aria-invalid={totpError ? 'true' : undefined}
+          />
+          {#if totpError}
+            <span id="totp-error" class="field-error" role="alert">{totpError}</span>
+          {:else}
+            <span id="totp-hint" class="field-hint">{$t('auth.totp_hint')}</span>
+          {/if}
+        </div>
+      {/if}
 
       <button type="submit" class="submit-btn" disabled={loading}>
         {#if loading}
           <span class="spinner" aria-hidden="true"></span>
           {$t('auth.logging_in')}
+        {:else if totpRequired}
+          {$t('auth.totp_verify_btn')}
         {:else}
           {$t('auth.login_btn')}
         {/if}
       </button>
     </form>
 
-    <p class="register-link">
-      {$t('auth.no_account')}
-      <a href="/register">{$t('auth.go_register')}</a>
-    </p>
+    {#if totpRequired}
+      <button type="button" class="link-btn" onclick={cancelTotp}>{$t('auth.totp_back')}</button>
+    {:else}
+      <p class="register-link">
+        {$t('auth.no_account')}
+        <a href="/register">{$t('auth.go_register')}</a>
+      </p>
+    {/if}
   </div>
 </div>
 
@@ -174,6 +233,9 @@
   .input-error { border-color: var(--accent-red) !important; }
   .input-error:focus { box-shadow: 0 0 0 1px var(--accent-red) !important; }
   .field-error { display: block; font-size: 0.68rem; color: var(--accent-red); margin-top: 0.2rem; }
+  .field-hint { display: block; font-size: 0.68rem; color: var(--text-muted); margin-top: 0.2rem; }
+  .link-btn { display: block; margin: 1rem auto 0; background: none; border: none; color: var(--accent-blue); font-size: 0.78rem; cursor: pointer; }
+  .link-btn:hover { text-decoration: underline; }
 
   .submit-btn {
     width: 100%; padding: 0.6rem; background: var(--accent-blue); color: #fff;

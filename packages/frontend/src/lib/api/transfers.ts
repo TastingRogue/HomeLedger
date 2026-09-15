@@ -13,6 +13,8 @@ export interface Transfer {
   name: string;
   date: string;
   amount: number;
+  /** P4.11: amount entering the destination in its currency (null = same currency). */
+  destinationAmount: number | null;
   sourceAccountId: number;
   destinationAccountId: number;
   createdAt: string;
@@ -23,6 +25,8 @@ export interface CreateTransferPayload {
   name: string;
   date: string;
   amount: number;
+  /** P4.11: required only when source and destination currencies differ. */
+  destinationAmount?: number;
   sourceAccountId: number;
   destinationAccountId: number;
 }
