@@ -5,6 +5,61 @@ All notable changes to HomeLedger are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-31
+
+Feature-depth release (the **P4** track). A large batch of additive features on
+top of `1.0.0`, with **no breaking changes** — the `/api/v1` surface stays
+compatible and existing backups still import (backup metadata bumped to `1.1.0`;
+only the MAJOR version gates import compatibility, so `1.0.x` backups restore
+fine). Migrations `0008`–`0017`.
+
+### Added
+
+- **Richer transactions (P4.1)** — merchant, subtype, reconciled, status and
+  `externalId`; tags as a first-class many-to-many entity; per-transaction audit
+  history.
+- **Credit-card statement modeling (P4.2)** — statement/payment-due days, APR
+  and minimum payment, with a corrected balance sign.
+- **Budgets depth (P4.3)** — persisted rollover + alert thresholds, an
+  available-to-spend indicator, budgets by tag, and overspend alerts wired to
+  the scheduler.
+- **Smart importer (P4.4)** — merchant/date/currency normalization, per-account
+  dedupe in the preview, pending→posted matching, account auto-detect, and an
+  import history with undo.
+- **Rules & auto-categorization UX (P4.5)** — rule-learning suggestions, a
+  merchant condition, and flag-for-review / mark-recurring / ignore actions.
+- **CFDI invoices (P4.6)** — extract IVA, create a transaction from a receipt
+  with UUID dedupe, plus item-level categorization and splits.
+- **Subscription intelligence (P4.7)** and **forecasting (P4.8)** — goal
+  completion forecast and a net-worth history chart (1m/6m/1y/5y/all).
+- **Global search (P4.9)** across transactions, receipts and subscriptions.
+- **Reports depth (P4.10)** — savings rate, debt and credit-utilization
+  reports, a merchant report, and custom saved reports.
+- **Manual-first multi-currency (P4.11)** — per-account currency with a
+  user-entered exchange rate, base-currency aggregation, and cross-currency
+  transfers that record both legs.
+- **Two-factor authentication (P4.12)** — offline TOTP (RFC 6238, no cloud) with
+  one-time backup codes, plus session history and per-session revocation.
+- **API maturity (P4.13)** — OpenAPI 3 spec + Swagger UI at `/api/docs`, scoped
+  API keys, and user-configured outbound webhooks (HMAC-SHA256 signed) for
+  `transaction.created`, `budget.exceeded`, `goal.completed` and
+  `subscription.upcoming`.
+- **PWA / mobile (P4.14)** — installable PWA with a dedicated offline page, a
+  quick-add floating action button, on-device camera receipt capture, and an
+  optional client-side app lock (WebAuthn platform authenticator or PIN).
+
+### Changed
+
+- Aggregations (dashboard, reports, net worth, budgets) convert foreign-currency
+  amounts to the base currency; per-account and per-card views stay in native
+  units.
+- Accepted upload types now include CFDI XML (`application/xml` / `text/xml`).
+
+### Security
+
+- Optional offline 2FA (TOTP) and an optional local app lock; both are opt-in
+  and do not weaken the existing JWT/session model.
+
 ## [1.0.0] - 2026-08-31
 
 First stable release. The `/api/v1` HTTP API and the backup file format are now
