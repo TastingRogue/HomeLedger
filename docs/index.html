@@ -130,11 +130,17 @@
     .card h3 { margin: 0 0 0.35rem; font-size: 1rem; }
     .card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
-    /* ── Screenshots gallery ── */
-    .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+    /* ── Screenshots gallery ── large, one per row, click to open full size ── */
+    .gallery { display: flex; flex-direction: column; gap: 2rem; }
     figure { margin: 0; }
-    figure img { width: 100%; border-radius: 12px; border: 1px solid var(--border); display: block; }
-    figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.5rem; text-align: center; }
+    figure a { display: block; }
+    figure img {
+      width: 100%; border-radius: 14px; border: 1px solid var(--border); display: block;
+      box-shadow: 0 16px 44px rgba(0,0,0,0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    figure a:hover img { transform: translateY(-2px); box-shadow: 0 22px 56px rgba(0,0,0,0.55); }
+    figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.7rem; text-align: center; }
 
     /* ── Code ── */
     pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; }
@@ -148,6 +154,21 @@
     .faq summary::before { content: "＋"; color: var(--accent); margin-right: 0.6rem; font-weight: 700; }
     .faq details[open] summary::before { content: "－"; }
     .faq p { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.92rem; }
+
+    /* ── Support / donate ── */
+    .support {
+      text-align: center;
+      background:
+        radial-gradient(60% 100% at 50% 0%, rgba(236,72,153,0.10), transparent 70%),
+        var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; padding: 2.2rem 1.5rem;
+    }
+    .support .heart { font-size: 2rem; }
+    .support h2 { font-size: 1.6rem; margin: 0.5rem 0 0.4rem; border: 0; }
+    .support p { color: var(--muted); max-width: 620px; margin: 0 auto 1.4rem; }
+    .btn-sponsor { background: #ec4899; color: #fff; }
+    .btn-sponsor:hover { background: #db2777; }
+    .btn-star { background: var(--elevated); color: var(--text); border: 1px solid var(--border); }
 
     /* ── Final CTA ── */
     .final { text-align: center; }
@@ -249,22 +270,37 @@
       <p class="section-sub">All screenshots use generated demo data — no real financial information is shown.</p>
       <div class="gallery">
         <figure>
-          <img src="screenshots/transactions.png" alt="HomeLedger expense tracker transactions view grouped by month" loading="lazy" />
+          <a href="screenshots/transactions.png" target="_blank" rel="noopener" aria-label="Open transactions screenshot full size">
+            <img src="screenshots/transactions.png" alt="HomeLedger expense tracker transactions view grouped by month" loading="lazy" />
+          </a>
           <figcaption>Transactions — income and expenses grouped by month</figcaption>
         </figure>
         <figure>
-          <img src="screenshots/budgets.png" alt="HomeLedger budgeting app with per-category budget progress bars" loading="lazy" />
+          <a href="screenshots/budgets.png" target="_blank" rel="noopener" aria-label="Open budgets screenshot full size">
+            <img src="screenshots/budgets.png" alt="HomeLedger budgeting app with per-category budget progress bars" loading="lazy" />
+          </a>
           <figcaption>Budgets — allocation vs. spent, per category</figcaption>
         </figure>
         <figure>
-          <img src="screenshots/goals.png" alt="HomeLedger savings goals with progress bars and fund/withdraw" loading="lazy" />
+          <a href="screenshots/goals.png" target="_blank" rel="noopener" aria-label="Open goals screenshot full size">
+            <img src="screenshots/goals.png" alt="HomeLedger savings goals with progress bars and fund/withdraw" loading="lazy" />
+          </a>
           <figcaption>Goals — turn objectives into visible progress</figcaption>
         </figure>
         <figure>
-          <img src="screenshots/receipts.png" alt="HomeLedger receipt OCR analysis linked to a transaction" loading="lazy" />
+          <a href="screenshots/receipts.png" target="_blank" rel="noopener" aria-label="Open receipts screenshot full size">
+            <img src="screenshots/receipts.png" alt="HomeLedger receipt OCR analysis linked to a transaction" loading="lazy" />
+          </a>
           <figcaption>Receipts — OCR analysis linked to transactions</figcaption>
         </figure>
+        <figure>
+          <a href="screenshots/subscriptions.png" target="_blank" rel="noopener" aria-label="Open subscriptions screenshot full size">
+            <img src="screenshots/subscriptions.png" alt="HomeLedger subscriptions with recurring payments and calendar" loading="lazy" />
+          </a>
+          <figcaption>Subscriptions — recurring payments with a calendar</figcaption>
+        </figure>
       </div>
+      <p class="note" style="text-align:center; margin-top:1rem;">Tip: click any screenshot to open it full size.</p>
     </section>
 
     <!-- ── Quick start ── -->
@@ -311,12 +347,29 @@
       </details>
     </section>
 
+    <!-- ── Support / donate ── -->
+    <section id="support">
+      <div class="support">
+        <div class="heart" aria-hidden="true">❤️</div>
+        <h2>Enjoying HomeLedger?</h2>
+        <p>
+          HomeLedger is free and built in the open. If it saves you money or time,
+          consider supporting its development — every ⭐ and sponsorship helps keep
+          it maintained and independent. No pressure: it will always stay free.
+        </p>
+        <div class="cta">
+          <a class="btn btn-sponsor" href="https://github.com/sponsors/TastingRogue">❤️ Sponsor on GitHub</a>
+          <a class="btn btn-star" href="https://github.com/TastingRogue/HomeLedger">★ Star the repo</a>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Final CTA ── -->
     <section id="get-started" class="final">
       <h2>Take back control of your finances</h2>
       <p class="section-sub">Free, open-source, and running on your own server in minutes.</p>
       <div class="cta">
-        <a class="btn btn-primary" href="https://github.com/TastingRogue/HomeLedger">★ Star on GitHub</a>
+        <a class="btn btn-primary" href="#quick-start">Get started</a>
         <a class="btn btn-secondary" href="https://hub.docker.com/r/irving1flores/homeledger">Docker Hub</a>
       </div>
     </section>
@@ -328,6 +381,7 @@
       &nbsp;·&nbsp;
       <a href="https://github.com/TastingRogue/HomeLedger">GitHub</a> ·
       <a href="https://github.com/TastingRogue/HomeLedger/blob/main/docs/USER_MANUAL.md">Manual</a> ·
+      <a href="https://github.com/sponsors/TastingRogue">Sponsor</a> ·
       <a href="https://github.com/TastingRogue/HomeLedger/issues">Report an issue</a>
     </p>
   </footer>
