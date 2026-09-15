@@ -3,6 +3,7 @@
   import { authApi, ApiError } from '$lib/api';
   import { authStore } from '$lib/stores';
   import { t } from '$lib/i18n';
+  import Logo from '$lib/components/Logo.svelte';
 
   let email = $state('');
   let password = $state('');
@@ -105,7 +106,7 @@
 
 <div class="login-container">
   <div class="login-card">
-    <div class="brand-mark">HL</div>
+    <div class="brand-mark"><Logo size={56} /></div>
     <h1 class="login-title">HomeLedger</h1>
     <p class="login-subtitle">{$t('auth.login_title')}</p>
 
@@ -211,10 +212,9 @@
   }
 
   .brand-mark {
-    width: 48px; height: 48px; margin: 0 auto 1rem;
-    border-radius: var(--radius-lg); background: var(--accent-purple);
-    color: #fff; font-size: 1rem; font-weight: 700;
+    margin: 0 auto 1rem;
     display: flex; align-items: center; justify-content: center;
+    line-height: 0;
   }
 
   .login-title { font-size: 1.2rem; font-weight: 700; color: var(--text-primary); text-align: center; margin-bottom: 0.15rem; }

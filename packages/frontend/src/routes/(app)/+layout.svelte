@@ -5,6 +5,7 @@
   import { hasToken, clearTokens } from '$lib/api';
   import '$lib/styles/shared.css';
   import Icon from '$lib/components/Icon.svelte';
+  import Logo from '$lib/components/Logo.svelte';
   import OfflineBanner from '$lib/components/OfflineBanner.svelte';
   import LockScreen from '$lib/components/LockScreen.svelte';
   import { isLockEnabled } from '$lib/stores/lock';
@@ -110,7 +111,7 @@
     <nav class="sidebar" class:open={sidebarOpen} aria-label={$t('a11y.main_nav')}>
       <div class="sidebar-top">
         <div class="brand">
-          <span class="brand-icon"><Icon name="dollar-sign" size={18} /></span>
+          <span class="brand-icon"><Logo size={28} /></span>
           <span class="brand-name">HomeLedger</span>
         </div>
         <button class="sidebar-close" onclick={closeSidebar} aria-label={$t('a11y.close_menu')}>×</button>
@@ -238,12 +239,10 @@
   .brand-icon {
     width: 28px;
     height: 28px;
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    line-height: 0;
   }
 
   .brand-name {
