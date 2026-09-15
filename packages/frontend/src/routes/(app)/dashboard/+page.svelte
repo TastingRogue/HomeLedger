@@ -1691,6 +1691,13 @@
     .summary-row { grid-template-columns: repeat(2, 1fr); }
     .bottom-row { grid-template-columns: repeat(2, 1fr); }
   }
+  /* Phones: single-column stacking so nothing overflows horizontally, and leave
+     room at the bottom for the quick-add FAB. (P4.14) */
+  @media (max-width: 640px) {
+    .summary-row { grid-template-columns: 1fr; }
+    .bottom-row { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
 
   /* MODAL */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(3px); }

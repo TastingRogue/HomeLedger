@@ -19,7 +19,8 @@
 </script>
 
 <svelte:head>
-	<meta name="theme-color" content="#191919" />
+	<!-- theme-color lives in app.html (#0b1118, matching manifest theme_color) as a
+	     single source of truth for the installed-PWA status bar. -->
 	<!-- Apply persisted theme before paint to avoid a flash of the wrong palette -->
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html `<script>try{var t=localStorage.getItem('sf_theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}}catch(e){}</script>`}

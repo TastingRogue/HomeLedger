@@ -22,9 +22,31 @@ function contentMatchesMime(buffer: Buffer, mime: string): boolean {
     case 'image/webp':
       // "RIFF"...."WEBP"
       return startsWith([0x52, 0x49, 0x46, 0x46]) && startsWith([0x57, 0x45, 0x42, 0x50], 8);
+    case 'application/xml':
+    case 'text/xml':
+      return looksLikeXml(buffer);
     default:
       return false;
   }
+}
+
+/**
+ * Heuristic XML sniff for CFDI uploads (P4.6/P4.14): after an optional UTF-8 BOM
+ * and leading whitespace, the content must begin with an XML declaration
+ * (`<?xml`) or an element open tag (`<`). Avoids accepting arbitrary binaries as
+ * XML while tolerating real-world CFDI files.
+ */
+function looksLikeXml(buffer: Buffer): boolean {
+  let i = 0;
+  // Skip a UTF-8 BOM if present.
+  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+    i = 3;
+  }
+  // Skip leading ASCII whitespace.
+  while (i < buffer.length && (buffer[i] === 0x20 || buffer[i] === 0x09 || buffer[i] === 0x0a || buffer[i] === 0x0d)) {
+    i++;
+  }
+  return buffer[i] === 0x3c; // '<'
 }
 
 /**
@@ -55,9 +77,9 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ success: false, error: { code: 'FILE_TOO_LARGE', message: 'El archivo no debe exceder 10MB' } });
     }
 
-    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/gif'];
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'image/gif', 'application/xml', 'text/xml'];
     if (!allowedMimes.includes(data.mimetype)) {
-      return reply.status(400).send({ success: false, error: { code: 'INVALID_TYPE', message: 'Solo se permiten imágenes (JPG, PNG, WEBP, GIF) y PDFs' } });
+      return reply.status(400).send({ success: false, error: { code: 'INVALID_TYPE', message: 'Solo se permiten imágenes (JPG, PNG, WEBP, GIF), PDFs y XML (CFDI)' } });
     }
 
     // Defense in depth: verify the actual bytes match the declared type so a

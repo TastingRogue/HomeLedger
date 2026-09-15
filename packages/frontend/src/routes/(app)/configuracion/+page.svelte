@@ -29,6 +29,10 @@
     listWebhookEvents, listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook,
     type ApiKeyInfo, type CreatedApiKey, type WebhookInfo,
   } from '$lib/api/developer';
+  import {
+    getLockConfig, webauthnSupported, enableWebauthnLock, enablePinLock, disableLock,
+    type LockConfig,
+  } from '$lib/stores/lock';
 
   // User profile
   let userName = $state('');
@@ -264,7 +268,7 @@
   // Lazy-load each admin dataset the first time its tab is opened.
   $effect(() => {
     if (activeTab === 'seguridad') {
-      if (!totpLoaded) { totpLoaded = true; loadTotpStatus(); }
+      if (!totpLoaded) { totpLoaded = true; loadTotpStatus(); refreshLock(); }
       loadSessions();
     }
     if (activeTab === 'api' && !apiLoaded) { apiLoaded = true; loadApiTab(); }
@@ -432,6 +436,48 @@
   function formatSessionDate(iso: string | null): string {
     if (!iso) return '—';
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  }
+
+  // ─── App lock (P4.14) ───
+  let lockConfig = $state<LockConfig>({ enabled: false, method: null });
+  let lockError = $state('');
+  let lockBusy = $state(false);
+  let showPinModal = $state(false);
+  let pinValue = $state('');
+  let pinConfirm = $state('');
+  const canUseBiometric = webauthnSupported();
+
+  function refreshLock() { lockConfig = getLockConfig(); }
+
+  async function enableBiometric() {
+    lockError = ''; lockBusy = true;
+    try {
+      await enableWebauthnLock(userName || userEmail || 'HomeLedger');
+      refreshLock();
+    } catch { lockError = $t('lock.enable_failed'); }
+    finally { lockBusy = false; }
+  }
+
+  function openPinModal() {
+    pinValue = ''; pinConfirm = ''; lockError = ''; showPinModal = true;
+  }
+
+  async function submitPinLock() {
+    lockError = '';
+    if (!/^\d{4,8}$/.test(pinValue)) { lockError = $t('lock.pin_rule'); return; }
+    if (pinValue !== pinConfirm) { lockError = $t('lock.pin_mismatch'); return; }
+    lockBusy = true;
+    try {
+      await enablePinLock(pinValue);
+      refreshLock();
+      showPinModal = false;
+    } catch { lockError = $t('lock.enable_failed'); }
+    finally { lockBusy = false; }
+  }
+
+  function turnOffLock() {
+    disableLock();
+    refreshLock();
   }
 
   // ─── API tab (P4.13): API keys + webhooks ───
@@ -725,6 +771,37 @@
               <button class="btn-action-sm" onclick={openTotpEnroll} disabled={totpBusy}>{totpBusy ? '...' : $t('settings.totp_enable_btn')}</button>
             {/if}
           </div>
+        </div>
+
+        <!-- ─── App lock (P4.14) ─── -->
+        <div class="card">
+          <h3 class="card-title">{$t('lock.settings_title')}</h3>
+          <div class="pref-row">
+            <div class="pref-info">
+              <span class="pref-label">
+                {$t('lock.settings_label')}
+                {#if lockConfig.enabled}
+                  <span class="badge-green">{$t('lock.on')} · {lockConfig.method === 'webauthn' ? $t('lock.method_biometric') : $t('lock.method_pin')}</span>
+                {:else}
+                  <span class="badge-muted">{$t('lock.off')}</span>
+                {/if}
+              </span>
+              <span class="pref-desc">{$t('lock.settings_desc')}</span>
+            </div>
+            {#if lockConfig.enabled}
+              <button class="btn-action-sm danger" onclick={turnOffLock}>{$t('lock.disable')}</button>
+            {/if}
+          </div>
+          {#if !lockConfig.enabled}
+            <div class="lock-enable-row">
+              {#if canUseBiometric}
+                <button class="btn-action-sm" onclick={enableBiometric} disabled={lockBusy}>{lockBusy ? '...' : $t('lock.enable_biometric')}</button>
+              {/if}
+              <button class="btn-action-sm" onclick={openPinModal} disabled={lockBusy}>{$t('lock.enable_pin')}</button>
+            </div>
+            {#if !canUseBiometric}<p class="pref-desc">{$t('lock.no_biometric')}</p>{/if}
+          {/if}
+          {#if lockError}<p class="card-msg error">{lockError}</p>{/if}
         </div>
 
         <!-- ─── Active sessions (P4.12) ─── -->
@@ -1110,6 +1187,35 @@
   </div>
 {/if}
 
+<!-- App-lock PIN modal (P4.14) -->
+{#if showPinModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (showPinModal = false)} role="presentation" transition:scrim>
+    <div class="modal-content modal-sm" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('lock.enable_pin')}</h3>
+        <button class="modal-close" onclick={() => (showPinModal = false)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitPinLock(); }}>
+        <p class="pref-desc">{$t('lock.pin_setup_intro')}</p>
+        <div class="form-field">
+          <label for="lock-pin">{$t('lock.pin_label')}</label>
+          <input id="lock-pin" type="password" inputmode="numeric" autocomplete="off" bind:value={pinValue} placeholder="••••" />
+        </div>
+        <div class="form-field">
+          <label for="lock-pin-confirm">{$t('lock.pin_confirm_label')}</label>
+          <input id="lock-pin-confirm" type="password" inputmode="numeric" autocomplete="off" bind:value={pinConfirm} placeholder="••••" />
+        </div>
+        {#if lockError}<p class="modal-error">{lockError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (showPinModal = false)}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-submit" disabled={lockBusy}>{lockBusy ? '...' : $t('lock.enable')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 <!-- Create API key modal (P4.13) -->
 {#if showCreateKeyModal}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -1362,6 +1468,9 @@
   .scope-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-primary); }
   .scope-item input { width: auto; }
   .webhook-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+
+  /* App lock (P4.14) */
+  .lock-enable-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; }
 
   .loading-state { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
 

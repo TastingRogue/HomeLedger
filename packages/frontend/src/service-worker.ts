@@ -3,7 +3,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { build, files, version } from '$service-worker';
+import { build, files, prerendered, version } from '$service-worker';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -11,10 +11,15 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 const CACHE_NAME = `homeledger-cache-${version}`;
 const API_CACHE_NAME = `homeledger-api-${version}`;
 
+// Dedicated offline fallback page (prerendered → a static HTML file). Served for
+// navigation requests when both the network and the cached landing page miss.
+const OFFLINE_URL = '/offline';
+
 // Assets to cache (app shell)
 const APP_SHELL = [
 	...build, // built JS/CSS bundles
-	...files // static files
+	...files, // static files
+	...prerendered // prerendered pages (includes /offline)
 ];
 
 // Install: cache app shell
@@ -110,10 +115,13 @@ async function networkFirst(request: Request, cacheName: string): Promise<Respon
 		const cached = await caches.match(request);
 		if (cached) return cached;
 
-		// For navigation requests, return the cached index page
+		// For navigation requests, fall back to the cached landing page, then to
+		// the dedicated offline page, so the user always sees a styled screen.
 		if (request.mode === 'navigate') {
 			const fallback = await caches.match('/');
 			if (fallback) return fallback;
+			const offline = await caches.match(OFFLINE_URL);
+			if (offline) return offline;
 		}
 
 		return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });

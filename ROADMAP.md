@@ -679,9 +679,18 @@ Delivered:
 ### P4.14 — PWA / mobile (offline-capable)
 Frontend is responsive. A local-first PWA is the natural mobile story.
 
-- [ ] Installable PWA + offline mode (service worker already present — verify/extend)
-- [ ] Quick-add expense (sub-5-second flow), mobile dashboard
-- [ ] Camera receipt capture (on-device), optional biometric unlock
+- [x] Installable PWA + offline mode (service worker already present — verify/extend)
+- [x] Quick-add expense (sub-5-second flow), mobile dashboard
+- [x] Camera receipt capture (on-device), optional biometric unlock
+
+**P4.14 complete.**
+Delivered:
+- **Installable PWA + offline mode.** The hand-rolled service worker (`src/service-worker.ts`, no plugin) now precaches the `prerendered` set and serves a dedicated **`/offline`** fallback page for navigations when both the network and the cached landing page miss. Verified in the production build: the emitted SW lists `/offline`, precaches it, and the navigate branch falls back to it. Manifest + icons (192/512) + head tags were already present; reconciled the duplicate `theme-color` (removed the stale `#191919` from the root layout so app.html's `#0b1118` — matching the manifest `theme_color` — is the single source of truth). Added an unobtrusive online/offline banner (`OfflineBanner`, listens to `online`/`offline`).
+- **Quick-add + mobile dashboard.** The `registro-rapido` 3-step keypad flow already existed but had no entry point; added a **floating action button** (bottom-right, safe-area aware, hidden on the quick-add page itself) in the app shell. Added a ≤640px breakpoint so the dashboard's summary/bottom/form grids stack to a single column on phones (no horizontal scroll), with bottom padding so the FAB never covers content.
+- **Camera receipt capture.** Added a "Take photo" `<input accept="image/*" capture="environment">` in the receipts upload UI (keeps the existing file/PDF picker); the captured photo flows through the same `uploadAttachment → /attachments/upload` pipeline and existing **server-side** OCR (tesseract) unchanged. Also fixed the CFDI mismatch: the client accepted `.xml` but the backend rejected it — added `application/xml` + `text/xml` to the attachment allow-list with an XML magic-byte sniff, so CFDI XML upload actually works.
+- **Optional biometric/PIN app lock.** A purely client-side, opt-in lock (`$lib/stores/lock` + `LockScreen`) gates the `(app)` subtree after login: unlock with a **WebAuthn platform authenticator** (biometric) or a **local PIN** (SHA-256 + random salt, fallback when biometrics are unavailable). Enable/disable lives in the Security tab of `/configuracion`. It is a convenience lock (like a phone app-lock) — it does **not** replace the JWT and is never server-enforced.
+- Tests: `OfflineBanner` (online/offline toggle), `LockScreen` (PIN success/failure + biometric auto-prompt), receipts camera-capture input. Frontend **57 passing** (was 50), backend **632 passing**; i18n es/en parity kept. Docker rebuilt + smoke-checked (`/manifest.json`, `/offline` both 200).
+- No new migration (P4.14 is frontend + a backend MIME allow-list change).
 
 ---
 

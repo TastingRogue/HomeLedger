@@ -142,6 +142,16 @@
         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.xml" onchange={onUploadFile} />
       </label>
 
+      <!-- Camera capture (P4.14): on mobile this opens the rear camera directly.
+           The captured photo flows through the same upload + OCR pipeline. -->
+      <div class="camera-row">
+        <label class="camera-btn">
+          <input type="file" accept="image/*" capture="environment" onchange={onUploadFile} hidden />
+          <span aria-hidden="true">📷</span> {$t('receipts.take_photo')}
+        </label>
+        {#if uploadFile}<span class="picked-file" title={uploadFile.name}>{uploadFile.name}</span>{/if}
+      </div>
+
       <div class="mode-toggle" role="group" aria-label={$t('receipts.upload_link_mode')}>
         <button type="button" class:active={uploadMode==='existing'} onclick={()=>uploadMode='existing'} disabled={txs.length===0}>{$t('receipts.upload_existing')}</button>
         <button type="button" class:active={uploadMode==='new'} onclick={()=>uploadMode='new'}>{$t('receipts.upload_new')}</button>
@@ -307,6 +317,10 @@
 </div>
 {/if}
 <style>
+.camera-row{display:flex;align-items:center;gap:.6rem;margin:.5rem 0 .25rem;flex-wrap:wrap}
+.camera-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .8rem;background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-md);color:var(--text-secondary);font-size:.78rem;cursor:pointer;min-height:44px}
+.camera-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.picked-file{font-size:.72rem;color:var(--text-muted);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .create-tx-row{display:flex;align-items:center;gap:.6rem;margin:.75rem 0}
 .item-cat{display:grid;grid-template-columns:1fr auto auto;gap:.5rem;align-items:center}
 .item-cat-select{background:var(--bg-surface);border:1px solid var(--border-default);color:var(--text-primary);border-radius:var(--radius-md);padding:.3rem .45rem;font-size:.7rem;max-width:180px}
