@@ -177,13 +177,22 @@ describe('parsePlainText — TOTAL disambiguation (accuracy)', () => {
   });
 });
 
-describe('parsePlainText — OCR with dropped decimals', () => {
-  it('recovers cents across the amounts when OCR lost the separators', () => {
+describe('parsePlainText — OCR amounts read at face value (no cents division)', () => {
+  // Regression: a genuine whole-dollar total like $755 must NOT be divided by
+  // 100 into $7.55. Reading bare integers literally is the safe default; the
+  // user can fix a rare truly-dropped decimal in the editable field.
+  it('keeps a whole-dollar total as-is ($755 stays 755, not 7.55)', () => {
+    const text = 'INVOICE\nItem $500\nBanner $90\nPoster $165\nTOTAL $755';
+    const parsed = parsePlainText(text, 'ocr');
+    expect(parsed.total).toBe(755);
+  });
+
+  it('does not scale separator-less OCR integers', () => {
     const text = 'OXXO\nSUBTOTAL 10000\nIVA 1600\nTOTAL A PAGAR 11600';
     const parsed = parsePlainText(text, 'ocr');
-    expect(parsed.total).toBe(116);
-    expect(parsed.subtotal).toBe(100);
-    expect(parsed.tax).toBe(16);
+    expect(parsed.total).toBe(11600);
+    expect(parsed.subtotal).toBe(10000);
+    expect(parsed.tax).toBe(1600);
     expect(parsed.sourceType).toBe('ocr');
   });
 

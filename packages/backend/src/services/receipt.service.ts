@@ -182,12 +182,22 @@ export function parsePlainText(text: string, sourceType: ReceiptSourceType): Par
   const dateText = firstMatch(text, [/(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/, /(\d{4}-\d{2}-\d{2})/]);
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const merchant = lines.find(line => line.length >= 3 && line.length <= 80 && !/^(total|subtotal|iva|fecha|ticket|factura)/i.test(line)) ?? null;
-  // OCR often drops the decimal point ("114.75" -> "11475"). When we detect that
-  // amounts lost their separators, interpret trailing 2 digits as cents.
-  const assumeCents = sourceType === 'ocr' && ocrDroppedDecimals(text);
+
+  // Amounts are read at face value. We deliberately do NOT "recover cents" by
+  // dividing separator-less integers by 100: a bare "755" is genuinely
+  // ambiguous (could be $755 or an OCR-mangled $7.55), and a real whole-dollar
+  // total like $755 is far more common than a lost-decimal one. Dividing a
+  // correct total by 100 is a silent, hard-to-notice error, whereas an OCR that
+  // truly dropped a decimal is easy for the user to fix in the editable field.
+  // So we prefer the literal reading and let the user correct the rare miss.
+  const assumeCents = false;
+  const subtotal = moneyValue(subtotalText, assumeCents);
+  const tax = moneyValue(taxText, assumeCents);
+  const total = moneyValue(totalText, assumeCents);
+
   // OCR text is noisier, so lower the confidence ceiling for that source.
   const baseConfidence = sourceType === 'ocr' ? 0.5 : 0.65;
-  return { merchant, receiptDate: parseDate(dateText), subtotal: moneyValue(subtotalText, assumeCents), tax: moneyValue(taxText, assumeCents), total: moneyValue(totalText, assumeCents), currency: 'MXN', documentType: /factura|cfdi/i.test(text) ? 'invoice' : 'receipt', sourceType, confidence: totalText ? baseConfidence : 0.2, rawText: text, uuid: null, issuerRfc: null, issuerName: null, items: [] };
+  return { merchant, receiptDate: parseDate(dateText), subtotal, tax, total, currency: 'MXN', documentType: /factura|cfdi/i.test(text) ? 'invoice' : 'receipt', sourceType, confidence: totalText ? baseConfidence : 0.2, rawText: text, uuid: null, issuerRfc: null, issuerName: null, items: [] };
 }
 function extractPdfText(filePath: string): string | null {
   try { return execFileSync('pdftotext', ['-layout', filePath, '-'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return null; }
