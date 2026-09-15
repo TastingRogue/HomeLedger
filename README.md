@@ -10,7 +10,7 @@
 
 HomeLedger is a **self-hosted personal finance app** for people who want to own their financial data instead of trusting it to a cloud service — a privacy-friendly, open-source alternative to Mint, YNAB or Monarch. It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS integration. Bilingual (English / Spanish) with a configurable install currency.
 
-**Using HomeLedger:** [Screenshots](#screenshots) · [Features](#features) · [Quick Start](#quick-start) · [Docker](#docker-recommended-for-production) · [Environment Variables](#environment-variables) · [Upgrading](#upgrading) · [Account Recovery](#account-recovery-locked-out) · [Home Assistant](#home-assistant) · [API](#api-endpoints)
+**Using HomeLedger:** [User Manual](docs/USER_MANUAL.md) · [Screenshots](#screenshots) · [Features](#features) · [Quick Start](#quick-start) · [Docker](#docker-recommended-for-production) · [Environment Variables](#environment-variables) · [Upgrading](#upgrading) · [Account Recovery](#account-recovery-locked-out) · [Home Assistant](#home-assistant) · [API](#api-endpoints)
 
 **Contributing:** [Development](#development) · [Contributing guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Support the Project](#support-the-project)
 
@@ -556,7 +556,7 @@ homeledger/
 │   └── shared/           # Shared TypeScript types
 ├── ha-addon/             # Home Assistant Add-on
 ├── ha-integration/       # HA Custom Integration (Python)
-├── docs/                 # DEPLOYMENT.md, STABILITY.md, screenshots
+├── docs/                 # USER_MANUAL.md, DEPLOYMENT.md, STABILITY.md, screenshots
 ├── Dockerfile            # Single self-contained image (app + API)
 ├── docker-compose.yml    # Deployment config
 └── .env.example          # Environment template
