@@ -41,6 +41,7 @@
       color: 'var(--accent-orange)',
       items: [
         { href: '/dashboard', label: $t('nav.dashboard'), icon: 'layout-dashboard' },
+        { href: '/buscar', label: $t('nav.search'), icon: 'search' },
         { href: '/cuentas', label: $t('nav.accounts'), icon: 'building' },
         { href: '/transacciones', label: $t('nav.transactions'), icon: 'coins' },
         { href: '/transferencias', label: $t('nav.transfers'), icon: 'arrow-left-right' },

@@ -31,6 +31,7 @@ import { attachmentRoutes } from './routes/v1/attachments.routes.js';
 import { receiptRoutes } from './routes/v1/receipts.routes.js';
 import { networthRoutes } from './routes/v1/networth.routes.js';
 import { tagRoutes } from './routes/v1/tags.routes.js';
+import { searchRoutes } from './routes/v1/search.routes.js';
 import { parseTrustProxy } from './config/trust-proxy.js';
 
 export async function buildApp() {
@@ -97,6 +98,7 @@ export async function buildApp() {
   await app.register(receiptRoutes, { prefix: '/api/v1/receipts' });
   await app.register(networthRoutes, { prefix: '/api/v1/networth' });
   await app.register(tagRoutes, { prefix: '/api/v1/tags' });
+  await app.register(searchRoutes, { prefix: '/api/v1/search' });
 
   try {
     // SvelteKit (adapter-node) generates this file during the frontend build.
