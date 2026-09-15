@@ -518,7 +518,7 @@ add bounce (`~0.8`) only for momentum-driven (flick/drag-release) interactions.
 > app, just more powerful. None require internet; all operate on local data /
 > user-provided files. Status marks are vs. current code.
 >
-> The sub-items (`P4.1`…`P4.14`) are **independent** and can ship in any order across
+> The sub-items (`P4.1`…`P4.15`) are **independent** and can ship in any order across
 > point releases; pick by value/effort. They are NOT a strict sequence.
 
 ### P4.1 — Richer transaction model
@@ -691,6 +691,35 @@ Delivered:
 - **Optional biometric/PIN app lock.** A purely client-side, opt-in lock (`$lib/stores/lock` + `LockScreen`) gates the `(app)` subtree after login: unlock with a **WebAuthn platform authenticator** (biometric) or a **local PIN** (SHA-256 + random salt, fallback when biometrics are unavailable). Enable/disable lives in the Security tab of `/configuracion`. It is a convenience lock (like a phone app-lock) — it does **not** replace the JWT and is never server-enforced.
 - Tests: `OfflineBanner` (online/offline toggle), `LockScreen` (PIN success/failure + biometric auto-prompt), receipts camera-capture input. Frontend **57 passing** (was 50), backend **632 passing**; i18n es/en parity kept. Docker rebuilt + smoke-checked (`/manifest.json`, `/offline` both 200).
 - No new migration (P4.14 is frontend + a backend MIME allow-list change).
+
+### P4.15 — Desktop app / one-click installers (Windows-first)
+Docker is great for homelab/self-host users, but it's a wall for non-technical
+people who "just want to install it on Windows and click an icon." A native
+desktop wrapper gives HomeLedger a normal install experience (Start-menu entry,
+app icon, its own window) with **zero Docker and zero CLI** — while staying
+100% local-first (the app + API still run on the user's own machine; no cloud).
+
+**Approach: Tauri, with the existing Node server as a sidecar.** The UI is the
+current SvelteKit frontend rendered in the OS webview; the compiled Fastify +
+SQLite backend (`packages/backend/dist/server.js`) ships as a bundled "sidecar"
+process that Tauri starts on `127.0.0.1:<port>` and stops on quit. Chosen over
+Electron for a much smaller installer (~5–15 MB vs ~100 MB+) and lower memory.
+The desktop build reuses the web build unchanged — it is packaging, not a rewrite.
+
+- [ ] Tauri shell that boots the Node sidecar on a loopback port and loads the app in a native window (app icon = the new brand mark)
+- [ ] Bundle Node + the built backend/frontend + native modules (`better-sqlite3`, `bcrypt`) for `windows-x64`; data dir under `%APPDATA%\HomeLedger`
+- [ ] Windows installer (`.msi`/NSIS `.exe`) via `tauri build`, with an install-time language choice (en/es → seeds `DEFAULT_LOCALE`) and currency
+- [ ] First-run UX: auto-generate a strong `JWT_SECRET`, create the local admin, open the app — no env vars to set by hand
+- [ ] GitHub Actions job to build + (optionally sign) the Windows artifact and attach it to the release; later extend to macOS `.dmg` + Linux `AppImage`
+- [ ] Docs: a "Windows (no Docker)" install path in the README/DEPLOYMENT alongside the Docker instructions
+
+> **Scope note.** This is packaging of the existing local-first app — no new
+> server features, no cloud, no data-model change. It's a **medium-sized
+> initiative** (adds a Rust/Tauri toolchain + a Windows signing/build pipeline,
+> and must be verified on real Windows), so it ships as its own point release
+> within v1.x once the desktop build is validated end-to-end. A lighter interim
+> step is a portable single-file `.exe` (Node SEA / `pkg`) that runs the server
+> and opens the browser — useful as a stopgap before the full Tauri app.
 
 ---
 
