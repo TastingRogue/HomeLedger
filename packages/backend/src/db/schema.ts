@@ -29,11 +29,36 @@ export const apiKeys = sqliteTable('api_keys', {
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   key: text('key').notNull(),
+  // Scoped API keys (P4.13): JSON array of scope strings (e.g. ["read:transactions"]).
+  // NULL or an empty array = full access (back-compat with pre-P4.13 keys).
+  scopes: text('scopes'),
   createdAt: text('created_at').notNull(),
   lastUsedAt: text('last_used_at'),
 }, (table) => [
   uniqueIndex('api_keys_key_unique').on(table.key),
   index('api_keys_user_id_idx').on(table.userId),
+]);
+
+/**
+ * User-configured outbound webhooks (P4.13). Fire-and-forget POST to a
+ * user-owned endpoint (e.g. Home Assistant, a local script) on domain events.
+ */
+export const webhooks = sqliteTable('webhooks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  // Optional shared secret; when set, deliveries carry an HMAC-SHA256 signature.
+  secret: text('secret'),
+  // JSON array of subscribed event names (e.g. ["transaction.created"]).
+  events: text('events').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  // Last-delivery bookkeeping (best-effort; surfaced in the UI).
+  lastStatus: text('last_status'),
+  lastAttemptAt: text('last_attempt_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => [
+  index('webhooks_user_id_idx').on(table.userId),
 ]);
 
 export const refreshTokens = sqliteTable('refresh_tokens', {

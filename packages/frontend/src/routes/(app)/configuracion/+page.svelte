@@ -24,6 +24,11 @@
     listSessions, revokeSession,
     type TotpStatus, type SessionInfo,
   } from '$lib/api/auth';
+  import {
+    listApiKeys, listScopes, createApiKey, revokeApiKey,
+    listWebhookEvents, listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook,
+    type ApiKeyInfo, type CreatedApiKey, type WebhookInfo,
+  } from '$lib/api/developer';
 
   // User profile
   let userName = $state('');
@@ -262,6 +267,7 @@
       if (!totpLoaded) { totpLoaded = true; loadTotpStatus(); }
       loadSessions();
     }
+    if (activeTab === 'api' && !apiLoaded) { apiLoaded = true; loadApiTab(); }
   });
 
   $effect(() => {
@@ -428,6 +434,126 @@
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
   }
 
+  // ─── API tab (P4.13): API keys + webhooks ───
+  let apiLoaded = false;
+  // API keys
+  let apiKeys = $state<ApiKeyInfo[]>([]);
+  let availableScopes = $state<string[]>([]);
+  let apiKeysError = $state('');
+  let showCreateKeyModal = $state(false);
+  let newKeyName = $state('');
+  let newKeyScopes = $state<string[]>([]);
+  let keyBusy = $state(false);
+  let createdKey = $state<CreatedApiKey | null>(null);
+  // webhooks
+  let webhooks = $state<WebhookInfo[]>([]);
+  let webhookEvents = $state<string[]>([]);
+  let webhooksError = $state('');
+  let showWebhookModal = $state(false);
+  let editingWebhookId = $state<number | null>(null);
+  let whUrl = $state('');
+  let whSecret = $state('');
+  let whEvents = $state<string[]>([]);
+  let whEnabled = $state(true);
+  let webhookBusy = $state(false);
+  let webhookTestMsg = $state('');
+
+  async function loadApiTab() {
+    apiKeysError = ''; webhooksError = '';
+    try {
+      [apiKeys, availableScopes] = await Promise.all([listApiKeys(), listScopes()]);
+    } catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+    try {
+      [webhooks, webhookEvents] = await Promise.all([listWebhooks(), listWebhookEvents()]);
+    } catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  function openCreateKey() {
+    newKeyName = ''; newKeyScopes = []; createdKey = null; apiKeysError = '';
+    showCreateKeyModal = true;
+  }
+
+  function toggleKeyScope(scope: string) {
+    newKeyScopes = newKeyScopes.includes(scope)
+      ? newKeyScopes.filter((s) => s !== scope)
+      : [...newKeyScopes, scope];
+  }
+
+  async function submitCreateKey() {
+    if (!newKeyName.trim()) { apiKeysError = $t('developer.key_name_required'); return; }
+    keyBusy = true; apiKeysError = '';
+    try {
+      createdKey = await createApiKey(newKeyName.trim(), newKeyScopes);
+      apiKeys = await listApiKeys();
+    } catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+    finally { keyBusy = false; }
+  }
+
+  function copyCreatedKey() {
+    if (createdKey && navigator.clipboard) navigator.clipboard.writeText(createdKey.key).catch(() => {});
+  }
+
+  function closeCreateKey() {
+    showCreateKeyModal = false; createdKey = null; newKeyName = ''; newKeyScopes = [];
+  }
+
+  async function removeApiKey(id: number) {
+    try { await revokeApiKey(id); apiKeys = await listApiKeys(); }
+    catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  function openCreateWebhook() {
+    editingWebhookId = null;
+    whUrl = ''; whSecret = ''; whEvents = [...webhookEvents]; whEnabled = true;
+    webhooksError = ''; webhookTestMsg = '';
+    showWebhookModal = true;
+  }
+
+  function openEditWebhook(w: WebhookInfo) {
+    editingWebhookId = w.id;
+    whUrl = w.url; whSecret = ''; whEvents = [...w.events]; whEnabled = w.enabled;
+    webhooksError = ''; webhookTestMsg = '';
+    showWebhookModal = true;
+  }
+
+  function toggleWebhookEvent(event: string) {
+    whEvents = whEvents.includes(event) ? whEvents.filter((e) => e !== event) : [...whEvents, event];
+  }
+
+  async function submitWebhook() {
+    if (!whUrl.trim()) { webhooksError = $t('developer.webhook_url_required'); return; }
+    if (whEvents.length === 0) { webhooksError = $t('developer.webhook_events_required'); return; }
+    webhookBusy = true; webhooksError = '';
+    try {
+      if (editingWebhookId !== null) {
+        const payload: { url: string; events: string[]; enabled: boolean; secret?: string } = {
+          url: whUrl.trim(), events: whEvents, enabled: whEnabled,
+        };
+        if (whSecret.trim()) payload.secret = whSecret.trim();
+        await updateWebhook(editingWebhookId, payload);
+      } else {
+        await createWebhook({ url: whUrl.trim(), secret: whSecret.trim() || null, events: whEvents, enabled: whEnabled });
+      }
+      webhooks = await listWebhooks();
+      showWebhookModal = false;
+    } catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+    finally { webhookBusy = false; }
+  }
+
+  async function removeWebhook(id: number) {
+    try { await deleteWebhook(id); webhooks = await listWebhooks(); }
+    catch (e: unknown) { webhooksError = e instanceof Error ? e.message : 'Error'; }
+  }
+
+  async function runWebhookTest(id: number) {
+    webhookTestMsg = '';
+    try {
+      const res = await testWebhook(id);
+      webhookTestMsg = `${$t('developer.webhook_test_result')}: ${res.status}`;
+      webhooks = await listWebhooks();
+    } catch (e: unknown) { webhookTestMsg = e instanceof Error ? e.message : 'Error'; }
+  }
+
 
 
   function handleLocaleChange(e: Event) {
@@ -480,6 +606,9 @@
       </button>
       <button class="tab-item" class:active={activeTab === 'datos'} onclick={() => activeTab = 'datos'}>
         <Icon name="save" size={15} /> {$t('settings.data')}
+      </button>
+      <button class="tab-item" class:active={activeTab === 'api'} onclick={() => activeTab = 'api'}>
+        <Icon name="settings" size={15} /> {$t('developer.tab')}
       </button>
       {#if isAdmin}
         <button class="tab-item" class:active={activeTab === 'usuarios'} onclick={() => activeTab = 'usuarios'}>
@@ -679,6 +808,71 @@
             </div>
             <span class="pref-value">0.1.0</span>
           </div>
+        </div>
+
+      {:else if activeTab === 'api'}
+        <!-- ─── API keys + webhooks (P4.13) ─── -->
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">{$t('developer.api_keys_title')}</h3>
+            <button class="btn-action-sm" onclick={openCreateKey}>{$t('developer.create_key')}</button>
+          </div>
+          <p class="card-desc">{$t('developer.api_keys_desc')}</p>
+          <p class="card-desc"><a href="/api/docs" target="_blank" rel="noopener">{$t('developer.open_docs')}</a></p>
+          {#if apiKeysError}<p class="card-msg error">{apiKeysError}</p>{/if}
+          {#if apiKeys.length === 0}
+            <p class="card-desc">{$t('developer.no_keys')}</p>
+          {:else}
+            <ul class="session-list">
+              {#each apiKeys as k (k.id)}
+                <li class="session-item">
+                  <div class="session-info">
+                    <span class="session-ua">{k.name}</span>
+                    <span class="session-meta">
+                      {#if k.scopes && k.scopes.length}{k.scopes.join(', ')}{:else}{$t('developer.full_access')}{/if}
+                      · {$t('developer.last_used')}: {formatSessionDate(k.lastUsedAt)}
+                    </span>
+                  </div>
+                  <button class="btn-action-sm danger" onclick={() => removeApiKey(k.id)}>{$t('developer.revoke')}</button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">{$t('developer.webhooks_title')}</h3>
+            <button class="btn-action-sm" onclick={openCreateWebhook}>{$t('developer.add_webhook')}</button>
+          </div>
+          <p class="card-desc">{$t('developer.webhooks_desc')}</p>
+          {#if webhooksError}<p class="card-msg error">{webhooksError}</p>{/if}
+          {#if webhookTestMsg}<p class="card-msg">{webhookTestMsg}</p>{/if}
+          {#if webhooks.length === 0}
+            <p class="card-desc">{$t('developer.no_webhooks')}</p>
+          {:else}
+            <ul class="session-list">
+              {#each webhooks as w (w.id)}
+                <li class="session-item">
+                  <div class="session-info">
+                    <span class="session-ua">
+                      {w.url}
+                      {#if w.enabled}<span class="badge-green">{$t('developer.enabled')}</span>{:else}<span class="badge-muted">{$t('developer.disabled')}</span>{/if}
+                    </span>
+                    <span class="session-meta">
+                      {w.events.join(', ')}
+                      {#if w.lastStatus} · {$t('developer.last_status')}: {w.lastStatus}{/if}
+                    </span>
+                  </div>
+                  <div class="webhook-actions">
+                    <button class="btn-action-sm" onclick={() => runWebhookTest(w.id)}>{$t('developer.test')}</button>
+                    <button class="btn-action-sm" onclick={() => openEditWebhook(w)}>{$t('common.edit')}</button>
+                    <button class="btn-action-sm danger" onclick={() => removeWebhook(w.id)}>{$t('common.delete')}</button>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
 
       {:else if activeTab === 'usuarios' && isAdmin}
@@ -916,6 +1110,99 @@
   </div>
 {/if}
 
+<!-- Create API key modal (P4.13) -->
+{#if showCreateKeyModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeCreateKey} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('developer.create_key')}</h3>
+        <button class="modal-close" onclick={closeCreateKey} aria-label={$t('common.close')}>&times;</button>
+      </div>
+
+      {#if createdKey}
+        <div class="modal-form">
+          <div class="modal-success">{$t('developer.key_created_ok')}</div>
+          <p class="pref-desc">{$t('developer.key_shown_once')}</p>
+          <p class="totp-uri">{createdKey.key}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={copyCreatedKey}>{$t('developer.copy_key')}</button>
+            <button type="button" class="btn-submit" onclick={closeCreateKey}>{$t('common.done')}</button>
+          </div>
+        </div>
+      {:else}
+        <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitCreateKey(); }}>
+          <div class="form-field">
+            <label for="key-name">{$t('developer.key_name')}</label>
+            <input id="key-name" type="text" bind:value={newKeyName} maxlength="100" />
+          </div>
+          <div class="form-field">
+            <span class="field-label-block">{$t('developer.scopes')}</span>
+            <p class="pref-desc">{$t('developer.scopes_hint')}</p>
+            <div class="scope-grid">
+              {#each availableScopes as scope (scope)}
+                <label class="scope-item">
+                  <input type="checkbox" checked={newKeyScopes.includes(scope)} onchange={() => toggleKeyScope(scope)} />
+                  <span>{scope}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
+          {#if apiKeysError}<p class="modal-error">{apiKeysError}</p>{/if}
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick={closeCreateKey}>{$t('common.cancel')}</button>
+            <button type="submit" class="btn-submit" disabled={keyBusy}>{keyBusy ? '...' : $t('developer.create_key')}</button>
+          </div>
+        </form>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Webhook create/edit modal (P4.13) -->
+{#if showWebhookModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={() => (showWebhookModal = false)} role="presentation" transition:scrim>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{editingWebhookId !== null ? $t('developer.edit_webhook') : $t('developer.add_webhook')}</h3>
+        <button class="modal-close" onclick={() => (showWebhookModal = false)} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitWebhook(); }}>
+        <div class="form-field">
+          <label for="wh-url">{$t('developer.webhook_url')}</label>
+          <input id="wh-url" type="url" bind:value={whUrl} placeholder="https://..." />
+        </div>
+        <div class="form-field">
+          <label for="wh-secret">{$t('developer.webhook_secret')}</label>
+          <input id="wh-secret" type="text" bind:value={whSecret} placeholder={editingWebhookId !== null ? $t('developer.webhook_secret_keep') : $t('developer.webhook_secret_ph')} />
+          <p class="pref-desc">{$t('developer.webhook_secret_hint')}</p>
+        </div>
+        <div class="form-field">
+          <span class="field-label-block">{$t('developer.webhook_events')}</span>
+          <div class="scope-grid">
+            {#each webhookEvents as event (event)}
+              <label class="scope-item">
+                <input type="checkbox" checked={whEvents.includes(event)} onchange={() => toggleWebhookEvent(event)} />
+                <span>{event}</span>
+              </label>
+            {/each}
+          </div>
+        </div>
+        <label class="scope-item">
+          <input type="checkbox" bind:checked={whEnabled} />
+          <span>{$t('developer.webhook_enabled')}</span>
+        </label>
+        {#if webhooksError}<p class="modal-error">{webhooksError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={() => (showWebhookModal = false)}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-submit" disabled={webhookBusy}>{webhookBusy ? '...' : $t('common.save')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 <!-- Admin: reset user password (P1.10) -->
 {#if resetTarget}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -1067,6 +1354,14 @@
   /* TOTP enrollment (P4.12) */
   .totp-uri { word-break: break-all; font-family: var(--font-mono, monospace); font-size: 0.68rem; background: var(--bg-muted, rgba(0,0,0,0.04)); padding: 0.4rem 0.5rem; border-radius: var(--radius-sm); }
   .backup-codes { list-style: none; margin: 0.5rem 0; padding: 0.6rem 0.7rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.35rem; background: var(--bg-muted, rgba(0,0,0,0.04)); border-radius: var(--radius-md); font-family: var(--font-mono, monospace); font-size: 0.82rem; letter-spacing: 0.05em; }
+
+  /* API tab (P4.13) */
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.3rem; }
+  .field-label-block { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.25rem; }
+  .scope-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.3rem 0.75rem; margin-top: 0.3rem; }
+  .scope-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-primary); }
+  .scope-item input { width: auto; }
+  .webhook-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
 
   .loading-state { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
 

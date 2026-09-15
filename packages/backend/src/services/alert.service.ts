@@ -4,6 +4,7 @@ import { getDb, getSqlite } from '../db/connection.js';
 import { alerts, accounts, subscriptions, goals, budgets, budgetCategories, budgetTags, transactions, transactionTags, categories, tags } from '../db/schema.js';
 import { AccountService } from './account.service.js';
 import { SubscriptionService } from './subscription.service.js';
+import { WebhookService } from './webhook.service.js';
 
 /**
  * Error personalizado para operaciones del Motor de Alertas.
@@ -294,6 +295,16 @@ export class AlertService {
 
         if (alert) {
           createdAlerts.push(alert);
+          // P4.13: emit subscription.upcoming only when the alert is newly
+          // created (createAlert dedups), so it fires once per upcoming payment.
+          WebhookService.deliver(userId, 'subscription.upcoming', {
+            subscriptionId: sub.id,
+            name: sub.name,
+            amount: sub.amount,
+            accountId: sub.accountId,
+            daysRemaining,
+            nextPaymentDate: sub.nextPaymentDate,
+          });
         }
       }
     }
@@ -403,6 +414,12 @@ export class AlertService {
 
       if (alert) {
         createdAlerts.push(alert);
+        // P4.13: emit goal.completed once (createAlert dedups by goalId).
+        WebhookService.deliver(userId, 'goal.completed', {
+          goalId: goal.id,
+          name: goal.name,
+          targetAmount: goal.targetAmount,
+        });
       }
     }
 
@@ -485,7 +502,18 @@ export class AlertService {
           'critical', exceededHash,
           { budgetId: budget.id, budgetName: budget.name, line: lineName, allocated: allocatedTotal, spent, percentUsed: Math.round(percentUsed * 100) / 100 },
         );
-        if (alert) createdAlerts.push(alert);
+        if (alert) {
+          createdAlerts.push(alert);
+          // P4.13: emit budget.exceeded once (createAlert dedups per budget line).
+          WebhookService.deliver(userId, 'budget.exceeded', {
+            budgetId: budget.id,
+            budgetName: budget.name,
+            line: lineName,
+            allocated: allocatedTotal,
+            spent,
+            percentUsed: Math.round(percentUsed * 100) / 100,
+          });
+        }
       } else if (percentUsed > budget.alertThreshold) {
         AlertService.removeAlertByHash(exceededHash); // recovered below 100%
         const alert = AlertService.createAlert(

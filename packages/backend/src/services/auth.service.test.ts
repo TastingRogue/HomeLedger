@@ -51,6 +51,7 @@ describe('AuthService', () => {
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         key TEXT NOT NULL,
+        scopes TEXT,
         created_at TEXT NOT NULL,
         last_used_at TEXT
       );
@@ -361,16 +362,54 @@ describe('AuthService', () => {
       });
 
       const apiKey = await AuthService.generateApiKey(registerResult.user.id, 'My Key');
-      const payload = await AuthService.validateApiKey(apiKey.key);
+      const result = await AuthService.validateApiKey(apiKey.key);
 
-      expect(payload).not.toBeNull();
-      expect(payload!.userId).toBe(registerResult.user.id);
-      expect(payload!.email).toBe('user@test.com');
+      expect(result).not.toBeNull();
+      expect(result!.payload.userId).toBe(registerResult.user.id);
+      expect(result!.payload.email).toBe('user@test.com');
+      expect(result!.scopes).toBeNull(); // no scopes = full access
     });
 
     it('should return null for an invalid API key', async () => {
       const result = await AuthService.validateApiKey('invalid-key');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('scoped API keys (P4.13)', () => {
+    async function registerUser() {
+      return AuthService.register({ email: 'user@test.com', password: 'password123', name: 'User' });
+    }
+
+    it('persists and surfaces scopes on create + validate', async () => {
+      const r = await registerUser();
+      const created = await AuthService.generateApiKey(r.user.id, 'Scoped', ['read:transactions', 'write:accounts']);
+      expect(created.scopes).toEqual(['read:transactions', 'write:accounts']);
+
+      const validation = await AuthService.validateApiKey(created.key);
+      expect(validation!.scopes).toEqual(['read:transactions', 'write:accounts']);
+    });
+
+    it('drops invalid/duplicate scopes and treats empty as full access', async () => {
+      const r = await registerUser();
+      const created = await AuthService.generateApiKey(r.user.id, 'Cleaned', ['read:transactions', 'read:transactions', 'bogus:scope']);
+      expect(created.scopes).toEqual(['read:transactions']);
+
+      const full = await AuthService.generateApiKey(r.user.id, 'Full', []);
+      expect(full.scopes).toBeNull();
+      const validation = await AuthService.validateApiKey(full.key);
+      expect(validation!.scopes).toBeNull();
+    });
+
+    it('lists a user\'s keys without secrets', async () => {
+      const r = await registerUser();
+      await AuthService.generateApiKey(r.user.id, 'A', ['read:reports']);
+      await AuthService.generateApiKey(r.user.id, 'B', null);
+      const list = AuthService.listApiKeys(r.user.id);
+      expect(list.length).toBe(2);
+      // Metadata only — no `key`/hash field present.
+      expect(Object.keys(list[0]!)).toEqual(expect.arrayContaining(['id', 'name', 'scopes', 'createdAt', 'lastUsedAt']));
+      expect((list[0] as unknown as Record<string, unknown>)['key']).toBeUndefined();
     });
   });
 

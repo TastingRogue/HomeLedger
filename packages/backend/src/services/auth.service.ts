@@ -14,6 +14,7 @@ import {
   generateBackupCodes,
   hashBackupCode,
 } from '../utils/totp.js';
+import { normalizeScopes } from '../config/scopes.js';
 import type { RegisterSchema, LoginSchema } from '../validators/auth.schema.js';
 
 const SALT_ROUNDS = 12;
@@ -47,7 +48,35 @@ export interface GeneratedApiKey {
   name: string;
   key: string;
   keyPrefix: string;
+  scopes: string[] | null;
   createdAt: string;
+}
+
+/** API-key metadata for listing (never includes the hash or raw key). */
+export interface ApiKeyInfo {
+  id: number;
+  name: string;
+  scopes: string[] | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** Result of validating an API key: the identity + its scopes (null = full). */
+export interface ApiKeyValidation {
+  payload: TokenPayload;
+  scopes: string[] | null;
+}
+
+/** Parse a stored scopes JSON string; returns null (full access) on empty/invalid. */
+function parseScopes(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (Array.isArray(arr) && arr.length > 0) return arr.map((s) => String(s));
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /** Client metadata captured at login so sessions can be reviewed/revoked. */
@@ -364,7 +393,7 @@ export class AuthService {
    * Generate a new API key for a user.
    * Returns the raw key (only shown once) and stores a hash in the database.
    */
-  static async generateApiKey(userId: number, name: string): Promise<GeneratedApiKey> {
+  static async generateApiKey(userId: number, name: string, scopes?: string[] | null): Promise<GeneratedApiKey> {
     const db = getDb();
 
     // Generate a random 64-character hex string
@@ -374,6 +403,7 @@ export class AuthService {
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
     const now = new Date().toISOString();
+    const normalizedScopes = normalizeScopes(scopes);
 
     const result = db
       .insert(apiKeys)
@@ -381,6 +411,7 @@ export class AuthService {
         userId,
         name,
         key: keyHash,
+        scopes: normalizedScopes ? JSON.stringify(normalizedScopes) : null,
         createdAt: now,
       })
       .returning()
@@ -391,8 +422,30 @@ export class AuthService {
       name: result.name,
       key: rawKey,
       keyPrefix: rawKey.substring(0, 8),
+      scopes: normalizedScopes,
       createdAt: result.createdAt,
     };
+  }
+
+  /**
+   * List a user's API keys (metadata only — never the hash or raw key).
+   */
+  static listApiKeys(userId: number): ApiKeyInfo[] {
+    const db = getDb();
+    const rows = db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .orderBy(desc(apiKeys.createdAt))
+      .all();
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      scopes: parseScopes(r.scopes),
+      createdAt: r.createdAt,
+      lastUsedAt: r.lastUsedAt ?? null,
+    }));
   }
 
   /**
@@ -414,8 +467,9 @@ export class AuthService {
 
   /**
    * Validate an API key by hashing it and checking against stored hashes.
+   * Returns the token payload plus the key's scopes (null = full access).
    */
-  static async validateApiKey(rawKey: string): Promise<TokenPayload | null> {
+  static async validateApiKey(rawKey: string): Promise<ApiKeyValidation | null> {
     const db = getDb();
 
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
@@ -452,9 +506,12 @@ export class AuthService {
     const foundUser = user[0]!;
 
     return {
-      userId: foundUser.id,
-      email: foundUser.email,
-      role: foundUser.role,
+      payload: {
+        userId: foundUser.id,
+        email: foundUser.email,
+        role: foundUser.role,
+      },
+      scopes: parseScopes(record.scopes),
     };
   }
 

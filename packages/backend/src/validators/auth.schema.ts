@@ -68,6 +68,9 @@ export const createApiKeySchema = z.object({
     .min(1, 'El nombre no puede estar vacío')
     .max(100, 'El nombre no puede exceder 100 caracteres'),
 
+  // Optional scope list (P4.13). Omitted/empty = full access.
+  scopes: z.array(z.string()).optional(),
+
   expiresAt: z
     .string()
     .refine(

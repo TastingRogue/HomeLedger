@@ -5,6 +5,7 @@ import type { CreateTransactionSchema, UpdateTransactionSchema, QuickTransaction
 import type { TransactionFilters, PaginatedResult } from '@homeledger/shared';
 import { TransactionType } from '@homeledger/shared';
 import { TagService } from './tag.service.js';
+import { WebhookService } from './webhook.service.js';
 
 // ============================================
 // Types
@@ -157,6 +158,18 @@ export class TransactionService {
 
       return newTransaction;
     })();
+
+    // P4.13: fire the transaction.created webhook (fire-and-forget, post-commit).
+    WebhookService.deliver(userId, 'transaction.created', {
+      id: result.id,
+      accountId: result.accountId,
+      categoryId: result.categoryId,
+      name: result.name,
+      amount: result.amount,
+      type: result.type,
+      date: result.date,
+      merchant: result.merchant,
+    });
 
     return result;
   }
@@ -565,6 +578,18 @@ export class TransactionService {
 
       return newTransaction;
     })();
+
+    // P4.13: fire the transaction.created webhook (fire-and-forget, post-commit).
+    WebhookService.deliver(userId, 'transaction.created', {
+      id: result.id,
+      accountId: result.accountId,
+      categoryId: result.categoryId,
+      name: result.name,
+      amount: result.amount,
+      type: result.type,
+      date: result.date,
+      merchant: result.merchant,
+    });
 
     return result;
   }

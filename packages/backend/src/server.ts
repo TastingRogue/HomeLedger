@@ -8,6 +8,9 @@ import { getDefaultLocale } from './config/locale.js';
 import { seedRegistrationSettingsFromEnv } from './config/registration.js';
 import { seedCurrencySettingFromEnv, getInstanceCurrency } from './config/currency.js';
 import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandler } from './middleware/index.js';
+import { registerOpenApi } from './openapi.js';
+import { apiKeyRoutes } from './routes/v1/api-keys.routes.js';
+import { webhookRoutes } from './routes/v1/webhooks.routes.js';
 import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
 import { getSchedulerStatus } from './scheduler/status.js';
@@ -50,6 +53,9 @@ export async function buildApp() {
     : true;
   await app.register(cors, { origin: corsOrigin, credentials: true });
   await registerRateLimitMiddleware(app);
+  // OpenAPI/Swagger must be registered BEFORE the auth middleware + routes so it
+  // can collect route schemas and serve its docs without an auth challenge.
+  await registerOpenApi(app);
   registerAuthMiddleware(app);
   registerErrorHandler(app);
   // Liveness/readiness probe with a real DB connectivity check. Returns 503 when
@@ -99,6 +105,8 @@ export async function buildApp() {
   await app.register(networthRoutes, { prefix: '/api/v1/networth' });
   await app.register(tagRoutes, { prefix: '/api/v1/tags' });
   await app.register(searchRoutes, { prefix: '/api/v1/search' });
+  await app.register(apiKeyRoutes, { prefix: '/api/v1/api-keys' });
+  await app.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
 
   try {
     // SvelteKit (adapter-node) generates this file during the frontend build.

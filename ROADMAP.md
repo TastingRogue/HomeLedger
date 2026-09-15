@@ -662,9 +662,19 @@ Delivered:
 ### P4.13 — API maturity (local endpoints)
 `/api/v1` + API keys exist. Make it a real platform surface.
 
-- [ ] OpenAPI spec + Swagger UI
-- [ ] Webhooks to a **user-configured** endpoint (e.g. Home Assistant, local script): `transaction.created`, `budget.exceeded`, `goal.completed`, `subscription.upcoming`
-- [ ] Scoped API keys
+- [x] OpenAPI spec + Swagger UI
+- [x] Webhooks to a **user-configured** endpoint (e.g. Home Assistant, local script): `transaction.created`, `budget.exceeded`, `goal.completed`, `subscription.upcoming`
+- [x] Scoped API keys
+
+**P4.13 complete.**
+Delivered:
+- **OpenAPI 3.0.3 + Swagger UI** via `@fastify/swagger` + `@fastify/swagger-ui`, registered before the routes. Browsable docs at **`/api/docs`** (spec JSON at `/api/docs/json`) — public (describes the API shape, not user data). Documents the two auth schemes (`bearerAuth` JWT + `apiKeyAuth` `X-API-Key`), the `{success,data}` / `{success,error}` envelopes, and the scope model. 121 paths auto-collected.
+- **Scoped API keys.** `api_keys.scopes` (JSON) added; scopes are `read:<resource>` / `write:<resource>` plus coarse `read:*` / `write:*` (`write:<r>` implies `read:<r>`). A key with **no scopes = full access** (back-compat). Full CRUD at `/api/v1/api-keys` (create returns the raw key once; list never returns secrets; revoke). A `requireScope()` preHandler enforces scopes on API-key requests; **JWT sessions always have full access** (scopes only ever restrict keys). Auth source + scopes are attached to the request in the auth middleware.
+- **User-configured webhooks** (per-user, new `webhooks` table). `WebhookService` create/list/update/delete/test + `deliver()` that is **fire-and-forget and best-effort** (never throws into or blocks the domain operation), with a 5s timeout and an **HMAC-SHA256 signature** header (`X-HomeLedger-Signature: sha256=…`) when a secret is set. CRUD at `/api/v1/webhooks` (+ `/:id/test`). Events fired: `transaction.created` (post-commit in `TransactionService.create`/`quickCreate`) and `budget.exceeded` / `goal.completed` / `subscription.upcoming` (emitted from `AlertService` only when the corresponding alert is newly created, so they reuse the existing dedup and fire once).
+- Migration **0017** (`api_keys.scopes` + `webhooks` table) — additive, existing keys unaffected.
+- Frontend: an **API** tab in `/configuracion` — create/list/revoke keys (pick scopes; raw key shown once with copy) and add/list/edit/delete/test webhooks (URL, optional secret, event checkboxes, enable toggle, last-status). Link to the Swagger docs. i18n es + en.
+- Tests: `config/scopes.test.ts` (13), `webhook.service.test.ts` (10, incl. HMAC signing + best-effort no-throw + event/enabled filtering), AuthService scoped-key tests. Backend **632 passing**, frontend **50 passing**.
+- Note on "user-configured": webhooks are **per-user** (own table), unlike the instance-wide `app_settings` (registration/currency), matching HomeLedger's multi-user model.
 
 ### P4.14 — PWA / mobile (offline-capable)
 Frontend is responsive. A local-first PWA is the natural mobile story.
