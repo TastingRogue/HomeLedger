@@ -143,9 +143,38 @@
     figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 0.7rem; text-align: center; }
 
     /* ── Code ── */
-    pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; }
+    pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; margin: 0; }
     code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
     .note { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── Tabs (pure CSS, no JS) ── */
+    .tabs { margin-top: 0.5rem; }
+    .tabs input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+    .tab-labels { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+    .tab-labels label {
+      cursor: pointer; padding: 0.5rem 0.9rem; border-radius: 8px;
+      font-size: 0.88rem; font-weight: 600; color: var(--muted);
+      background: var(--surface); border: 1px solid var(--border);
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .tab-labels label:hover { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+    .tab-panel ol { margin: 0 0 0.9rem; padding-left: 1.2rem; color: var(--muted); font-size: 0.92rem; }
+    .tab-panel ol li { margin-bottom: 0.3rem; }
+    /* Wire each radio to its panel + active label styling. */
+    #tab-docker:checked   ~ .tab-labels label[for="tab-docker"],
+    #tab-desktop:checked  ~ .tab-labels label[for="tab-desktop"],
+    #tab-compose:checked  ~ .tab-labels label[for="tab-compose"],
+    #tab-ha:checked       ~ .tab-labels label[for="tab-ha"],
+    #tab-source:checked   ~ .tab-labels label[for="tab-source"] {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    #tab-docker:checked   ~ .tab-contents #panel-docker,
+    #tab-desktop:checked  ~ .tab-contents #panel-desktop,
+    #tab-compose:checked  ~ .tab-contents #panel-compose,
+    #tab-ha:checked       ~ .tab-contents #panel-ha,
+    #tab-source:checked   ~ .tab-contents #panel-source { display: block; }
 
     /* ── FAQ ── */
     .faq details { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.4rem 1rem; margin-bottom: 0.7rem; }
@@ -305,19 +334,104 @@
 
     <!-- ── Quick start ── -->
     <section id="quick-start">
-      <h2>Up and running in 60 seconds</h2>
-      <p class="section-sub">One command with Docker — no toolchain to install.</p>
-      <pre><code>docker run -d \
+      <h2>Up and running in minutes</h2>
+      <p class="section-sub">Pick the method that fits you — from one Docker command to a Home Assistant add-on.</p>
+
+      <div class="tabs">
+        <input type="radio" name="deploy" id="tab-docker" checked />
+        <input type="radio" name="deploy" id="tab-desktop" />
+        <input type="radio" name="deploy" id="tab-compose" />
+        <input type="radio" name="deploy" id="tab-ha" />
+        <input type="radio" name="deploy" id="tab-source" />
+
+        <div class="tab-labels">
+          <label for="tab-docker">🐳 Docker (CLI)</label>
+          <label for="tab-desktop">🖱️ Docker Desktop</label>
+          <label for="tab-compose">🧩 Docker Compose</label>
+          <label for="tab-ha">🏠 Home Assistant</label>
+          <label for="tab-source">💻 From source</label>
+        </div>
+
+        <div class="tab-contents">
+          <!-- Docker CLI -->
+          <div class="tab-panel" id="panel-docker">
+            <h3>Prebuilt image from Docker Hub</h3>
+            <p class="note">A self-contained multi-arch image (amd64 + arm64). One process serves the app + API on port 3000.</p>
+            <pre><code>docker run -d \
   -p 3000:3000 \
   -v homeledger-data:/data \
   -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
+  -e ADMIN_EMAIL="admin@homeledger.local" \
   -e ADMIN_PASSWORD="your-strong-password" \
+  -e DEFAULT_LOCALE="en" \
+  -e DISPLAY_CURRENCY="USD" \
   --name homeledger \
   irving1flores/homeledger:latest</code></pre>
-      <p class="note">
-        Then open <code>http://localhost:3000</code>. See the
-        <a href="https://github.com/TastingRogue/HomeLedger#docker-recommended-for-production">full Docker guide</a>,
-        the <a href="https://github.com/TastingRogue/HomeLedger#home-assistant">Home Assistant setup</a>,
+            <p class="note">Then open <code>http://localhost:3000</code>. Only <code>JWT_SECRET</code> and <code>ADMIN_PASSWORD</code> are required — omit the rest to take the defaults (<code>en</code> / <code>MXN</code>).</p>
+          </div>
+
+          <!-- Docker Desktop -->
+          <div class="tab-panel" id="panel-desktop">
+            <h3>Docker Desktop (no command line)</h3>
+            <p class="note">The image ships with demo defaults, so it runs with no env vars — but you must map the port.</p>
+            <ol>
+              <li>Open the <strong>Images</strong> tab and click <strong>Run</strong> on <code>irving1flores/homeledger</code>.</li>
+              <li>Expand <strong>Optional settings</strong>.</li>
+              <li>Under <strong>Ports</strong>, set <strong>Host port</strong> to <code>3000</code>.</li>
+              <li>(Optional) Add a <strong>Volume</strong> → container path <code>/data</code> so your data persists.</li>
+              <li>(Optional) Set <strong>Environment variables</strong> <code>DEFAULT_LOCALE</code> (<code>en</code>/<code>es</code>) and <code>DISPLAY_CURRENCY</code> (e.g. <code>USD</code>).</li>
+              <li>Click <strong>Run</strong>, then open <code>http://localhost:3000</code>.</li>
+            </ol>
+            <p class="note">Demo login: <code>admin@homeledger.local</code> / <code>changeme123</code> — change these for any real deployment.</p>
+          </div>
+
+          <!-- Docker Compose -->
+          <div class="tab-panel" id="panel-compose">
+            <h3>Build from source with Docker Compose</h3>
+            <pre><code>git clone https://github.com/TastingRogue/HomeLedger.git
+cd HomeLedger
+cp .env.example .env
+# Edit .env: set JWT_SECRET + ADMIN_PASSWORD (required),
+# and optionally DEFAULT_LOCALE (en|es) and DISPLAY_CURRENCY (USD|MXN|…)
+
+docker compose up -d</code></pre>
+            <p class="note">Compose reads <code>.env</code>, so that file — not <code>-e</code> flags — is where you configure this deployment.</p>
+          </div>
+
+          <!-- Home Assistant -->
+          <div class="tab-panel" id="panel-ha">
+            <h3>Home Assistant add-on</h3>
+            <p class="note">Runs the whole app inside Home Assistant (OS/Supervised), with the UI embedded in the sidebar via Ingress.</p>
+            <ol>
+              <li>Settings → Add-ons → Add-on Store → ⋮ → <strong>Repositories</strong>.</li>
+              <li>Add <code>https://github.com/TastingRogue/HomeLedger</code> and close.</li>
+              <li>Install <strong>HomeLedger</strong> from the store (multi-arch: amd64 + aarch64).</li>
+              <li>In <strong>Configuration</strong>, set <code>JWT_SECRET</code> and <code>ADMIN_PASSWORD</code> (and optionally locale/currency).</li>
+              <li><strong>Start</strong>, enable "Show in sidebar", and open it.</li>
+            </ol>
+            <p class="note">A HACS <strong>custom integration</strong> can also expose your finances as HA sensors + services. See the <a href="https://github.com/TastingRogue/HomeLedger#home-assistant">Home Assistant guide</a>.</p>
+          </div>
+
+          <!-- From source -->
+          <div class="tab-panel" id="panel-source">
+            <h3>Run from source (Node)</h3>
+            <p class="note">For local development. Requires Node.js ≥ 20 and npm ≥ 9.</p>
+            <pre><code>git clone https://github.com/TastingRogue/HomeLedger.git
+cd HomeLedger
+npm install
+cp .env.example .env          # edit it — JWT_SECRET is required (min 32 chars)
+
+npm run dev:backend           # API on http://localhost:3000
+npm run dev:frontend          # Frontend on http://localhost:5173</code></pre>
+            <p class="note">The first user you register becomes the admin. See <a href="https://github.com/TastingRogue/HomeLedger/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="note" style="margin-top:1.25rem;">
+        Full details in the
+        <a href="https://github.com/TastingRogue/HomeLedger#quick-start">Quick Start guide</a>,
+        the <a href="https://github.com/TastingRogue/HomeLedger/blob/main/docs/DEPLOYMENT.md">deployment docs</a>,
         or the <a href="https://github.com/TastingRogue/HomeLedger/blob/main/docs/USER_MANUAL.md">complete user manual</a>.
       </p>
     </section>
