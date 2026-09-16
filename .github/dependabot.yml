@@ -23,6 +23,37 @@ updates:
       npm-major:
         update-types:
           - "major"
+    # These toolchain packages are tightly coupled (shared TypeScript peer,
+    # Vite/Svelte/Vitest chain). A grouped auto major-bump fails to install
+    # (e.g. typescript 7 vs typescript-eslint's peer typescript <6.1.0). Ignore
+    # their MAJOR updates so Dependabot stops re-opening a broken PR; minor/patch
+    # still flow. Upgrade these deliberately, together, on a dedicated branch,
+    # then remove/relax the matching entries here.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript-eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sveltejs/vite-plugin-svelte"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "svelte"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tesseract.js"
+        update-types: ["version-update:semver-major"]
+      # Keep @types/node aligned with the Node LTS baseline (currently 22),
+      # not chasing newer majors like 26.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # --- Docker base images (main app + Home Assistant add-on) ---
   - package-ecosystem: "docker"
