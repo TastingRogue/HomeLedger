@@ -3,6 +3,11 @@
 Thanks for your interest in improving HomeLedger! This guide covers local setup,
 the checks to run before opening a PR, and a few project conventions.
 
+By participating in this project, you agree to abide by our
+[Code of Conduct](.github/CODE_OF_CONDUCT.md). Found a security issue? Please
+follow the [Security Policy](.github/SECURITY.md) instead of opening a public
+issue.
+
 ## Prerequisites
 
 - **Node.js ≥ 20** (Docker images build on Node 22)

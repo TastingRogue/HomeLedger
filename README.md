@@ -569,6 +569,10 @@ setup, the checks to run before a PR, project conventions, and a two-step guide
 to **adding a language**. Bug reports and feature requests use the issue
 templates.
 
+By participating, you agree to abide by our
+**[Code of Conduct](.github/CODE_OF_CONDUCT.md)**. To report a security
+vulnerability, please follow our **[Security Policy](.github/SECURITY.md)**.
+
 ## Support the Project
 
 If HomeLedger is useful to you, consider supporting its development:
