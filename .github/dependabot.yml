@@ -1,0 +1,69 @@
+# Dependabot configuration — tuned to minimize PR noise.
+# Weekly cadence, grouped PRs, and a capped open-PR limit so related bumps
+# arrive together instead of one PR per package.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  # --- npm (monorepo root; covers all workspaces under packages/*) ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      # Roll all non-major updates into a single weekly PR.
+      npm-minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      # Keep majors grouped too, but separate so breaking bumps are reviewed on their own.
+      npm-major:
+        update-types:
+          - "major"
+
+  # --- Docker base images (main app + Home Assistant add-on) ---
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/ha-addon"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-ha-addon:
+        patterns:
+          - "*"
+
+  # --- GitHub Actions used in workflows ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
