@@ -4,7 +4,7 @@
 # Fastify API on port 3000. Run with `docker run -p 3000:3000 ...` (no command
 # needed). Docker Compose can still override the command for dev with HMR.
 # =============================================================================
-FROM node:22-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 
