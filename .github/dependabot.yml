@@ -38,6 +38,13 @@ updates:
       docker:
         patterns:
           - "*"
+    # Stay on the Node LTS line. Ignore major base-image bumps (e.g. 22 -> 26,
+    # which is a Current/non-LTS release); still receive minor/patch updates.
+    # Bumping the Node major is a deliberate, all-at-once change (CI + docs too).
+    ignore:
+      - dependency-name: "node"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "docker"
     directory: "/ha-addon"
@@ -52,6 +59,10 @@ updates:
       docker-ha-addon:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "node"
+        update-types:
+          - "version-update:semver-major"
 
   # --- GitHub Actions used in workflows ---
   - package-ecosystem: "github-actions"
