@@ -12,7 +12,11 @@ WORKDIR /app
 #  - python3/make/g++: build better-sqlite3 and bcrypt
 #  - tini: PID 1 init  |  curl: healthcheck
 #  - poppler-utils: provides `pdftotext` for extracting text from PDF invoices
-#    (image receipts use tesseract.js OCR, which is pure WASM and needs no system pkg)
+#    (image receipts use tesseract.js OCR, pure WASM, no system pkg needed).
+#    Image pre-processing before OCR uses `sharp`, which pulls its own prebuilt
+#    musl libvips binary (@img/sharp-libvips-linuxmusl-*) during npm install —
+#    no `vips` apk package required. The lockfile-free `npm install` below is
+#    what lets npm resolve that platform-specific optional binary.
 RUN apk add --no-cache python3 make g++ tini curl poppler-utils
 
 # Copy workspace manifests first for dependency caching.

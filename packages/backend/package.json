@@ -1,6 +1,6 @@
 {
   "name": "@homeledger/backend",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "main": "./src/server.ts",
@@ -27,6 +27,7 @@
     "fastify": "^5.12.4",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
+    "sharp": "^0.35.4",
     "tesseract.js": "^6.0.1",
     "zod": "^4.6.4"
   },

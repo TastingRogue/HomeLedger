@@ -5,6 +5,42 @@ All notable changes to HomeLedger are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-09-16
+
+Patch release focused on **receipt OCR accuracy** for English and Spanish
+documents. No breaking changes; the `/api/v1` surface and backups are unchanged
+(backup metadata version bumped to `1.1.1`).
+
+### Added
+
+- **Image pre-processing before OCR** using `sharp` (auto-orient, grayscale,
+  contrast normalize, upscale small photos, sharpen, and binarize) plus a
+  receipt-oriented Tesseract page-segmentation mode, to improve recognition on
+  phone photos and scans.
+- **Raw OCR text panel** in the receipt detail view (collapsible), so the exact
+  recognized text is visible for review and correction.
+
+### Fixed
+
+- **Date detection (EN + ES).** Textual months are now parsed in both languages
+  and both orderings — e.g. `02 June, 2030`, `June 2, 2030`,
+  `02 de junio de 2030` — alongside numeric dates. Ambiguous numeric dates are
+  disambiguated by range (so US `mm/dd/yyyy` like `02/15/16` is read correctly),
+  and unparseable/garbled dates now leave the field empty and editable instead
+  of showing `NaN`.
+- **Amounts read from the correct column.** Totals, subtotals and tax are now
+  extracted from the value column on the label's line, ignoring decoys such as a
+  `(3.8 %)` tax rate; OCR-split cents (`125 00` → `125.00`) are repaired and a
+  dropped-decimal tax larger than the subtotal is recovered (`475` → `4.75`).
+- **English field keywords.** `TAX` / `VAT` / `GST` and `TOTAL DUE` /
+  `AMOUNT DUE` / `BALANCE DUE` / `GRAND TOTAL` are recognized alongside the
+  Spanish forms; RFC (tax id) and UUID are now also extracted from OCR/plain
+  text, and the confidence score reflects how many fields were recovered.
+
+### Changed
+
+- **Dependabot cadence** reduced to quarterly (every 3 months) to cut PR noise.
+
 ## [1.1.0] - 2026-08-31
 
 Feature-depth release (the **P4** track). A large batch of additive features on

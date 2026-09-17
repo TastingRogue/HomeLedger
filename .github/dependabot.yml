@@ -1,6 +1,6 @@
 # Dependabot configuration — tuned to minimize PR noise.
-# Weekly cadence, grouped PRs, and a capped open-PR limit so related bumps
-# arrive together instead of one PR per package.
+# Quarterly cadence (every 3 months), grouped PRs, and a capped open-PR limit so
+# related bumps arrive together instead of one PR per package.
 # Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 version: 2
 updates:
@@ -8,8 +8,7 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -59,8 +58,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     open-pull-requests-limit: 3
     labels:
       - "dependencies"
@@ -80,8 +78,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/ha-addon"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     open-pull-requests-limit: 3
     labels:
       - "dependencies"
@@ -99,8 +96,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "quarterly"
     open-pull-requests-limit: 3
     labels:
       - "dependencies"

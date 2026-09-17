@@ -107,14 +107,82 @@ export function ocrDroppedDecimals(text: string): boolean {
   // If none of the sizable numbers has a decimal separator, decimals were likely lost.
   return moneyish.every(t => !/[.,]\d{1,2}$/.test(t));
 }
+// Month names → month number (1-12) for English + Spanish, including common
+// abbreviations. Keys are lowercase and accent-stripped (see stripAccents), so
+// "septiembre", "setiembre", "Sept." and "sep" all resolve. Enough coverage for
+// receipts/invoices printed in either language.
+const MONTH_NAMES: Record<string, number> = {
+  // English
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
+  may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8,
+  september: 9, sep: 9, sept: 9, october: 10, oct: 10, november: 11, nov: 11,
+  december: 12, dec: 12,
+  // Spanish (accent-stripped)
+  enero: 1, ene: 1, febrero: 2, marzo: 3, abril: 4, abr: 4, mayo: 5,
+  junio: 6, julio: 7, agosto: 8, ago: 8,
+  septiembre: 9, setiembre: 9, set: 9, octubre: 10, noviembre: 11,
+  diciembre: 12, dic: 12,
+};
+
+function stripAccents(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function monthNumber(name: string): number | null {
+  const key = stripAccents(name.toLowerCase()).replace(/\./g, '');
+  return MONTH_NAMES[key] ?? null;
+}
+
+function toIso(year: string, month: number, day: string): string {
+  const fullYear = year.length === 2 ? `20${year}` : year;
+  return `${fullYear}-${String(month).padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+/**
+ * Normalizes a date string to ISO `YYYY-MM-DD`. Handles, in both English and
+ * Spanish:
+ *   - ISO `2026-02-14[...]`
+ *   - numeric `dd/mm/yyyy` and `dd-mm-yyyy` (day-first, the MX/EU convention)
+ *   - textual months day-first: `02 June, 2030`, `02 de junio de 2030`, `2 jun 30`
+ *   - textual months month-first: `June 2, 2030`, `junio 2 de 2030`
+ * Returns the input unchanged when nothing matches (callers treat that as
+ * "unparsed" and it stays user-editable).
+ */
 export function parseDate(value: string | null): string | null {
   if (!value) return null;
-  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value); if (iso) return iso[0];
-  const local = /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/.exec(value); if (!local) return value;
-  const day = local[1]; const month = local[2]; const rawYear = local[3];
-  if (!day || !month || !rawYear) return value;
-  const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (iso) return iso[0];
+
+  // Textual month, day-first: "02 June, 2030" / "02 de junio de 2030" / "2 jun 2030".
+  const dayFirst = /\b(\d{1,2})\s*(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})\.?\s*(?:de\s+|,\s*)?(\d{2,4})\b/.exec(value);
+  if (dayFirst) {
+    const month = monthNumber(dayFirst[2]!);
+    if (month) return toIso(dayFirst[3]!, month, dayFirst[1]!);
+  }
+
+  // Textual month, month-first: "June 2, 2030" / "junio 2 de 2030".
+  const monthFirst = /\b([A-Za-zÁÉÍÓÚáéíóúÑñ]{3,})\.?\s+(\d{1,2})(?:\s*,|\s+de)?\s*(\d{2,4})\b/.exec(value);
+  if (monthFirst) {
+    const month = monthNumber(monthFirst[1]!);
+    if (month) return toIso(monthFirst[3]!, month, monthFirst[2]!);
+  }
+
+  // Numeric d/m/y or m/d/y. Order is ambiguous, so we disambiguate by range:
+  //  - if the first field > 12 it must be the day (day-first, MX/EU);
+  //  - if the second field > 12 it must be the day (month-first, US, e.g. 02/15/16);
+  //  - otherwise default to day-first (the app's MX/EU convention).
+  // Any combination that isn't a valid calendar date returns null (so callers
+  // show an empty, editable field instead of a bogus "NaN/NaN/NaN").
+  const local = /(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(value);
+  if (!local) return value;
+  const a = Number(local[1]); const b = Number(local[2]); const rawYear = local[3]!;
+  let day: number; let month: number;
+  if (a > 12 && b <= 12) { day = a; month = b; }
+  else if (b > 12 && a <= 12) { month = a; day = b; }
+  else { day = a; month = b; } // ambiguous → day-first
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return toIso(rawYear, month, String(day));
 }
 function decodeXml(value: string): string { return value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>'); }
 
@@ -166,22 +234,135 @@ export function parseCfdi(xml: string): ParsedReceipt {
   return { merchant: issuerName ? decodeXml(issuerName) : null, receiptDate: parseDate(date), subtotal: subtotalNum, tax: taxNum, total: totalNum, currency: decodeXml(currency), documentType: 'cfdi', sourceType: 'cfdi_xml', confidence: 1, rawText: xml, uuid, issuerRfc, issuerName: issuerName ? decodeXml(issuerName) : null, items };
 }
 
+// A "money-looking" token after normalization: optional currency prefix and a
+// number with a decimal or thousands separator ("125.00", "1,234.56"), or a
+// bare integer of 2+ digits. Ordered so the richer decimal form wins first.
+const MONEY_TOKEN = /(?:MX\$|US\$|\$|€)?\s*\d{1,3}(?:,\d{3})+(?:\.\d{2})?\b|(?:MX\$|US\$|\$|€)?\s*\d+[.,]\d{2}\b|(?:MX\$|US\$|\$|€)?\s*\d{2,}\b/g;
+
+/**
+ * Repairs the OCR habit of dropping/spacing decimal points in amounts. Real
+ * OCR output for this app looks like "SUB TOTAL 125 00" (meant 125.00) and
+ * "IMPUESTOS 475" — the cents got split off or lost. On a single line we join a
+ * trailing "<digits> <2 digits>" pair into "<digits>.<2 digits>" so the cents
+ * are recovered before token extraction. We only touch the amount region (after
+ * the label text) to avoid mangling things like a "123 45" street number in the
+ * label itself. Returns the line with decimals normalized.
+ */
+function repairSpacedDecimals(amountRegion: string): string {
+  // "125 00" -> "125.00", "1 234 56" -> "1 234.56" (last space before 2 digits).
+  return amountRegion.replace(/(\d)\s+(\d{2})\b/g, '$1.$2');
+}
+
+/**
+ * Extracts an amount from the line that contains a label. Invoice layouts put
+ * the value in a far right-aligned column on the same row as its label, often
+ * with decoy numbers in between (rates, quantities). Strategy:
+ *   1. Find the first line matching any label pattern.
+ *   2. Take only the text AFTER the label match (the value column region).
+ *   3. Drop parenthesised groups like "(3.8 %)" so rates can't be picked.
+ *   4. Repair OCR-spaced decimals ("125 00" -> "125.00").
+ *   5. Take the LAST money-looking token in that region (the right column).
+ * Falls back to null when no money token is present.
+ */
+function amountOnLabelLine(text: string, labels: RegExp[]): string | null {
+  const lines = text.split(/\r?\n/);
+  for (const label of labels) {
+    for (const line of lines) {
+      const m = label.exec(line);
+      if (!m) continue;
+      // Region after the matched label — where the value column lives.
+      const region = line.slice((m.index ?? 0) + m[0].length);
+      const cleaned = repairSpacedDecimals(region.replace(/\([^)]*\)/g, ' ')); // strip "(3.8 %)" then fix decimals
+      const tokens = cleaned.match(MONEY_TOKEN);
+      if (tokens && tokens.length > 0) return tokens[tokens.length - 1]!.trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Scans the text for date-shaped substrings (using the given global patterns)
+ * and returns the first one that parseDate can normalize to a valid ISO
+ * `YYYY-MM-DD`. Returns null if none is parseable — better an empty, editable
+ * date than a bogus value scraped from an unrelated line.
+ */
+function firstParsableDate(text: string, patterns: RegExp[]): string | null {
+  for (const pattern of patterns) {
+    const matches = text.match(pattern);
+    if (!matches) continue;
+    for (const candidate of matches) {
+      const parsed = parseDate(candidate);
+      if (parsed && /^\d{4}-\d{2}-\d{2}$/.test(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
 export function parsePlainText(text: string, sourceType: ReceiptSourceType): ParsedReceipt {
   // Match TOTAL but not:
   //  - the "TOTAL" inside "SUBTOTAL" (require a non-letter or line start before it), or
   //  - item-count lines like "TOTAL ARTICULOS: 3" / "TOTAL DE PIEZAS 5" (a plain
   //    "TOTAL" must NOT be followed by a count noun before the number).
-  // Prefer the explicit money forms ("TOTAL A PAGAR" / "IMPORTE TOTAL") first,
-  // falling back to a plain "TOTAL" that isn't an item count.
-  const totalText = firstMatch(text, [
-    /(?:^|[^A-ZÁÉÍÓÚa-záéíóú])(?:TOTAL\s+A\s+PAGAR|IMPORTE\s+TOTAL|GRAN\s+TOTAL)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im,
-    /(?:^|[^A-ZÁÉÍÓÚa-záéíóú])TOTAL(?!\s*(?:ART[IÍ]CULOS|ITEMS|PIEZAS|PRODUCTOS|DE\s+ART[IÍ]CULOS|DE\s+PIEZAS))[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/im,
+  // Amount extraction is LINE-scoped: on invoices the label ("TOTAL") and its
+  // value sit on the same row but in a far right-aligned column, with decoy
+  // numbers in between (e.g. "IMPUESTOS (3.8 %)  4.75" — the 3.8 is a rate, 4.75
+  // is the amount). So we find the label's line and take the LAST money-looking
+  // token on it, ignoring parenthesised rates like "(3.8 %)". amountOnLabelLine
+  // returns that token (or null). `avoidCountNoun`/lookahead concerns are kept
+  // via the label regexes below.
+  const totalText = amountOnLabelLine(text, [
+    /(?:TOTAL\s+A\s+PAGAR|IMPORTE\s+TOTAL|GRAN\s+TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|BALANCE\s+DUE)/i,
+    // Plain TOTAL that is NOT "SUBTOTAL"/"SUB TOTAL" (OCR often splits it) and
+    // not an item-count line. Require the start of line or a non-letter that is
+    // not the "B" of SUB right before it.
+    /(?:^|(?<![A-Za-z])(?<!SUB\s))TOTAL(?!\s*(?:ART[IÍ]CULOS|ITEMS|PIEZAS|PRODUCTOS|QTY|QUANTITY|DE\s+ART[IÍ]CULOS|DE\s+PIEZAS))/i,
   ]);
-  const subtotalText = firstMatch(text, [/SUBTOTAL[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
-  const taxText = firstMatch(text, [/(?:IVA|I\.V\.A\.)[^\d]{0,20}(\$?\s*[\d,]+(?:\.\d{2})?)/i]);
-  const dateText = firstMatch(text, [/(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/, /(\d{4}-\d{2}-\d{2})/]);
+  const subtotalText = amountOnLabelLine(text, [/SUB[\s-]?TOTAL/i]);
+  // Tax: ES "IVA"/"I.V.A."/"impuesto(s)"; EN "TAX"/"VAT"/"GST"/"sales tax".
+  const taxText = amountOnLabelLine(text, [/IVA|I\.V\.A\.|IMPUESTOS?|SALES\s+TAX|VAT|GST|TAX/i]);
+  // Date: try a labeled "Date:"/"Fecha:" line first (highest signal), then any
+  // numeric or textual (EN/ES month-name) date anywhere in the text. We collect
+  // every candidate and keep the FIRST one that parseDate can turn into a valid
+  // ISO date — so garbage like "46 Próximas 37 días" (a client-id/terms line
+  // that happens to fit a loose pattern) is rejected rather than shown raw.
+  const receiptDate = firstParsableDate(text, [
+    /\d{4}-\d{2}-\d{2}/g,
+    /\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/g,
+    /\d{1,2}\s+(?:de\s+)?[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s*(?:de\s+|,\s*)?\d{2,4}/g,
+    /[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}\.?\s+\d{1,2}(?:\s*,|\s+de)?\s*\d{2,4}/g,
+  ]);
+  // Mexican RFC (tax id): 3-4 letters + 6 date digits + 3 alphanumeric homoclave.
+  // Persons use 4 leading letters, companies 3. Match on a word boundary.
+  const issuerRfc = firstMatch(text, [
+    /\bRFC\s*[:.]?\s*([A-ZÑ&]{3,4}\d{6}[A-Z\d]{3})\b/i,
+    /\b([A-ZÑ&]{3,4}\d{6}[A-Z\d]{3})\b/,
+  ]);
+  // CFDI fiscal folio (UUID), sometimes labeled "Folio Fiscal".
+  const uuid = firstMatch(text, [/\b([0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12})\b/i]);
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const merchant = lines.find(line => line.length >= 3 && line.length <= 80 && !/^(total|subtotal|iva|fecha|ticket|factura)/i.test(line)) ?? null;
+  // Merchant: the first "name-like" line. Skip document titles/labels
+  // ("FACTURA", "INVOICE", "PLANTILLA…"), blank-template placeholders
+  // ("Nombre de la empresa", "Your Logo", "Calle…", "Dirección…"), and lines
+  // that are mostly non-letters (addresses, phone numbers, code columns). This
+  // reduces picking a heading or placeholder as the store name.
+  // Reject a line if it CONTAINS any document label/keyword (anywhere, not just
+  // at the start) — OCR often merges a header row like "... N.° DE FACTURA FECHA".
+  const LABEL_ANY = /\b(total|subtotal|iva|tax|vat|fecha|date|ticket|factura|invoice|receipt|plantilla|descripci|monto|cliente|client|condiciones|gracias)\b/i;
+  const PLACEHOLDER = /^(your\s+logo|logo|nombre\s+de\s+la\s+empresa|nombre\s+de\s+la\s+compa|company\s+name|your\s+company|calle\b|street\b|direcci[oó]n|address|tel[eé]fono|phone|a\s*[\/.]\s*a\b|a\s+a\b|attn\b|facturar\s+a|enviar\s+a|bill\s+to|ship\s+to)/i;
+  const merchant = lines.map(line => line.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9]+/, '').trim()) // strip leading junk like "» "
+    .find(line => {
+      if (line.length < 3 || line.length > 80) return false;
+      if (LABEL_ANY.test(line) || PLACEHOLDER.test(line)) return false;
+      // Reject lines with digits (addresses, phones, code rows).
+      if (/\d/.test(line)) return false;
+      // Reject OCR-garble: require a high ratio of letters+spaces and few stray
+      // symbols like ] * = ~ that mark misrecognized regions.
+      const letters = (line.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ\s]/g) ?? []).length;
+      const junk = (line.match(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s.,&'-]/g) ?? []).length;
+      return letters >= Math.ceil(line.length * 0.75) && junk === 0;
+    }) ?? null;
+  // Currency: default MXN, but recognize an explicit US$ / plain-$ (USD) or € (EUR) hint.
+  const currency = /\bUS\$|\bUSD\b/i.test(text) ? 'USD' : /€|\bEUR\b/i.test(text) ? 'EUR' : 'MXN';
 
   // Amounts are read at face value. We deliberately do NOT "recover cents" by
   // dividing separator-less integers by 100: a bare "755" is genuinely
@@ -192,12 +373,43 @@ export function parsePlainText(text: string, sourceType: ReceiptSourceType): Par
   // So we prefer the literal reading and let the user correct the rare miss.
   const assumeCents = false;
   const subtotal = moneyValue(subtotalText, assumeCents);
-  const tax = moneyValue(taxText, assumeCents);
+  let tax = moneyValue(taxText, assumeCents);
   const total = moneyValue(totalText, assumeCents);
+  // receiptDate is computed above via firstParsableDate.
 
-  // OCR text is noisier, so lower the confidence ceiling for that source.
-  const baseConfidence = sourceType === 'ocr' ? 0.5 : 0.65;
-  return { merchant, receiptDate: parseDate(dateText), subtotal, tax, total, currency: 'MXN', documentType: /factura|cfdi/i.test(text) ? 'invoice' : 'receipt', sourceType, confidence: totalText ? baseConfidence : 0.2, rawText: text, uuid: null, issuerRfc: null, issuerName: null, items: [] };
+  // OCR sometimes drops the decimal point in the tax amount with no space to
+  // repair (e.g. "IMPUESTOS (3.8 %) 4.75" read as "475"). Tax is normally a
+  // small fraction of the subtotal, so a separator-less integer tax that is
+  // *larger* than the subtotal is almost certainly a lost decimal — divide by
+  // 100. Guarded tightly (no separator in the raw token, tax > subtotal > 0) to
+  // avoid touching legitimate values.
+  if (
+    tax !== null && subtotal !== null && subtotal > 0 &&
+    taxText !== null && !/[.,]/.test(taxText) &&
+    Number.isInteger(tax) && tax > subtotal
+  ) {
+    tax = tax / 100;
+  }
+
+  // Confidence reflects how much we actually extracted. Start from a per-source
+  // base (OCR text is noisier than embedded PDF text), require a TOTAL to clear
+  // the floor, and nudge up for each additional recovered field (date, tax,
+  // subtotal, tax id). Capped so OCR never claims CFDI-level certainty.
+  const base = sourceType === 'ocr' ? 0.4 : 0.55;
+  const cap = sourceType === 'ocr' ? 0.85 : 0.9;
+  let confidence = 0.2;
+  if (total !== null) {
+    confidence = base;
+    // A date that actually normalized to ISO (not the raw unparsed string).
+    if (receiptDate && /^\d{4}-\d{2}-\d{2}$/.test(receiptDate)) confidence += 0.15;
+    if (subtotal !== null) confidence += 0.1;
+    if (tax !== null) confidence += 0.1;
+    if (issuerRfc) confidence += 0.05;
+    confidence = Math.min(confidence, cap);
+  }
+  confidence = Math.round(confidence * 100) / 100;
+
+  return { merchant, receiptDate, subtotal, tax, total, currency, documentType: /factura|cfdi|invoice/i.test(text) ? 'invoice' : 'receipt', sourceType, confidence, rawText: text, uuid, issuerRfc, issuerName: null, items: [] };
 }
 function extractPdfText(filePath: string): string | null {
   try { return execFileSync('pdftotext', ['-layout', filePath, '-'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return null; }
@@ -207,15 +419,66 @@ function extractPdfText(filePath: string): string | null {
  * Runs OCR on an image file with tesseract.js (Spanish + English).
  * Returns the recognized text, or throws if recognition fails.
  */
+/**
+ * Preprocesses a receipt/invoice image to improve OCR accuracy: Tesseract works
+ * best on high-contrast, ~300 DPI, binarized input. We upscale small images,
+ * convert to grayscale, normalize contrast, sharpen, and threshold to black &
+ * white. Returns a Buffer, or null if preprocessing isn't possible (caller then
+ * falls back to the original file so OCR still runs).
+ */
+async function preprocessForOcr(filePath: string): Promise<Buffer | null> {
+  try {
+    const { default: sharp } = await import('sharp');
+    const image = sharp(filePath, { failOn: 'none' }).rotate(); // auto-orient via EXIF
+    const meta = await image.metadata();
+    // Upscale so the smaller side is ~1600px (helps small phone photos hit the
+    // resolution Tesseract likes); never downscale, and cap to avoid huge work.
+    const minSide = Math.min(meta.width ?? 0, meta.height ?? 0);
+    let pipeline = image.grayscale().normalize();
+    if (minSide > 0 && minSide < 1600) {
+      const scale = Math.min(1600 / minSide, 3);
+      pipeline = pipeline.resize({
+        width: Math.round((meta.width ?? 0) * scale),
+        height: Math.round((meta.height ?? 0) * scale),
+        fit: 'fill',
+      });
+    }
+    return await pipeline
+      .sharpen()
+      .threshold(140) // binarize: pixels below → black, above → white
+      .png()
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Runs OCR on an image file with tesseract.js (Spanish + English) after image
+ * preprocessing, using a page-segmentation mode suited to receipts/invoices.
+ * Returns the recognized text (throws are handled by the caller).
+ */
 async function ocrImage(filePath: string): Promise<string> {
   // tesseract.js v6 is CommonJS and exposes a worker-based API. When imported
   // from ESM its exports live under `.default`.
   const tesseractModule = await import('tesseract.js');
-  const createWorker = (tesseractModule as unknown as { default?: { createWorker: typeof import('tesseract.js').createWorker }; createWorker?: typeof import('tesseract.js').createWorker }).default?.createWorker
-    ?? (tesseractModule as unknown as { createWorker: typeof import('tesseract.js').createWorker }).createWorker;
+  const mod = tesseractModule as unknown as {
+    default?: { createWorker: typeof import('tesseract.js').createWorker; PSM?: Record<string, string> };
+    createWorker?: typeof import('tesseract.js').createWorker;
+    PSM?: Record<string, string>;
+  };
+  const createWorker = mod.default?.createWorker ?? mod.createWorker!;
+  // PSM 4 = "assume a single column of text of variable sizes", a good fit for
+  // the stacked line layout of receipts/invoices. Fall back to the literal '4'.
+  const psmSingleColumn = mod.default?.PSM?.SINGLE_COLUMN ?? mod.PSM?.SINGLE_COLUMN ?? '4';
+
   const worker = await createWorker('spa+eng');
   try {
-    const { data } = await worker.recognize(filePath);
+    await worker.setParameters({ tessedit_pageseg_mode: psmSingleColumn as never });
+    // Prefer the preprocessed buffer; fall back to the raw file path if sharp
+    // couldn't process the image for any reason.
+    const input = (await preprocessForOcr(filePath)) ?? filePath;
+    const { data } = await worker.recognize(input);
     return data.text ?? '';
   } finally {
     await worker.terminate();

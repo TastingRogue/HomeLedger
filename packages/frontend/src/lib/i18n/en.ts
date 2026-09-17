@@ -1105,6 +1105,7 @@ export const en: Record<TranslationKey, string> = {
   'receipts.field_uuid': 'UUID',
   'receipts.field_source': 'Source',
   'receipts.field_confidence': 'Confidence',
+  'receipts.raw_text': 'Recognized text (OCR)',
   'receipts.status_completed': 'Analyzed',
   'receipts.status_failed': 'Error',
   'receipts.status_processing': 'Processing',

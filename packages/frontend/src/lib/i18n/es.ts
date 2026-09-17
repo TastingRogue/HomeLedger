@@ -1104,6 +1104,7 @@ export const es = {
   'receipts.field_uuid': 'UUID',
   'receipts.field_source': 'Origen',
   'receipts.field_confidence': 'Confianza',
+  'receipts.raw_text': 'Texto reconocido (OCR)',
   'receipts.status_completed': 'Analizado',
   'receipts.status_failed': 'Error',
   'receipts.status_processing': 'Procesando',

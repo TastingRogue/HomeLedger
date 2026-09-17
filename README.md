@@ -1,7 +1,7 @@
 # HomeLedger
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-22c55e.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-22c55e.svg)](CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/r/irving1flores/homeledger)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ec4899?logo=githubsponsors)](https://github.com/sponsors/TastingRogue)
