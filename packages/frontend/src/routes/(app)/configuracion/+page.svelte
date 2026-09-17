@@ -1407,9 +1407,10 @@
 
   .settings-layout { display: flex; flex-direction: column; gap: 1rem; }
 
-  /* Tabs */
+  /* Tabs — single row on desktop; wrap onto multiple rows on mobile so every
+     tab (up to 7 for admins) is visible without any sideways scrolling. */
   .settings-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); margin-bottom: 0.5rem; }
-  .tab-item { display: flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; margin-bottom: -1px; }
+  .tab-item { flex: 0 0 auto; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; margin-bottom: -1px; }
   .tab-item:hover { color: var(--text-primary); }
   .tab-item.active { color: var(--accent-purple); border-bottom-color: var(--accent-purple); }
 
@@ -1477,6 +1478,11 @@
   @media (max-width: 640px) {
     .form-grid { grid-template-columns: 1fr; }
     .pref-row { flex-direction: column; align-items: flex-start; }
+    /* Wrap the tabs onto multiple rows so they all fit — no sideways scroll.
+       Tighter padding fits more per row; the bottom border is dropped since the
+       active underline reads fine on a wrapped multi-row layout. */
+    .settings-tabs { flex-wrap: wrap; gap: 0.15rem 0.25rem; border-bottom: none; }
+    .tab-item { padding: 0.45rem 0.7rem; }
   }
 
   /* ─── Admin panels ─── */

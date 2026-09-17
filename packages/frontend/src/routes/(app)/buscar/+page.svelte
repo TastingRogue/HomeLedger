@@ -211,4 +211,14 @@
   .hit-meta { font-size: 0.68rem; color: var(--text-muted); }
   .hit-amount { font-size: 0.85rem; font-weight: 600; color: var(--accent-green); white-space: nowrap; }
   .hit-amount.neg { color: var(--accent-red); }
+
+  /* Phones: let the search bar wrap (input full-width above the buttons) and
+     the filter fields fill the row so nothing overflows ~390px. */
+  @media (max-width: 640px) {
+    .search-bar { flex-wrap: wrap; }
+    .q-input { flex: 1 1 100%; }
+    .btn-search, .btn-clear { flex: 1 1 auto; }
+    .filters label { flex: 1 1 45%; }
+    .filters select, .filters input { min-width: 0; width: 100%; }
+  }
 </style>

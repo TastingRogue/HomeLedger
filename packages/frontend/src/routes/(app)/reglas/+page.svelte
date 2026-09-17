@@ -291,7 +291,7 @@
     <div class="state-msg">{$t('rules.empty')}</div>
   {:else}
     <div class="table-wrap">
-      <table class="data-table" aria-label={$t('rules.page_title')}>
+      <table class="data-table responsive-cards" aria-label={$t('rules.page_title')}>
         <thead>
           <tr>
             <th>{$t('rules.col_priority')}</th>
@@ -306,16 +306,16 @@
         <tbody>
           {#each rules as rule (rule.id)}
             <tr class:disabled-row={!rule.enabled}>
-              <td class="num">{rule.priority}</td>
-              <td class="name-cell">{rule.name}</td>
-              <td class="summary-cell">
+              <td class="name-cell card-title-cell">{rule.name}</td>
+              <td class="num" data-label={$t('rules.col_priority')}>{rule.priority}</td>
+              <td class="summary-cell" data-label={$t('rules.col_conditions')}>
                 {#each rule.conditions as c}<span class="chip">{conditionSummary(c)}</span>{/each}
               </td>
-              <td class="summary-cell">
+              <td class="summary-cell" data-label={$t('rules.col_actions')}>
                 {#each rule.actions as a}<span class="chip chip-action">{actionSummary(a)}</span>{/each}
               </td>
-              <td class="num">{rule.matchCount}</td>
-              <td>
+              <td class="num" data-label={$t('rules.col_matches')}>{rule.matchCount}</td>
+              <td data-label={$t('rules.col_enabled')}>
                 <label class="switch">
                   <input type="checkbox" checked={rule.enabled} onchange={() => toggleEnabled(rule)} aria-label={$t('rules.col_enabled')} />
                   <span class="switch-track"></span>

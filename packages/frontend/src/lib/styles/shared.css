@@ -498,3 +498,71 @@
 }
 :global(.btn-danger-solid:hover),
 :global(.btn-modal-delete:hover) { background: var(--accent-red); color: #fff; }
+
+/* ─── Responsive tables → cards on mobile ───────────────────────────────────
+   Wide data tables are hard to read on phones and force sideways scrolling.
+   Add class `responsive-cards` to a <table>, and give each <td> a `data-label`
+   attribute (the column name). Below 640px each row becomes a self-contained
+   card and each cell a "Label … value" line — no horizontal scroll, no JS.
+
+   Usage:
+     <table class="data-table responsive-cards">
+       <thead>…</thead>            (hidden on mobile)
+       <tbody>
+         <tr>
+           <td data-label="Date">02/06/2026</td>
+           <td data-label="Amount">MX$4,000.00</td>
+           …
+   Desktop layout is untouched (rules live only inside the media query). */
+@media (max-width: 640px) {
+  table.responsive-cards { min-width: 0 !important; width: 100%; display: block; }
+  table.responsive-cards thead { display: none; }
+  table.responsive-cards tbody { display: block; }
+
+  table.responsive-cards tr {
+    display: block;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  table.responsive-cards td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    border: none;
+    white-space: normal;
+    text-align: right;
+  }
+
+  /* The column name, shown as a muted label on the left of each cell. */
+  table.responsive-cards td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    margin-right: auto;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  /* Cells with no label (e.g. an actions cell) span the row and align right. */
+  table.responsive-cards td:not([data-label]) { justify-content: flex-end; }
+  table.responsive-cards td:not([data-label])::before { content: none; }
+
+  /* A cell explicitly marked as the card's title: larger, no label, own line. */
+  table.responsive-cards td.card-title-cell {
+    justify-content: flex-start;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding-bottom: 0.15rem;
+  }
+  table.responsive-cards td.card-title-cell::before { content: none; }
+}

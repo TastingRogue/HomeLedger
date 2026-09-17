@@ -417,5 +417,10 @@
   @media (max-width: 600px) {
     .filters { flex-direction: column; }
     .filters select { max-width: 100%; }
+    /* Stack the header so the "Evaluate now" / "Mark all as read" actions drop
+       below the title+badge row instead of crowding it. */
+    .page-header { flex-direction: column; align-items: stretch; }
+    .header-actions { flex-wrap: wrap; }
+    .header-actions .btn { flex: 1 1 auto; justify-content: center; }
   }
 </style>

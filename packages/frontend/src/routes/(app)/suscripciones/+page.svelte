@@ -373,7 +373,7 @@
       </div>
     {:else}
       <div class="table-wrap">
-        <table class="data-table" aria-label={$t('a11y.subscriptions_list')}>
+        <table class="data-table responsive-cards" aria-label={$t('a11y.subscriptions_list')}>
           <thead>
             <tr>
               <th>{$t('subscriptions.col_name')}</th>
@@ -392,22 +392,22 @@
               {@const ins = insightById.get(sub.id)}
               {@const lastIncrease = ins?.priceChanges.filter((p) => p.to > p.from).at(-1)}
               <tr class="clickable-row" onclick={() => openEditForm(sub)}>
-                <td class="cell-name">
+                <td class="cell-name card-title-cell">
                   {sub.name}
                   {#if lastIncrease}
                     <span class="price-up" title={$t('subscriptions.price_up', { from: formatCurrency(lastIncrease.from), to: formatCurrency(lastIncrease.to) })}>↑ {formatCurrency(lastIncrease.from)} → {formatCurrency(lastIncrease.to)}</span>
                   {/if}
                 </td>
-                <td class="cell-amount">{formatCurrency(sub.amount)}</td>
-                <td class="cell-amount">{ins ? formatCurrency(ins.annualCost) : '—'}</td>
-                <td>{sub.cycle}</td>
-                <td>
+                <td class="cell-amount" data-label={$t('subscriptions.col_amount')}>{formatCurrency(sub.amount)}</td>
+                <td class="cell-amount" data-label={$t('subscriptions.col_annual')}>{ins ? formatCurrency(ins.annualCost) : '—'}</td>
+                <td data-label={$t('subscriptions.col_cycle')}>{sub.cycle}</td>
+                <td data-label={$t('subscriptions.col_days')}>
                   <span class="days-badge {getUrgencyClass(days)}">
                     {formatDaysRemaining(days)}
                   </span>
                 </td>
-                <td><span class="tag {getStatusBadge(sub.status)}">{sub.status}</span></td>
-                <td>{sub.autoCharge ? '✓' : '–'}</td>
+                <td data-label={$t('subscriptions.col_status')}><span class="tag {getStatusBadge(sub.status)}">{sub.status}</span></td>
+                <td data-label={$t('subscriptions.col_auto')}>{sub.autoCharge ? '✓' : '–'}</td>
                 <td class="cell-actions" onclick={(e) => e.stopPropagation()}>
                   <button class="btn-icon" onclick={() => openEditForm(sub)} title="Editar">✎</button>
                   <button class="btn-icon btn-icon-danger" onclick={() => confirmDeactivate(sub)} title="Eliminar">✕</button>
@@ -625,8 +625,11 @@
   .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
 
   /* Table */
-  .table-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
-  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-default); border-radius: var(--radius-md); scrollbar-width: thin; }
+  .table-wrap::-webkit-scrollbar { height: 0; }
+  /* min-width so the wrapper scrolls horizontally on phones instead of squishing
+     the columns into an unreadable mess. */
+  .data-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.85rem; }
   .data-table th {
     text-align: left; padding: 0.4rem 0.6rem; font-size: 0.7rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);
@@ -785,6 +788,7 @@
   .up-days.urgent { color: var(--accent-red); }
 
   @media (max-width: 640px) {
+    .page-header { flex-direction: column; align-items: stretch; gap: 0.6rem; }
     .calendar-layout { grid-template-columns: 1fr; }
     .data-table { font-size: 0.78rem; }
     .data-table th, .data-table td { padding: 0.35rem 0.4rem; }

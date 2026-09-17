@@ -252,6 +252,7 @@
       <span class="step-line"></span>
       <span class="step-dot" class:active={currentStep >= 3}>3</span>
     </div>
+    <button class="qr-close-btn" onclick={() => goto('/dashboard')} aria-label={$t('common.close')}>×</button>
   </header>
 
   {#if loading}
@@ -445,19 +446,47 @@
 
 <style>
   .quick-register {
-    display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh;
+    /* Fill the space the (app) layout already gives us (its .main-content is a
+       flex column sized to .app-layout's 100dvh). Do NOT set min-height:100dvh
+       here — stacking a second full viewport height on top of the ancestor's
+       padding + footer is what forced the permanent vertical scrollbar. */
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
     padding: var(--spacing-md); max-width: 420px; margin: 0 auto; position: relative;
   }
 
   /* Header */
   .qr-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: var(--spacing-lg); }
   .qr-header h1 { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin: 0; flex: 1; }
-  .qr-back-btn {
+  .qr-back-btn, .qr-close-btn {
     min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;
-    background: none; border: none; font-size: 1.1rem; color: var(--text-secondary);
-    cursor: pointer; border-radius: var(--radius-sm);
+    background: none; border: none; color: var(--text-secondary);
+    cursor: pointer; flex-shrink: 0;
+    /* Kill the mobile tap-highlight square and any focus outline box; we draw
+       our own round focus ring below. */
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
   }
-  .qr-back-btn:hover { background: var(--bg-hover); }
+  .qr-back-btn { font-size: 1.1rem; border-radius: var(--radius-sm); }
+  /* Explicit exit (apple-design §16 wayfinding: always give a clear way out).
+     A visible circular chip makes it obviously tappable, not an invisible glyph.
+     apple-design §1: instant press feedback. */
+  .qr-close-btn {
+    width: 34px; height: 34px; min-width: 34px; min-height: 34px;
+    font-size: 1.35rem; line-height: 1;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  }
+  .qr-back-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .qr-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+  .qr-close-btn:active { transform: scale(0.94); }
+  /* Round, on-brand focus ring for keyboard users (replaces the square outline). */
+  .qr-back-btn:focus-visible, .qr-close-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-blue);
+  }
+  .qr-back-btn:focus-visible { border-radius: var(--radius-md); }
 
   .qr-steps { display: flex; align-items: center; gap: 0.25rem; }
   .step-dot {
@@ -492,8 +521,15 @@
   }
   .alert-dismiss { background: none; border: none; color: inherit; font-size: 1rem; cursor: pointer; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 
-  /* Steps */
-  .qr-step { flex: 1; display: flex; flex-direction: column; }
+  /* Steps — center the entry block (type toggle + amount + keypad + actions)
+     in the available height so it's balanced rather than crammed at the top
+     with a big empty gap below. */
+  .qr-step { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.9rem; }
+  /* Step 1's own margins are folded into the flex gap above for even spacing. */
+  .qr-step .type-toggle-step1 { margin-bottom: 0; }
+  .qr-step .amount-display { margin-bottom: 0; }
+  .qr-step .keypad { margin: 0; }
+  .qr-step .step-actions { margin-top: 0.2rem; }
 
   /* Amount Display */
   .amount-display {
@@ -504,8 +540,10 @@
   .amount-prefix { font-size: 1.2rem; font-weight: 500; color: var(--text-muted); margin-right: 0.2rem; }
   .amount-value { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
 
-  /* Keypad */
-  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin: 0.8rem 0; flex: 1; align-content: center; }
+  /* Keypad — sized to its content (no flex:1) so the number rows sit directly
+     under the amount and the action buttons follow right after, instead of the
+     grid stretching and pushing Limpiar/Siguiente to the bottom of the screen. */
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 0.8rem 0; }
   .key {
     min-width: 44px; min-height: 48px; height: 52px;
     border: 1px solid var(--border-default); border-radius: var(--radius-md);

@@ -124,15 +124,15 @@
     <div class="state-msg"><p>{$t('transfers.no_transfers')}</p></div>
   {:else}
     <div class="table-wrap">
-      <table class="data-table">
+      <table class="data-table responsive-cards">
         <thead><tr><th>{$t('transfers.col_date')}</th><th>{$t('transfers.col_name')}</th><th class="text-right">{$t('transfers.col_amount')}</th><th>{$t('transfers.col_route')}</th><th></th></tr></thead>
         <tbody>
           {#each transfers as tf (tf.id)}
             <tr>
-              <td class="col-date">{formatDateShort(tf.date)}</td>
-              <td class="col-name">{tf.name}</td>
-              <td class="text-right amount">{formatCurrency(tf.amount)}</td>
-              <td class="col-route">{getAccountName(tf.sourceAccountId)} → {getAccountName(tf.destinationAccountId)}</td>
+              <td class="col-name card-title-cell">{tf.name}</td>
+              <td class="col-date" data-label={$t('transfers.col_date')}>{formatDateShort(tf.date)}</td>
+              <td class="text-right amount" data-label={$t('transfers.col_amount')}>{formatCurrency(tf.amount)}</td>
+              <td class="col-route" data-label={$t('transfers.col_route')}>{getAccountName(tf.sourceAccountId)} → {getAccountName(tf.destinationAccountId)}</td>
               <td class="col-actions"><button class="btn-action" onclick={() => openEditForm(tf)} title={$t('transfers.edit_tooltip')}>✎</button><button class="btn-action danger" onclick={() => openDeleteModal(tf)} title={$t('transfers.delete_tooltip')}>✕</button></td>
             </tr>
           {/each}
@@ -197,8 +197,9 @@
   .spinner { width: 18px; height: 18px; border: 2px solid var(--border-default); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 0.5rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .table-wrap { overflow-x: auto; }
-  .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  .table-wrap::-webkit-scrollbar { height: 0; }
+  .data-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.8rem; }
   .data-table th { text-align: left; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border-default); }
   .data-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
   .data-table tr:hover td { background: var(--bg-surface); }
@@ -229,5 +230,10 @@
   .btn-danger-solid { padding: 0.3rem 0.6rem; background: var(--accent-red); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; cursor: pointer; }
   .confirm-text { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
 
-  @media (max-width: 640px) { .field-row { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    .field-row { grid-template-columns: 1fr; }
+    /* Stack the header so the "New transfer" button drops below the title
+       instead of squeezing it next to the fixed hamburger. */
+    .page-header { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+  }
 </style>

@@ -1549,9 +1549,10 @@
   .card-link-bottom { display: block; text-align: right; margin-top: 0.75rem; padding-top: 0.6rem; margin-bottom: -0.25rem; border-top: 1px solid var(--border-default); font-size: 0.7rem; color: var(--text-link); text-decoration: none; }
   .empty-text { font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 1rem 0; }
 
-  /* COLUMNS */
-  .col-left { display: flex; flex-direction: column; gap: 0.75rem; }
-  .col-main { display: flex; flex-direction: column; gap: 0.75rem; }
+  /* COLUMNS — min-width:0 so their wide children (charts, tables, grids) can
+     shrink to the column width instead of overflowing. */
+  .col-left { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+  .col-main { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
 
   /* CHART ROW: line chart + donut side by side 50/50 */
   .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
@@ -1685,18 +1686,31 @@
     .summary-row { grid-template-columns: repeat(3, 1fr); }
   }
   @media (max-width: 900px) {
-    .main-grid { grid-template-columns: 1fr; }
+    /* minmax(0, 1fr) so the single column can shrink to the viewport instead of
+       being forced wide by a child (chart/table). */
+    .main-grid { grid-template-columns: minmax(0, 1fr); }
     .col-left { display: none; }
-    .chart-row { grid-template-columns: 1fr; }
-    .summary-row { grid-template-columns: repeat(2, 1fr); }
-    .bottom-row { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: minmax(0, 1fr); }
+    .summary-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .bottom-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   /* Phones: single-column stacking so nothing overflows horizontally, and leave
      room at the bottom for the quick-add FAB. (P4.14) */
   @media (max-width: 640px) {
-    .summary-row { grid-template-columns: 1fr; }
-    .bottom-row { grid-template-columns: 1fr; }
-    .form-row { grid-template-columns: 1fr; }
+    .summary-row { grid-template-columns: minmax(0, 1fr); }
+    .bottom-row { grid-template-columns: minmax(0, 1fr); }
+    .form-row { grid-template-columns: minmax(0, 1fr); }
+    /* Stack the greeting above the date-range + theme toggle so the header
+       doesn't crowd the fixed hamburger on phones. */
+    .panel-header { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+    .header-right { flex-wrap: wrap; }
+    /* Stack the donut chart above its category breakdown so the legend rows get
+       the full card width (the side-by-side layout cropped the pct/amount). */
+    .donut-layout { flex-direction: column; gap: 0.75rem; }
+    .donut-chart-area { width: 100%; max-width: 200px; }
+    .cat-breakdown { width: 100%; }
+    /* The two big totals can be wide in MXN; let them wrap instead of overflow. */
+    .chart-totals { flex-wrap: wrap; gap: 0.5rem 1.25rem; }
   }
 
   /* MODAL */

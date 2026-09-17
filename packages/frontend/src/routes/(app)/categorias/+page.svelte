@@ -504,7 +504,7 @@
   }
   .cat-card:hover { border-color: var(--accent-purple); background: var(--bg-elevated); }
   .cat-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.3rem; }
-  .cat-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-card-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .cat-card-bottom { display: flex; }
   .cat-type-badge { font-size: 0.65rem; padding: 0.12rem 0.35rem; border-radius: var(--radius-full); font-weight: 600; }
   .cat-type-badge.type-gasto { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); }
@@ -531,8 +531,25 @@
   .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
 
   @media (max-width: 600px) {
-    .date-filters { flex-direction: column; align-items: stretch; }
-    .analysis-row { flex-wrap: wrap; }
+    /* Stack the whole analysis header: title on its own line, then the date
+       range full-width below it (was: title left, pickers crammed right). */
+    .section-header { flex-direction: column; align-items: stretch; }
+    .date-filters { flex-direction: column; align-items: stretch; width: 100%; }
+    .date-filters :global(.datepicker) { width: 100%; }
+    /* The "–" range separator reads as clutter when the pickers are stacked. */
+    .filter-sep { display: none; }
+    /* Stack the header actions ("+ New") below the title. */
+    .page-header { flex-direction: column; align-items: stretch; }
+    /* Reflow the analysis row: dot + name + bar on the first line, then the
+       percentage and amount wrap onto a second line aligned to the right, so
+       the bar keeps a usable width instead of being squeezed to nothing. */
+    .analysis-row { flex-wrap: wrap; row-gap: 0.15rem; }
+    .analysis-name { min-width: 0; flex: 1; }
+    .analysis-bar-wrap { flex: 1 1 100%; order: 3; }
+    .analysis-pct { margin-left: auto; }
+    /* Two category cards per row so the "All Categories" list uses the full
+       width instead of one card per row with empty space. */
+    .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /* ─── Modal Styles ─── */

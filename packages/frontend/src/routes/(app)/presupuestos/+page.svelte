@@ -582,7 +582,7 @@
     background: var(--bg-surface); border: 1px solid var(--border-default);
     border-radius: var(--radius-md); margin-bottom: var(--spacing-md); flex-wrap: wrap;
   }
-  .stat { display: flex; flex-direction: column; gap: 0.1rem; }
+  .stat { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .stat-label { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
   .stat-value { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
   .stat-value.spent { color: var(--accent-red); }
@@ -706,7 +706,9 @@
   .form-buttons { display: flex; gap: var(--spacing-sm); justify-content: flex-end; margin-top: var(--spacing-lg); }
 
   @media (max-width: 600px) {
-    .summary-row { flex-direction: column; gap: var(--spacing-sm); }
+    /* Two stats per row so the summary uses the full width instead of one
+       stacked stat per line. */
+    .summary-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem var(--spacing-lg); }
     .field-row { flex-direction: column; gap: var(--spacing-sm); }
     .cat-row { flex-wrap: wrap; }
   }

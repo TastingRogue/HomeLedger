@@ -236,6 +236,32 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Global mobile overflow safety net ───
+   Recurring class of bug: nested flex/grid containers default to
+   min-width/min-height: auto, so a wide child (chart, table, long number,
+   multi-column grid) refuses to shrink and forces the whole page wider than the
+   viewport — cropping content on the right on phones.
+   Two guards:
+   1. Never let the document scroll sideways.
+   2. Allow flex/grid items to shrink by default. This is the single most common
+      fix and is safe because elements that genuinely need horizontal scroll opt
+      back in explicitly (e.g. .table-wrap { overflow-x: auto }), and text
+      truncation still works where set. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 640px) {
+  /* Let grid/flex children shrink to their container instead of overflowing.
+     Scoped to phones so desktop layouts are untouched. Explicit horizontal
+     scrollers (tables) set their own overflow and are unaffected. */
+  :where(.col-main, .col-left, .card, .chart-row, .bottom-row, .summary-row) > * {
+    min-width: 0;
+  }
+}
+
 /* ─── Headings: size-specific tracking + tight leading (P3.F) ───
    Base element defaults (low specificity) so page-level styles still win where
    they set their own values. Larger heading = tighter tracking + tighter

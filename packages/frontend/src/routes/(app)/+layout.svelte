@@ -187,7 +187,14 @@
   .app-layout {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--bg-deep);
+    /* Clamp the whole shell to the viewport width so nothing can create a
+       page-level horizontal scroll on mobile. Wide data tables scroll inside
+       their own .table-wrap (overflow-x:auto), so this outer clamp doesn't
+       break them — it only stops the entire page from shifting sideways. */
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   /* ─── Sidebar ─── */
@@ -406,16 +413,25 @@
     top: 0.5rem;
     left: 0.5rem;
     z-index: 100;
-    background: var(--bg-surface);
+    /* Translucent floating chrome (apple-design §12): a material layer over the
+       canvas rather than a flat opaque box. Solidified under
+       prefers-reduced-transparency by the global block in app.css. */
+    background: var(--surface-glass);
+    backdrop-filter: var(--material-blur);
+    -webkit-backdrop-filter: var(--material-blur);
     border: 1px solid var(--border-default);
     color: var(--text-secondary);
     padding: 0.4rem;
-    border-radius: var(--radius-sm);
-    min-width: 36px;
-    min-height: 36px;
+    border-radius: var(--radius-md);
+    /* Apple touch-target minimum (§10). */
+    min-width: 40px;
+    min-height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: var(--shadow-sm);
+    /* Instant press feedback (§1). */
+    transition: transform var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
   }
 
   .mobile-toggle:hover {
@@ -423,12 +439,26 @@
     color: var(--text-primary);
   }
 
+  .mobile-toggle:active {
+    transform: scale(0.96);
+  }
+
   /* ─── Main Content ─── */
   .main-content {
     flex: 1;
+    /* CRITICAL: a flex item defaults to min-width:auto, which refuses to shrink
+       below its content's width. Without this, any wide child (a table with a
+       min-width, a nowrap row, a wide grid) forces .main-content — and thus the
+       whole page — wider than the viewport, shifting everything right and
+       clipping the right edge on mobile. min-width:0 lets it stay within the
+       viewport so wide children scroll/wrap inside their own box instead. */
+    min-width: 0;
     padding: 1.25rem;
     padding-top: 3rem;
-    min-height: 100vh;
+    /* Fill the layout (which is min-height:100dvh) via flex:1 — do NOT also set
+       min-height:100dvh here. Stacking a 100dvh min-height on top of the
+       parent's, plus this element's own padding and the footer, made the box
+       taller than the viewport and forced a permanent vertical scrollbar. */
     background: var(--bg-default);
     display: flex;
     flex-direction: column;
@@ -550,10 +580,24 @@
     }
   }
 
+  /* Phones/tablets (below the 1024px desktop cutoff where the hamburger shows):
+     the fixed .mobile-toggle sits at top-left (0.5rem, 36px). Reserve a top strip
+     for it so page titles/headers never render underneath it, and tighten side
+     padding to reclaim width on small screens. (apple-design §16 wayfinding:
+     chrome gets its own space instead of floating over content.) */
+  @media (max-width: 1023px) {
+    .main-content {
+      /* 0.5rem toggle offset + 36px button + 0.5rem breathing room ≈ 3.25rem */
+      padding-top: 3.25rem;
+    }
+  }
+
   /* Phones: leave room at the bottom so the quick-add FAB never covers content
-     or the footer. (P4.14) */
+     or the footer (P4.14), and reduce side padding so cards/tables get more width. */
   @media (max-width: 640px) {
     .main-content {
+      padding-left: 0.85rem;
+      padding-right: 0.85rem;
       padding-bottom: 5rem;
     }
   }

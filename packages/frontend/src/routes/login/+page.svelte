@@ -202,7 +202,10 @@
     /* widened from 360px for a less cramped card */
     width: 100%; max-width: 440px; margin: 0 auto;
     display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; min-height: 100dvh; padding: var(--spacing-md);
+    /* The parent .auth-layout is already min-height:100vh and centers content;
+       don't stack a second viewport height + padding here (caused an always-on
+       vertical scrollbar). */
+    padding: var(--spacing-md);
   }
 
   .login-card {

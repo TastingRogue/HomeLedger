@@ -746,16 +746,16 @@
             <span class="month-total expense">{formatCurrency(group.total)}</span>
           </button>
           {#if isMonthExpanded('gt-' + group.key)}
-            <table class="data-table">
+            <table class="data-table responsive-cards">
               <thead><tr><th>{$t('transactions.col_date')}</th><th>{$t('transactions.col_name')}</th><th>{$t('transactions.col_category')}</th><th class="text-right">{$t('transactions.col_amount')}</th><th>{$t('transactions.col_account')}</th><th></th></tr></thead>
               <tbody>
                 {#each group.transactions as tx (tx.id)}
                   <tr onclick={() => openDetail(tx)} class="clickable-row">
-                    <td class="col-date">{formatDateShort(tx.date)}</td>
-                    <td class="col-name">{tx.name}</td>
-                    <td><span class="tag tag-blue">{getCategoryName(tx.categoryId)}</span></td>
-                    <td class="text-right expense">-{formatCurrency(tx.amount)}</td>
-                    <td class="col-account">{getAccountName(tx.accountId)}</td>
+                    <td class="col-name card-title-cell">{tx.name}</td>
+                    <td class="col-date" data-label={$t('transactions.col_date')}>{formatDateShort(tx.date)}</td>
+                    <td data-label={$t('transactions.col_category')}><span class="tag tag-blue">{getCategoryName(tx.categoryId)}</span></td>
+                    <td class="text-right expense" data-label={$t('transactions.col_amount')}>-{formatCurrency(tx.amount)}</td>
+                    <td class="col-account" data-label={$t('transactions.col_account')}>{getAccountName(tx.accountId)}</td>
                     <td class="col-actions">
                       <button class="btn-action" onclick={(e) => { e.stopPropagation(); openEditForm(tx); }}>✎</button>
                       <button class="btn-action danger" onclick={(e) => { e.stopPropagation(); openDeleteModal(tx); }}>✕</button>
@@ -783,16 +783,16 @@
             <span class="month-total income">{formatCurrency(group.total)}</span>
           </button>
           {#if isMonthExpanded('it-' + group.key)}
-            <table class="data-table">
+            <table class="data-table responsive-cards">
               <thead><tr><th>Fecha</th><th>Nombre</th><th>Categoría</th><th class="text-right">Monto</th><th>Cuenta</th><th></th></tr></thead>
               <tbody>
                 {#each group.transactions as tx (tx.id)}
                   <tr onclick={() => openDetail(tx)} class="clickable-row">
-                    <td class="col-date">{formatDateShort(tx.date)}</td>
-                    <td class="col-name">{tx.name}</td>
-                    <td><span class="tag tag-blue">{getCategoryName(tx.categoryId)}</span></td>
-                    <td class="text-right income">+{formatCurrency(tx.amount)}</td>
-                    <td class="col-account">{getAccountName(tx.accountId)}</td>
+                    <td class="col-name card-title-cell">{tx.name}</td>
+                    <td class="col-date" data-label={$t('transactions.col_date')}>{formatDateShort(tx.date)}</td>
+                    <td data-label={$t('transactions.col_category')}><span class="tag tag-blue">{getCategoryName(tx.categoryId)}</span></td>
+                    <td class="text-right income" data-label={$t('transactions.col_amount')}>+{formatCurrency(tx.amount)}</td>
+                    <td class="col-account" data-label={$t('transactions.col_account')}>{getAccountName(tx.accountId)}</td>
                     <td class="col-actions">
                       <button class="btn-action" onclick={(e) => { e.stopPropagation(); openEditForm(tx); }}>✎</button>
                       <button class="btn-action danger" onclick={(e) => { e.stopPropagation(); openDeleteModal(tx); }}>✕</button>
@@ -1269,7 +1269,10 @@
   .card-amount { font-size: 0.9rem; font-weight: 700; }
   .amount-red { color: var(--accent-red); }
   .amount-green { color: var(--accent-green); }
-  .card-meta { font-size: 0.68rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; }
+  /* Truncate the category/account label so it never overflows the (now narrower,
+     2-per-row) card on phones. nowrap + hidden on the flex line clips the text
+     node after the dot; the dot stays fixed via flex-shrink:0. */
+  .card-meta { font-size: 0.68rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .meta-dot.expense { background: var(--accent-red); }
   .meta-dot.income { background: var(--accent-green); }
@@ -1293,6 +1296,8 @@
 
   /* --- Table View --- */
   .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 0.75rem; }
+  /* On phones the wide table becomes stacked cards via the shared
+     `responsive-cards` pattern (shared.css) — no horizontal scroll. */
   .data-table th { text-align: left; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border-default); }
   .data-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); vertical-align: middle; }
   .data-table tr:hover td { background: var(--bg-elevated); }
@@ -1395,10 +1400,23 @@
   /* --- Responsive --- */
   @media (max-width: 768px) {
     .split-view { grid-template-columns: 1fr; }
+    /* Stacked filters: each control and button spans the full width so the
+       column reads as one clean group (the fixed 150px width + right-aligned
+       buttons were what broke the mobile layout). */
     .filters-bar { flex-direction: column; align-items: stretch; }
-    .split-grid { grid-template-columns: 1fr; }
+    .filter-item { flex: 1 1 auto; width: 100%; }
+    .btn-filter, .btn-clear, .btn-export { align-self: stretch; width: 100%; margin-left: 0; }
+    /* Two cards per row on phones so the transaction gallery uses the full
+       width instead of one tall card per row with empty space on the right. */
+    .split-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field-row { grid-template-columns: 1fr; }
     .split-row { flex-wrap: wrap; }
+  }
+  /* Header stacks (title above actions) so the action row never crowds the
+     title next to the fixed hamburger. */
+  @media (max-width: 640px) {
+    .page-header { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+    .header-actions { justify-content: flex-start; }
   }
   @media (prefers-reduced-motion: reduce) {
     .split-add:active { transform: none; }
