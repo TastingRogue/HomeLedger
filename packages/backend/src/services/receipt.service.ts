@@ -348,7 +348,7 @@ export function parsePlainText(text: string, sourceType: ReceiptSourceType): Par
   // Reject a line if it CONTAINS any document label/keyword (anywhere, not just
   // at the start) — OCR often merges a header row like "... N.° DE FACTURA FECHA".
   const LABEL_ANY = /\b(total|subtotal|iva|tax|vat|fecha|date|ticket|factura|invoice|receipt|plantilla|descripci|monto|cliente|client|condiciones|gracias)\b/i;
-  const PLACEHOLDER = /^(your\s+logo|logo|nombre\s+de\s+la\s+empresa|nombre\s+de\s+la\s+compa|company\s+name|your\s+company|calle\b|street\b|direcci[oó]n|address|tel[eé]fono|phone|a\s*[\/.]\s*a\b|a\s+a\b|attn\b|facturar\s+a|enviar\s+a|bill\s+to|ship\s+to)/i;
+  const PLACEHOLDER = /^(your\s+logo|logo|nombre\s+de\s+la\s+empresa|nombre\s+de\s+la\s+compa|company\s+name|your\s+company|calle\b|street\b|direcci[oó]n|address|tel[eé]fono|phone|a\s*[/.]\s*a\b|a\s+a\b|attn\b|facturar\s+a|enviar\s+a|bill\s+to|ship\s+to)/i;
   const merchant = lines.map(line => line.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9]+/, '').trim()) // strip leading junk like "» "
     .find(line => {
       if (line.length < 3 || line.length > 80) return false;
