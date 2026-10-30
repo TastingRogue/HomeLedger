@@ -6,7 +6,7 @@
 A free, open-source, self-hosted personal finance manager.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.1-22c55e.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.2-22c55e.svg)](CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/irving1flores/homeledger)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant&logoColor=white)](ha-integration/)
 [![MCP](https://img.shields.io/badge/MCP-opt--in-8b5cf6)](docs/USER_MANUAL.md#mcp-ai-assistants)
