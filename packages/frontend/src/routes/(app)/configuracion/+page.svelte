@@ -277,6 +277,8 @@
 
   $effect(() => {
     if (!isAdmin) return;
+    // The Preferences card (profile tab) lets the admin change the currency.
+    if (activeTab === 'perfil' && !currencyLoaded) loadCurrency();
     if (activeTab === 'usuarios' && !usersLoaded) loadUsers();
     if (activeTab === 'registro') {
       if (!regLoaded) loadRegistration();
@@ -756,11 +758,30 @@
             <div class="pref-row">
               <div class="pref-info">
                 <span class="pref-label">{$t('settings.currency')}</span>
-                <span class="pref-desc">{$t('settings.currency_desc')}</span>
+                {#if isAdmin}
+                  <span class="pref-desc">{$t('settings.currency_admin_desc')}</span>
+                  {#if currencyMsg}<span class="pref-desc currency-msg">{currencyMsg}</span>{/if}
+                {:else}
+                  <span class="pref-desc">{$t('settings.currency_admin_only')}</span>
+                {/if}
               </div>
-              <!-- Single-currency per install: the instance currency is set by the
-                   admin (env DISPLAY_CURRENCY / admin API), shown here read-only. -->
-              <span class="pref-value">{currencyConfig[$preferences.currency]?.symbol} — {currencyConfig[$preferences.currency]?.name}</span>
+              <!-- Single-currency per install: only the admin can change it (here or in
+                   the Registration tab, or via DISPLAY_CURRENCY); everyone else sees it read-only. -->
+              {#if isAdmin && currencySupported.length > 0}
+                <select
+                  class="currency-select"
+                  bind:value={currencyValue}
+                  onchange={saveCurrency}
+                  disabled={currencySaving}
+                  aria-label={$t('settings.currency')}
+                >
+                  {#each currencySupported as c (c)}
+                    <option value={c}>{currencyConfig[c as SupportedCurrency]?.symbol ?? ''} — {currencyConfig[c as SupportedCurrency]?.name ?? c}</option>
+                  {/each}
+                </select>
+              {:else}
+                <span class="pref-value">{currencyConfig[$preferences.currency]?.symbol} — {currencyConfig[$preferences.currency]?.name}</span>
+              {/if}
             </div>
             <div class="pref-row">
               <div class="pref-info">
@@ -1619,6 +1640,7 @@
   .allowlist-field { margin-bottom: 0.5rem; }
   .allowlist-field textarea { font-family: var(--font-mono); font-size: 0.78rem; resize: vertical; }
   .currency-select { max-width: 220px; }
+  .currency-msg { color: var(--accent-green, #22c55e); }
 
   .snap-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem; }
   .snap-desc { margin-bottom: 0.75rem; }

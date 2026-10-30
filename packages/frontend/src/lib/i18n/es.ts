@@ -481,6 +481,8 @@ export const es = {
   'settings.preferences': 'Preferencias',
   'settings.currency': 'Moneda',
   'settings.currency_desc': 'Símbolo utilizado para mostrar montos',
+  'settings.currency_admin_desc': 'Moneda de toda la instalación. Al cambiarla se reetiquetan todos los montos; no se convierte nada.',
+  'settings.currency_admin_only': 'Definida por el administrador',
   'settings.language': 'Idioma',
   'settings.language_desc': 'Idioma de la interfaz',
   'settings.timezone': 'Zona horaria',

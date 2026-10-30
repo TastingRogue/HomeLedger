@@ -482,6 +482,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.preferences': 'Preferences',
   'settings.currency': 'Currency',
   'settings.currency_desc': 'Symbol used to display amounts',
+  'settings.currency_admin_desc': 'Currency for the whole install. Changing it relabels every amount; nothing is converted.',
+  'settings.currency_admin_only': 'Set by the administrator',
   'settings.language': 'Language',
   'settings.language_desc': 'Interface language',
   'settings.timezone': 'Timezone',

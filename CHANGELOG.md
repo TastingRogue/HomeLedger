@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admins can change the install currency from Settings > Profile > Preferences.**
+  Before, that row was read-only text and the control was only in the admin
+  Registration tab. Non-admins still see it read-only, labelled as set by the
+  administrator.
+
 ## [1.1.2] - 2026-10-29
 
 ### Added
