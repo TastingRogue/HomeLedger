@@ -5,6 +5,33 @@ All notable changes to HomeLedger are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **GBP (£) currency** (#18) — available as the install's display currency
+  (`DISPLAY_CURRENCY=GBP`, admin setting, per-account currency).
+- **Drag and drop, multiple receipts at once** (#17) — drop any number of
+  receipts/invoices on the Receipts page, or use **Upload several**. Each file is
+  uploaded and analyzed with a per-file status; invalid files are skipped with a
+  reason and one failure never stops the batch.
+- **Scanned PDFs** (#16) — a PDF with no embedded text (or no readable total) is
+  now rasterized (`pdftoppm`) and OCR'd, instead of failing. Shown as
+  **Scanned PDF (OCR)**.
+
+### Fixed
+
+- **Incomplete English translation** (#15) — stored values such as account /
+  category / goal types, budget period, subscription cycle and status, the Quick
+  Entry screen, the sidebar ("View profile", "Log out"), login/register
+  validation, calendar month and weekday names, and "days remaining" labels now
+  follow the selected language. Stored values are unchanged; only their display
+  is translated.
+- The Quick Entry amount no longer shows a hardcoded `MX$` prefix; it uses the
+  install's currency symbol.
+- Receipt analysis errors now follow the host's `DEFAULT_LOCALE` instead of being
+  Spanish-only.
+
 ## [1.1.1] - 2026-09-16
 
 Patch release focused on **receipt OCR accuracy** for English and Spanish

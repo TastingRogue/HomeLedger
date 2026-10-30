@@ -17,6 +17,8 @@
   import { ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
+  import { getIntlTag } from '$lib/i18n/registry';
   import { modalPanel, scrim } from '$lib/motion';
   import Tooltip from '$lib/components/Tooltip.svelte';
   import { preferences, SUPPORTED_CURRENCIES } from '$lib/stores/preferences';
@@ -192,7 +194,7 @@
   }
 
   function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(dateStr).toLocaleDateString(getIntlTag($preferences.locale), { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   function openCreateForm() {
@@ -371,7 +373,7 @@
         <article class="account-card" role="listitem" style="border-left-color: {getTypeBorderColor(account.type)}" onclick={() => openAccountDetail(account)}>
           <div class="card-top">
             <span class="card-name">{account.name}</span>
-            <span class="type-badge {getTypeBadgeClass(account.type)}">{account.type}</span>
+            <span class="type-badge {getTypeBadgeClass(account.type)}">{enumLabel($t, account.type)}</span>
           </div>
           {#if account.bank}
             <span class="card-bank">{account.bank}</span>
@@ -396,7 +398,7 @@
                 {@const level = getUtilizationLevel(util)}
                 <div class="credit-section">
                   <div class="util-row">
-                    <span>Utilización</span>
+                    <span>{$t('accounts.utilization')}</span>
                     <span class="util-pct util-{level}">{util.toFixed(1)}%</span>
                   </div>
                   <div class="util-bar" role="progressbar" aria-valuenow={util} aria-valuemin={0} aria-valuemax={100}>
@@ -445,7 +447,7 @@
         <div class="field">
           <label for="f-type" class="field-label-row">{$t('accounts.form_type')} <Tooltip text={$t('accounts.type_tooltip')} label={$t('accounts.form_type')} /></label>
           <select id="f-type" bind:value={formType}>
-            {#each accountTypes as t}<option value={t}>{t}</option>{/each}
+            {#each accountTypes as at}<option value={at}>{enumLabel($t, at)}</option>{/each}
           </select>
         </div>
         <div class="field">
@@ -541,7 +543,7 @@
         <div class="detail-header-info">
           <h2>{selectedAccount.name}</h2>
           <div class="detail-meta">
-            <span class="type-badge {getTypeBadgeClass(selectedAccount.type)}">{selectedAccount.type}</span>
+            <span class="type-badge {getTypeBadgeClass(selectedAccount.type)}">{enumLabel($t, selectedAccount.type)}</span>
             {#if selectedAccount.bank}<span class="detail-bank">{selectedAccount.bank}</span>{/if}
           </div>
         </div>

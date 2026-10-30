@@ -24,15 +24,15 @@
     passwordError = '';
 
     if (!email.trim()) {
-      emailError = 'El correo electrónico es obligatorio';
+      emailError = $t('auth.email_required');
       valid = false;
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      emailError = 'Ingresa un correo electrónico válido';
+      emailError = $t('auth.email_invalid');
       valid = false;
     }
 
     if (!password) {
-      passwordError = 'La contraseña es obligatoria';
+      passwordError = $t('auth.password_required');
       valid = false;
     }
 

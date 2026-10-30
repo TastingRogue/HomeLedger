@@ -5,6 +5,7 @@
   import { apiGet, ApiError } from '$lib/api/client';
   import { formatCurrency, formatDateShort } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
 
   interface Category { id: number; name: string }
 
@@ -166,7 +167,7 @@
               <a class="hit" href="/suscripciones">
                 <div class="hit-main">
                   <span class="hit-name">{s.name}</span>
-                  <span class="hit-meta">{s.cycle} · {s.status} · {s.accountName ?? ''} · {formatDateShort(s.nextPaymentDate)}</span>
+                  <span class="hit-meta">{enumLabel($t, s.cycle)} · {enumLabel($t, s.status)} · {s.accountName ?? ''} · {formatDateShort(s.nextPaymentDate)}</span>
                 </div>
                 <span class="hit-amount">{formatCurrency(s.amount)}</span>
               </a>

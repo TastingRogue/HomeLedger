@@ -442,6 +442,13 @@ Upload receipts, run OCR, and turn them into transactions.
 ### Uploading
 
 - **Choose file**: pick an image (JPG, PNG, WEBP, GIF), PDF, or XML (CFDI).
+- **Drag and drop**: drop one or many files anywhere on the page. Each file is
+  uploaded and analyzed automatically, with a status line per file. Files that
+  aren't allowed (wrong type, over 10 MB) are listed as skipped, and one failure
+  never stops the rest.
+- **Upload several**: the same multi-file upload from a file picker, for when you
+  can't drag and drop. If the **Upload** dialog is open, a dropped file goes into
+  that dialog so you can link it to a transaction.
 - **Take photo** 📷: on mobile, opens the rear camera directly. The photo flows
   through the same upload → server-side OCR pipeline.
 
@@ -449,7 +456,9 @@ Upload receipts, run OCR, and turn them into transactions.
 
 After uploading, click **Analyze**:
 - **Images**: server-side OCR (Tesseract, Spanish + English) extracts text.
-- **PDFs**: text extraction (or OCR if scanned).
+- **PDFs**: text extraction. If the PDF is a scan (no embedded text), its first
+  3 pages are converted to images and read with OCR; these show as
+  **Scanned PDF (OCR)** in the Source column.
 - **XML (CFDI)**: parses the Mexican digital invoice structure — extracts UUID,
   issuer RFC/name, IVA/tax, line items, and totals.
 
@@ -736,7 +745,7 @@ Control who can create an account:
 
 ### Instance Currency
 
-Change the install's display currency (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL).
+Change the install's display currency (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL).
 This affects all amounts and symbols app-wide.
 
 ---

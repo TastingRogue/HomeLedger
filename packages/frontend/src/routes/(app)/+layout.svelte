@@ -145,11 +145,11 @@
           <div class="user-avatar">{($userProfile?.name ?? 'U')[0].toUpperCase()}</div>
           <div class="user-info">
             <span class="user-name">{$userProfile?.name ?? '...'}</span>
-            <span class="user-role">Ver perfil</span>
+            <span class="user-role">{$t('nav.view_profile')}</span>
           </div>
         </div>
         <button class="logout-btn" onclick={handleLogout}>
-          Cerrar Sesión
+          {$t('nav.logout')}
         </button>
       </div>
     </nav>
@@ -179,7 +179,7 @@
 {:else}
   <div class="auth-check">
     <div class="auth-spinner"></div>
-    <p>Verificando sesión...</p>
+    <p>{$t('auth.verifying_session')}</p>
   </div>
 {/if}
 

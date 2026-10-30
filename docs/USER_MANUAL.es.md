@@ -454,6 +454,13 @@ Sube recibos, ejecuta OCR y conviértelos en transacciones.
 ### Subir
 
 - **Elegir archivo**: una imagen (JPG, PNG, WEBP, GIF), PDF o XML (CFDI).
+- **Arrastrar y soltar**: suelta uno o varios archivos en cualquier parte de la
+  página. Cada archivo se sube y se analiza automáticamente, con una línea de
+  estado por archivo. Los archivos no permitidos (tipo incorrecto o más de 10 MB)
+  aparecen como omitidos, y un fallo no detiene a los demás.
+- **Subir varios**: la misma carga múltiple desde el selector de archivos, para
+  cuando no puedes arrastrar. Si el diálogo **Subir** está abierto, el archivo
+  que sueltes entra en ese diálogo para poder vincularlo a una transacción.
 - **Tomar foto** 📷: en móvil, abre la cámara trasera directamente. La foto pasa
   por el mismo flujo de subida → OCR en el servidor.
 
@@ -461,7 +468,9 @@ Sube recibos, ejecuta OCR y conviértelos en transacciones.
 
 Después de subir, haz clic en **Analizar**:
 - **Imágenes**: OCR en el servidor (Tesseract, español + inglés) extrae el texto.
-- **PDFs**: extracción de texto (u OCR si es escaneado).
+- **PDFs**: extracción de texto. Si el PDF es un escaneo (sin texto incrustado),
+  sus primeras 3 páginas se convierten en imágenes y se leen con OCR; aparecen
+  como **PDF escaneado (OCR)** en la columna Origen.
 - **XML (CFDI)**: analiza la estructura de la factura digital mexicana — extrae
   UUID, RFC/nombre del emisor, IVA, conceptos y totales.
 
@@ -763,8 +772,8 @@ Controla quién puede crear una cuenta:
 
 ### Moneda de la instancia
 
-Cambia la moneda de visualización de la instalación (MXN, USD, EUR, COP, ARS,
-CLP, PEN, BRL). Afecta todos los montos y símbolos en toda la app.
+Cambia la moneda de visualización de la instalación (MXN, USD, EUR, GBP, COP,
+ARS, CLP, PEN, BRL). Afecta todos los montos y símbolos en toda la app.
 
 ---
 

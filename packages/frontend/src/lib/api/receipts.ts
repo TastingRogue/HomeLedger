@@ -31,7 +31,7 @@ export interface ReceiptAnalysis {
 	total: number | null;
 	currency: string;
 	documentType: 'receipt' | 'invoice' | 'cfdi' | 'unknown';
-	sourceType: 'cfdi_xml' | 'pdf_text' | 'ocr' | 'unknown';
+	sourceType: 'cfdi_xml' | 'pdf_text' | 'pdf_ocr' | 'ocr' | 'unknown';
 	status: 'pending' | 'processing' | 'completed' | 'failed';
 	confidence: number;
 	rawText: string | null;

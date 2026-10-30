@@ -4,6 +4,8 @@
  */
 
 import { browser } from '$app/environment';
+import { get } from 'svelte/store';
+import { t } from '../i18n';
 
 const API_BASE = '/api/v1';
 
@@ -164,7 +166,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       response = await fetch(`${API_BASE}${path}`, retryOptions);
     } else {
       redirectToLogin();
-      throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+      throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
     }
   }
 
@@ -172,7 +174,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (response.status === 401) {
     clearTokens();
     redirectToLogin();
-    throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+    throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
   }
 
   return handleResponse<T>(response);
@@ -205,13 +207,13 @@ export async function apiGet<T>(path: string, params?: Record<string, string | n
       if (retryResponse.status === 401) {
         clearTokens();
         redirectToLogin();
-        throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+        throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
       }
       return handleResponse<T>(retryResponse);
     }
     clearTokens();
     redirectToLogin();
-    throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+    throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
   }
 
   return handleResponse<T>(response);
@@ -255,7 +257,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
     if (!newToken) {
       clearTokens();
       redirectToLogin();
-      throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+      throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
     }
     response = await doFetch(newToken);
   }
@@ -284,7 +286,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
     if (!newToken) {
       clearTokens();
       redirectToLogin();
-      throw new ApiError(401, 'SESSION_EXPIRED', 'Sesión expirada. Inicia sesión nuevamente.');
+      throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
     }
     response = await doFetch(newToken);
   }

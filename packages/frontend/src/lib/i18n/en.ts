@@ -1113,6 +1113,7 @@ export const en: Record<TranslationKey, string> = {
   'receipts.source_cfdi': 'CFDI XML',
   'receipts.source_ocr': 'OCR (image)',
   'receipts.source_pdf': 'PDF (text)',
+  'receipts.source_pdf_ocr': 'Scanned PDF (OCR)',
   'receipts.source_unknown': '—',
   'receipts.error_loading': 'Could not load documents',
   'receipts.error_analyze': 'Could not analyze the file',
@@ -1392,4 +1393,75 @@ export const en: Record<TranslationKey, string> = {
   'backup.entity.attachments': 'Attachments',
   'backup.entity.receiptAnalyses': 'Receipt analyses',
   'backup.entity.receiptItems': 'Receipt items',
+
+  // ── Enum display labels (issue #15) ──
+  // The stored values stay Spanish; only these labels are translated (see labels.ts).
+  'enum.tx.expense': 'Expense',
+  'enum.tx.income': 'Income',
+  'enum.category.both': 'Both',
+  'enum.account.debit': 'Debit',
+  'enum.account.credit': 'Credit',
+  'enum.account.investment': 'Investment',
+  'enum.account.vouchers': 'Vouchers',
+  'enum.account.cash': 'Cash',
+  'enum.period.monthly': 'Monthly',
+  'enum.period.weekly': 'Weekly',
+  'enum.status.active': 'Active',
+  'enum.status.inactive': 'Inactive',
+  'enum.status.completed': 'Completed',
+
+  // Days remaining (replaces the Spanish-only formatDaysRemaining strings)
+  'days.overdue': 'Overdue ({n} days)',
+  'days.today': 'Today',
+  'days.tomorrow': 'Tomorrow',
+  'days.n': '{n} days',
+
+  // Sidebar / shell
+  'nav.view_profile': 'View profile',
+  'nav.logout': 'Log out',
+  'auth.verifying_session': 'Verifying session...',
+
+  // Quick entry
+  'quick.back': '← Back',
+  'quick.account_label': 'ACCOUNT *',
+  'quick.category_label': 'CATEGORY *',
+  'quick.name_optional': 'Name (optional)',
+  'quick.name_hint': 'If left empty, the category name will be used',
+  'quick.register': '✓ Register',
+  'quick.registering': 'Registering...',
+  'quick.err_amount': 'Enter a valid amount greater than 0',
+  'quick.err_select_account': 'Select an account',
+  'quick.err_select_category': 'Select a category',
+  'quick.err_amount_invalid': 'Invalid amount',
+  'quick.err_account_required': 'Account required',
+  'quick.err_category_required': 'Category required',
+  'quick.registered': 'Transaction registered: {amount} - {name}',
+  'quick.err_register': 'Could not register the transaction',
+  'quick.err_load': 'Could not load data',
+
+  // Auth form validation + session errors (previously hardcoded Spanish)
+  'auth.name_required': 'Name is required',
+  'auth.name_min': 'Name must be at least 2 characters',
+  'auth.email_required': 'Email is required',
+  'auth.email_invalid': 'Enter a valid email address',
+  'auth.password_required': 'Password is required',
+  'auth.confirm_required': 'Confirm your password',
+  'errors.session_expired': 'Session expired. Please sign in again.',
+
+  // Receipts: drag & drop / multi-file upload (issue #17)
+  'receipts.drop_title': 'Drop your receipts to upload them',
+  'receipts.drop_hint': 'Images, PDF or XML (CFDI) · up to 10 MB each',
+  'receipts.upload_multiple': 'Upload several',
+  'receipts.batch_title': 'Document upload',
+  'receipts.batch_summary': '{ok} of {total} processed',
+  'receipts.batch_status_queued': 'Queued',
+  'receipts.batch_status_uploading': 'Uploading...',
+  'receipts.batch_status_analyzing': 'Analyzing...',
+  'receipts.batch_status_done': 'Done',
+  'receipts.batch_status_analysis_failed': 'Uploaded, but analysis failed',
+  'receipts.batch_status_failed': 'Upload failed',
+  'receipts.batch_status_rejected': 'Skipped',
+  'receipts.batch_reject_type': 'File type not allowed',
+  'receipts.batch_reject_size': 'Larger than 10 MB',
+  'receipts.batch_reject_empty': 'The file is empty',
 };

@@ -1,12 +1,15 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { getDefaultLocale } from '../config/locale.js';
 import { getSqlite } from '../db/connection.js';
 import { AttachmentService, type AttachmentRecord } from './attachment.service.js';
 import { TransactionService } from './transaction.service.js';
 import { TransactionType } from '@homeledger/shared';
 
-export type ReceiptSourceType = 'cfdi_xml' | 'pdf_text' | 'ocr' | 'unknown';
+// 'pdf_ocr' = a scanned PDF (no usable text layer) rasterized and read with OCR.
+export type ReceiptSourceType = 'cfdi_xml' | 'pdf_text' | 'pdf_ocr' | 'ocr' | 'unknown';
 
 export interface ReceiptItem { id: number; analysisId: number; description: string; quantity: number | null; unitPrice: number | null; total: number | null; categoryId: number | null; }
 export interface ReceiptAnalysis {
@@ -395,8 +398,9 @@ export function parsePlainText(text: string, sourceType: ReceiptSourceType): Par
   // base (OCR text is noisier than embedded PDF text), require a TOTAL to clear
   // the floor, and nudge up for each additional recovered field (date, tax,
   // subtotal, tax id). Capped so OCR never claims CFDI-level certainty.
-  const base = sourceType === 'ocr' ? 0.4 : 0.55;
-  const cap = sourceType === 'ocr' ? 0.85 : 0.9;
+  const isOcr = sourceType === 'ocr' || sourceType === 'pdf_ocr';
+  const base = isOcr ? 0.4 : 0.55;
+  const cap = isOcr ? 0.85 : 0.9;
   let confidence = 0.2;
   if (total !== null) {
     confidence = base;
@@ -413,6 +417,108 @@ export function parsePlainText(text: string, sourceType: ReceiptSourceType): Par
 }
 function extractPdfText(filePath: string): string | null {
   try { return execFileSync('pdftotext', ['-layout', filePath, '-'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return null; }
+}
+
+// ── Receipt error messages (follow the host's DEFAULT_LOCALE) ───────────────
+const RECEIPT_MESSAGES = {
+  fileNotFound: { es: 'Archivo no encontrado', en: 'File not found' },
+  fileMissingOnDisk: { es: 'Archivo no encontrado en disco', en: 'File not found on disk' },
+  analyzeFailed: { es: 'Error al analizar el archivo', en: 'Could not analyze the file' },
+  pdfUnreadable: {
+    es: 'No se pudo leer el PDF: no tiene texto incrustado y no se pudo convertir para OCR. Sube una imagen del documento.',
+    en: 'Could not read this PDF: it has no embedded text and could not be converted for OCR. Upload an image of the document instead.',
+  },
+  imageNoText: {
+    es: 'El OCR no reconoció texto en la imagen. Prueba con una foto más nítida y bien iluminada.',
+    en: 'OCR could not recognize any text in the image. Try a sharper, well-lit photo.',
+  },
+} as const;
+
+export function receiptMessage(key: keyof typeof RECEIPT_MESSAGES): string {
+  return RECEIPT_MESSAGES[key][getDefaultLocale()];
+}
+
+function unsupportedTypeMessage(type: string): string {
+  return getDefaultLocale() === 'es'
+    ? `Tipo de archivo no soportado para análisis: ${type}`
+    : `Unsupported file type for analysis: ${type}`;
+}
+
+// ── Scanned-PDF support (issue #16) ─────────────────────────────────────────
+// A PDF can be digital (embedded text, read with pdftotext) or a scan (just
+// page images). For scans we rasterize the first pages with poppler's
+// `pdftoppm` — already installed in the Docker image alongside pdftotext — and
+// run them through the same OCR pipeline used for photos.
+const PDF_OCR_MAX_PAGES = 3;
+const PDF_OCR_DPI = 200;
+
+/**
+ * Rasterizes the first pages of a PDF to PNG files. Arguments are passed as an
+ * array (no shell), so file names cannot inject commands. Returns null when
+ * `pdftoppm` is unavailable or conversion fails.
+ */
+function rasterizePdf(filePath: string): { pages: string[]; cleanup: () => void } | null {
+  let dir: string | null = null;
+  const remove = (d: string) => { try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } };
+  try {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hl-pdf-'));
+    const workDir = dir;
+    execFileSync(
+      'pdftoppm',
+      ['-png', '-r', String(PDF_OCR_DPI), '-f', '1', '-l', String(PDF_OCR_MAX_PAGES), filePath, path.join(workDir, 'page')],
+      { stdio: 'ignore', timeout: 60_000 },
+    );
+    const pages = fs.readdirSync(workDir).filter(f => f.endsWith('.png')).sort().map(f => path.join(workDir, f));
+    if (pages.length === 0) { remove(workDir); return null; }
+    return { pages, cleanup: () => remove(workDir) };
+  } catch {
+    if (dir) remove(dir);
+    return null;
+  }
+}
+
+/** OCRs the first pages of a PDF. Returns '' when it cannot be rasterized. */
+async function ocrPdf(filePath: string): Promise<string> {
+  const raster = rasterizePdf(filePath);
+  if (!raster) return '';
+  try {
+    const texts: string[] = [];
+    for (const page of raster.pages) texts.push(await ocrImage(page));
+    return texts.join('\n');
+  } finally {
+    raster.cleanup();
+  }
+}
+
+/** The two ways to read a PDF, injectable so the decision logic is testable. */
+export interface PdfReaders {
+  extractText: (filePath: string) => string | null;
+  ocr: (filePath: string) => Promise<string>;
+}
+
+/**
+ * Reads a PDF receipt/invoice. Embedded text is preferred (exact, no OCR
+ * noise). If the PDF has no text layer — or its text contains no recognizable
+ * total, as with scans that carry only a stray header layer — the pages are
+ * OCR'd instead and the better result wins.
+ */
+export async function analyzePdf(
+  filePath: string,
+  readers: PdfReaders = { extractText: extractPdfText, ocr: ocrPdf },
+): Promise<ParsedReceipt> {
+  const embeddedText = (readers.extractText(filePath) ?? '').trim();
+  const embedded = embeddedText ? parsePlainText(embeddedText, 'pdf_text') : null;
+  if (embedded && embedded.total !== null) return embedded;
+
+  let ocrText = '';
+  try { ocrText = (await readers.ocr(filePath)).trim(); } catch { /* fall through to embedded / error */ }
+  const scanned = ocrText ? parsePlainText(ocrText, 'pdf_ocr') : null;
+
+  if (scanned && scanned.total !== null) return scanned;
+  // Neither found a total: keep whatever text we have so the user can correct fields by hand.
+  const best = embedded ?? scanned;
+  if (best) return best;
+  throw new Error(receiptMessage('pdfUnreadable'));
 }
 
 /**
@@ -592,7 +698,7 @@ export class ReceiptService {
   }
 
   static async analyze(attachmentId: number, userId: number): Promise<ReceiptAnalysis> {
-    ensureTables(); const attachment = AttachmentService.getById(attachmentId, userId); if (!attachment) throw new Error('Archivo no encontrado');
+    ensureTables(); const attachment = AttachmentService.getById(attachmentId, userId); if (!attachment) throw new Error(receiptMessage('fileNotFound'));
     const sqlite = getSqlite(); const existing = sqlite.prepare('SELECT id FROM receipt_analyses WHERE attachment_id = ? AND user_id = ?').get(attachmentId, userId) as { id: number } | undefined;
     const now = new Date().toISOString(); let analysisId = existing?.id;
     if (!analysisId) { const result = sqlite.prepare("INSERT INTO receipt_analyses (attachment_id, user_id, transaction_id, status, created_at, updated_at) VALUES (?, ?, ?, 'processing', ?, ?)").run(attachmentId, userId, attachment.transactionId, now, now); analysisId = Number(result.lastInsertRowid); }
@@ -602,11 +708,11 @@ export class ReceiptService {
       sqlite.prepare("UPDATE receipt_analyses SET merchant = ?, receipt_date = ?, subtotal = ?, tax = ?, total = ?, currency = ?, document_type = ?, source_type = ?, status = 'completed', confidence = ?, raw_text = ?, uuid = ?, issuer_rfc = ?, issuer_name = ?, error = NULL, updated_at = ? WHERE id = ? AND user_id = ?").run(parsed.merchant, parsed.receiptDate, parsed.subtotal, parsed.tax, parsed.total, parsed.currency, parsed.documentType, parsed.sourceType, parsed.confidence, parsed.rawText, parsed.uuid, parsed.issuerRfc, parsed.issuerName, new Date().toISOString(), analysisId, userId);
       const insertItem = sqlite.prepare('INSERT INTO receipt_items (analysis_id, description, quantity, unit_price, total) VALUES (?, ?, ?, ?, ?)'); for (const item of parsed.items) insertItem.run(analysisId, item.description, item.quantity, item.unitPrice, item.total);
       return this.get(analysisId, userId)!;
-    } catch (error) { const message = error instanceof Error ? error.message : 'Error al analizar el archivo'; sqlite.prepare("UPDATE receipt_analyses SET status = 'failed', error = ?, updated_at = ? WHERE id = ? AND user_id = ?").run(message, new Date().toISOString(), analysisId, userId); throw error; }
+    } catch (error) { const message = error instanceof Error ? error.message : receiptMessage('analyzeFailed'); sqlite.prepare("UPDATE receipt_analyses SET status = 'failed', error = ?, updated_at = ? WHERE id = ? AND user_id = ?").run(message, new Date().toISOString(), analysisId, userId); throw error; }
   }
   private static async parseAttachment(attachment: AttachmentRecord): Promise<ParsedReceipt> {
     const filePath = AttachmentService.getFilePath(attachment);
-    if (!fs.existsSync(filePath)) throw new Error('Archivo no encontrado en disco');
+    if (!fs.existsSync(filePath)) throw new Error(receiptMessage('fileMissingOnDisk'));
     const ext = path.extname(attachment.filename).toLowerCase();
 
     // CFDI / XML invoices: structured, highest confidence.
@@ -614,21 +720,19 @@ export class ReceiptService {
       return parseCfdi(fs.readFileSync(filePath, 'utf8'));
     }
 
-    // PDF: prefer embedded text (pdftotext); fall back to OCR for scanned PDFs.
+    // PDF: prefer embedded text (pdftotext); scanned PDFs are rasterized and OCR'd.
     if (attachment.mimeType === 'application/pdf' || ext === '.pdf') {
-      const text = extractPdfText(filePath);
-      if (text?.trim()) return parsePlainText(text, 'pdf_text');
-      throw new Error('No se pudo extraer texto del PDF (¿es un PDF escaneado sin texto?). Sube una imagen del ticket para usar OCR.');
+      return analyzePdf(filePath);
     }
 
     // Images: run OCR with tesseract.js.
     if (attachment.mimeType.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp', '.bmp'].includes(ext)) {
       const text = await ocrImage(filePath);
-      if (!text.trim()) throw new Error('El OCR no reconoció texto en la imagen. Prueba con una foto más nítida y bien iluminada.');
+      if (!text.trim()) throw new Error(receiptMessage('imageNoText'));
       return parsePlainText(text, 'ocr');
     }
 
-    throw new Error(`Tipo de archivo no soportado para análisis: ${attachment.mimeType || ext}`);
+    throw new Error(unsupportedTypeMessage(attachment.mimeType || ext));
   }
   private static hydrate(row: Record<string, unknown>): ReceiptAnalysis {
     const items = getSqlite().prepare('SELECT id, analysis_id as analysisId, description, quantity, unit_price as unitPrice, total, category_id as categoryId FROM receipt_items WHERE analysis_id = ? ORDER BY id').all(row.id) as ReceiptItem[];

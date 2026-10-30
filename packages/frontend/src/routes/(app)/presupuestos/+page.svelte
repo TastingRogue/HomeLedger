@@ -17,6 +17,7 @@
   import { formatCurrency } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
   import { modalPanel, scrim } from '$lib/motion';
 
   // ─── Types ───
@@ -353,7 +354,7 @@
             <div class="budget-top">
               <div class="budget-title-row">
                 <h2 class="budget-name">{budget.name}</h2>
-                <span class="period-tag">{budget.period}</span>
+                <span class="period-tag">{enumLabel($t, budget.period)}</span>
                 {#if budget.rolloverEnabled}<span class="rollover-tag" title={$t('budgets.rollover_hint')}>{$t('budgets.rollover_badge')}</span>{/if}
               </div>
               <span class="budget-dates">{formatDateRange(budget.startDate, budget.endDate)}</span>
@@ -427,7 +428,7 @@
 {#if showForm}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingBudget ? 'Editar presupuesto' : 'Nuevo presupuesto'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingBudget ? $t('budgets.edit_title') : $t('budgets.new_title')}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
@@ -452,7 +453,7 @@
             <label for="f-period">{$t('budgets.form_period')} <span class="req">*</span></label>
             <select id="f-period" bind:value={formPeriod}>
               {#each periods as p}
-                <option value={p}>{p}</option>
+                <option value={p}>{enumLabel($t, p)}</option>
               {/each}
             </select>
           </div>

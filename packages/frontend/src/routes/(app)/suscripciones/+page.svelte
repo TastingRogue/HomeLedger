@@ -21,6 +21,9 @@
   import { formatCurrency, formatDaysRemaining } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
+  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '$lib/stores/preferences';
   import { modalPanel, scrim } from '$lib/motion';
 
   // ─── Types ───
@@ -50,8 +53,17 @@
   // Calendar view state
   let calViewMonth = $state(new Date().getMonth());
   let calViewYear = $state(new Date().getFullYear());
-  const calMonthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const calWeekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  // Month/weekday names follow the active language (Intl), not a hardcoded Spanish list.
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const calMonthNames = $derived.by(() => {
+    const fmt = new Intl.DateTimeFormat(getIntlTag($preferences.locale), { month: 'long' });
+    return Array.from({ length: 12 }, (_, m) => capitalize(fmt.format(new Date(2024, m, 1))));
+  });
+  // 2024-01-07 is a Sunday, so the list starts on Sunday like the calendar grid.
+  const calWeekdays = $derived.by(() => {
+    const fmt = new Intl.DateTimeFormat(getIntlTag($preferences.locale), { weekday: 'short' });
+    return Array.from({ length: 7 }, (_, d) => capitalize(fmt.format(new Date(2024, 0, 7 + d))));
+  });
 
   let calDays = $derived.by(() => {
     const firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
@@ -400,17 +412,17 @@
                 </td>
                 <td class="cell-amount" data-label={$t('subscriptions.col_amount')}>{formatCurrency(sub.amount)}</td>
                 <td class="cell-amount" data-label={$t('subscriptions.col_annual')}>{ins ? formatCurrency(ins.annualCost) : '—'}</td>
-                <td data-label={$t('subscriptions.col_cycle')}>{sub.cycle}</td>
+                <td data-label={$t('subscriptions.col_cycle')}>{enumLabel($t, sub.cycle)}</td>
                 <td data-label={$t('subscriptions.col_days')}>
                   <span class="days-badge {getUrgencyClass(days)}">
-                    {formatDaysRemaining(days)}
+                    {formatDaysRemaining(days, $t)}
                   </span>
                 </td>
-                <td data-label={$t('subscriptions.col_status')}><span class="tag {getStatusBadge(sub.status)}">{sub.status}</span></td>
+                <td data-label={$t('subscriptions.col_status')}><span class="tag {getStatusBadge(sub.status)}">{enumLabel($t, sub.status)}</span></td>
                 <td data-label={$t('subscriptions.col_auto')}>{sub.autoCharge ? '✓' : '–'}</td>
                 <td class="cell-actions" onclick={(e) => e.stopPropagation()}>
-                  <button class="btn-icon" onclick={() => openEditForm(sub)} title="Editar">✎</button>
-                  <button class="btn-icon btn-icon-danger" onclick={() => confirmDeactivate(sub)} title="Eliminar">✕</button>
+                  <button class="btn-icon" onclick={() => openEditForm(sub)} title={$t('common.edit')}>✎</button>
+                  <button class="btn-icon btn-icon-danger" onclick={() => confirmDeactivate(sub)} title={$t('common.delete')}>✕</button>
                 </td>
               </tr>
             {/each}
@@ -430,7 +442,7 @@
           <div class="cal-nav-header">
             <button type="button" class="cal-nav-btn" onclick={calPrev}>←</button>
             <span class="cal-nav-month">{calMonthNames[calViewMonth]} {calViewYear}</span>
-            <button type="button" class="cal-nav-btn" onclick={calToday}>Hoy</button>
+            <button type="button" class="cal-nav-btn" onclick={calToday}>{$t('common.today')}</button>
             <button type="button" class="cal-nav-btn" onclick={calNext}>→</button>
           </div>
           <div class="cal-grid">
@@ -464,11 +476,11 @@
               <div class="upcoming-item" onclick={() => { const sub = subscriptionsList.find(s => s.id === entry.id); if (sub) openEditForm(sub); }}>
                 <div class="up-left">
                   <span class="up-name">{entry.name}</span>
-                  <span class="up-meta">{getCategoryName(entry.categoryId)} · {entry.cycle}</span>
+                  <span class="up-meta">{getCategoryName(entry.categoryId)} · {enumLabel($t, entry.cycle)}</span>
                 </div>
                 <div class="up-right">
                   <span class="up-amount">{formatCurrency(entry.amount)}</span>
-                  <span class="up-days" class:urgent={entry.daysRemaining <= 3}>{entry.daysRemaining} días</span>
+                  <span class="up-days" class:urgent={entry.daysRemaining <= 3}>{$t('days.n', { n: entry.daysRemaining })}</span>
                 </div>
               </div>
             {:else}
@@ -485,7 +497,7 @@
 {#if showForm}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingSub ? 'Editar suscripción' : 'Nueva suscripción'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingSub ? $t('subscriptions.edit_title') : $t('subscriptions.new_title')}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
@@ -521,7 +533,7 @@
           <label for="f-cycle">{$t('subscriptions.form_cycle')} <span class="req">*</span></label>
           <select id="f-cycle" bind:value={formCycle}>
             {#each cycles as c}
-              <option value={c}>{c}</option>
+              <option value={c}>{enumLabel($t, c)}</option>
             {/each}
           </select>
         </div>

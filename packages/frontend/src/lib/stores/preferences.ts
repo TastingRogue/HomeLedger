@@ -3,7 +3,7 @@ import { browser } from '$app/environment';
 import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from '../i18n/registry';
 
 export type { SupportedLocale };
-export type SupportedCurrency = 'MXN' | 'USD' | 'EUR' | 'COP' | 'ARS' | 'CLP' | 'PEN' | 'BRL';
+export type SupportedCurrency = 'MXN' | 'USD' | 'EUR' | 'GBP' | 'COP' | 'ARS' | 'CLP' | 'PEN' | 'BRL';
 
 export interface UserPreferences {
   locale: SupportedLocale;
@@ -52,7 +52,7 @@ preferences.subscribe((value) => {
   saveToStorage(value);
 });
 
-export const SUPPORTED_CURRENCIES: SupportedCurrency[] = ['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'];
+export const SUPPORTED_CURRENCIES: SupportedCurrency[] = ['MXN', 'USD', 'EUR', 'GBP', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'];
 
 /**
  * Applies instance config from GET /api/v1/config at startup:
@@ -107,6 +107,7 @@ export const currencyConfig: Record<SupportedCurrency, { symbol: string; name: s
   MXN: { symbol: 'MX$', name: 'Peso Mexicano', locale: 'es-MX' },
   USD: { symbol: '$', name: 'US Dollar', locale: 'en-US' },
   EUR: { symbol: '€', name: 'Euro', locale: 'de-DE' },
+  GBP: { symbol: '£', name: 'Pound Sterling', locale: 'en-GB' },
   COP: { symbol: 'COL$', name: 'Peso Colombiano', locale: 'es-CO' },
   ARS: { symbol: 'AR$', name: 'Peso Argentino', locale: 'es-AR' },
   CLP: { symbol: 'CL$', name: 'Peso Chileno', locale: 'es-CL' },

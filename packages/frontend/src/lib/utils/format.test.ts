@@ -6,6 +6,8 @@ import {
   formatDaysRemaining,
   toDatetimeLocal,
 } from './format';
+import { es } from '../i18n/es';
+import { en } from '../i18n/en';
 
 describe('formatCurrency', () => {
   afterEach(() => {
@@ -42,6 +44,12 @@ describe('formatCurrency', () => {
     expect(formatCurrency(1234.5)).toBe('$1,234.50');
     localStorage.setItem('sf_preferences', JSON.stringify({ currency: 'EUR' }));
     expect(formatCurrency(10)).toBe('€10.00');
+  });
+
+  it('formats GBP with the pound sign (issue #18)', () => {
+    localStorage.setItem('sf_preferences', JSON.stringify({ currency: 'GBP' }));
+    expect(formatCurrency(1234.5)).toBe('£1,234.50');
+    expect(formatCurrency(-20)).toBe('-£20.00');
   });
 
   it('falls back to MXN when preferences are unreadable', () => {
@@ -81,14 +89,35 @@ describe('formatDateShort', () => {
 });
 
 describe('formatDaysRemaining', () => {
-  it('labels today, tomorrow, and future days', () => {
-    expect(formatDaysRemaining(0)).toBe('Hoy');
-    expect(formatDaysRemaining(1)).toBe('Mañana');
-    expect(formatDaysRemaining(5)).toBe('5 días');
+  // The label follows the active language (issue #15): it used to be hardcoded
+  // Spanish, so an English UI showed "Hoy" / "5 días". Pass a translator built
+  // from each dictionary to pin both languages deterministically.
+  const trFor = (dict: Record<string, string>) => (key: string, params?: Record<string, string | number>) => {
+    let text = dict[key] ?? key;
+    for (const [k, v] of Object.entries(params ?? {})) text = text.replace(`{${k}}`, String(v));
+    return text;
+  };
+  const trEs = trFor(es);
+  const trEn = trFor(en);
+
+  it('labels today, tomorrow, and future days (Spanish)', () => {
+    expect(formatDaysRemaining(0, trEs)).toBe('Hoy');
+    expect(formatDaysRemaining(1, trEs)).toBe('Mañana');
+    expect(formatDaysRemaining(5, trEs)).toBe('5 días');
   });
 
-  it('labels overdue days with the absolute count', () => {
-    expect(formatDaysRemaining(-3)).toBe('Vencido (3 días)');
+  it('labels overdue days with the absolute count (Spanish)', () => {
+    expect(formatDaysRemaining(-3, trEs)).toBe('Vencido (3 días)');
+  });
+
+  it('labels today, tomorrow, and future days (English)', () => {
+    expect(formatDaysRemaining(0, trEn)).toBe('Today');
+    expect(formatDaysRemaining(1, trEn)).toBe('Tomorrow');
+    expect(formatDaysRemaining(5, trEn)).toBe('5 days');
+  });
+
+  it('labels overdue days with the absolute count (English)', () => {
+    expect(formatDaysRemaining(-3, trEn)).toBe('Overdue (3 days)');
   });
 });
 

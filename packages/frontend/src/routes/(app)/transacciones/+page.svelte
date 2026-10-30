@@ -9,6 +9,9 @@
   import Dropdown from '$lib/components/Dropdown.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
+  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '$lib/stores/preferences';
   import { modalPanel, scrim } from '$lib/motion';
 
   // --- State ---
@@ -37,8 +40,8 @@
   let filtersExpanded = $state(false);
 
   // Dropdown options
-  let accountOptions = $derived([{ value: '', label: 'Todas' }, ...accounts.map(a => ({ value: String(a.id), label: a.name }))]);
-  let categoryOptions = $derived([{ value: '', label: 'Todas' }, ...categories.map(c => ({ value: String(c.id), label: c.name }))]);
+  let accountOptions = $derived([{ value: '', label: $t('common.all') }, ...accounts.map(a => ({ value: String(a.id), label: a.name }))]);
+  let categoryOptions = $derived([{ value: '', label: $t('common.all') }, ...categories.map(c => ({ value: String(c.id), label: c.name }))]);
 
   // View toggle
   let viewMode = $state<'gallery' | 'table'>('gallery');
@@ -492,13 +495,12 @@
   function formatCardDate(dateStr: string): string {
     // Parse as local date parts to avoid UTC timezone shift
     const parts = dateStr.split('T')[0]!.split('-');
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    // Month names follow the active language (Intl) instead of a fixed Spanish list.
+    const fmt = new Intl.DateTimeFormat(getIntlTag($preferences.locale), { month: 'short', day: 'numeric', year: 'numeric' });
     if (parts.length === 3) {
-      const monthIdx = parseInt(parts[1]!, 10) - 1;
-      return `${months[monthIdx]} ${parseInt(parts[2]!, 10)}, ${parts[0]}`;
+      return fmt.format(new Date(parseInt(parts[0]!, 10), parseInt(parts[1]!, 10) - 1, parseInt(parts[2]!, 10)));
     }
-    const d = new Date(dateStr);
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    return fmt.format(new Date(dateStr));
   }
 
   function handlePanelEditClick() {
@@ -736,7 +738,7 @@
       <!-- Gastos Table -->
       <div class="split-col">
         <div class="split-header expense">
-          <h3>Gastos</h3>
+          <h3>{$t('transactions.expenses')}</h3>
           <span class="split-total">-{formatCurrency(totalGastos)}</span>
         </div>
         {#each gastosByMonth as group (group.key)}
@@ -766,14 +768,14 @@
             </table>
           {/if}
         {:else}
-          <p class="empty-text">No hay gastos</p>
+          <p class="empty-text">{$t('transactions.no_expenses')}</p>
         {/each}
       </div>
 
       <!-- Ingresos Table -->
       <div class="split-col">
         <div class="split-header income">
-          <h3>Ingresos</h3>
+          <h3>{$t('transactions.income')}</h3>
           <span class="split-total">+{formatCurrency(totalIngresos)}</span>
         </div>
         {#each ingresosByMonth as group (group.key)}
@@ -784,7 +786,7 @@
           </button>
           {#if isMonthExpanded('it-' + group.key)}
             <table class="data-table responsive-cards">
-              <thead><tr><th>Fecha</th><th>Nombre</th><th>Categoría</th><th class="text-right">Monto</th><th>Cuenta</th><th></th></tr></thead>
+              <thead><tr><th>{$t('transactions.col_date')}</th><th>{$t('transactions.col_name')}</th><th>{$t('transactions.col_category')}</th><th class="text-right">{$t('transactions.col_amount')}</th><th>{$t('transactions.col_account')}</th><th></th></tr></thead>
               <tbody>
                 {#each group.transactions as tx (tx.id)}
                   <tr onclick={() => openDetail(tx)} class="clickable-row">
@@ -803,7 +805,7 @@
             </table>
           {/if}
         {:else}
-          <p class="empty-text">No hay ingresos</p>
+          <p class="empty-text">{$t('transactions.no_income')}</p>
         {/each}
       </div>
     </div>
@@ -840,7 +842,7 @@
           </div>
           <div class="detail-prop">
             <span class="prop-label">{$t('common.type')}</span>
-            <span class="prop-value"><span class="tag {selectedTransaction.type === 'Ingreso' ? 'tag-green' : 'tag-red'}">{selectedTransaction.type}</span></span>
+            <span class="prop-value"><span class="tag {selectedTransaction.type === 'Ingreso' ? 'tag-green' : 'tag-red'}">{enumLabel($t, selectedTransaction.type)}</span></span>
           </div>
           <div class="detail-prop">
             <span class="prop-label">{$t('common.category')}</span>
@@ -1013,8 +1015,8 @@
           <div class="field">
             <label for="fm-type">{$t('transactions.form_type')}</label>
             <select id="fm-type" bind:value={formType}>
-              <option value="Gasto">Gasto</option>
-              <option value="Ingreso">Ingreso</option>
+              <option value="Gasto">{$t('enum.tx.expense')}</option>
+              <option value="Ingreso">{$t('enum.tx.income')}</option>
             </select>
           </div>
         </div>

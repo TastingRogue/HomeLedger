@@ -16,6 +16,7 @@
   import { formatCurrency, formatDateShort } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
   import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
@@ -283,7 +284,7 @@
         <div class="goal-row" class:completed={isCompleted} role="listitem">
           <div class="goal-main">
             <span class="goal-name">{goal.name}</span>
-            <span class="type-tag {getTypeBadgeClass(goal.type)}">{goal.type}</span>
+            <span class="type-tag {getTypeBadgeClass(goal.type)}">{enumLabel($t, goal.type)}</span>
             {#if isCompleted}
               <span class="completed-tag">{$t('goals.completed_tag')}</span>
             {/if}
@@ -337,7 +338,7 @@
 {#if showForm}
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingGoal ? 'Editar meta' : 'Nueva meta'}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
+  <div class="overlay" role="dialog" aria-modal="true" aria-label={editingGoal ? $t('goals.edit_title') : $t('goals.new_title')}  onkeydown={(e) => { if (e.key === 'Escape') closeForm(); }} transition:scrim>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="modal" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
@@ -366,8 +367,8 @@
         <div class="field">
           <label for="f-type">{$t('goals.form_type')} <span class="req">*</span></label>
           <select id="f-type" bind:value={formType}>
-            {#each goalTypes as t}
-              <option value={t}>{t}</option>
+            {#each goalTypes as gt}
+              <option value={gt}>{enumLabel($t, gt)}</option>
             {/each}
           </select>
         </div>

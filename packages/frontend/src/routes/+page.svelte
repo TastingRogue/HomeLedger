@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { hasToken } from '$lib/api';
+  import { t } from '$lib/i18n';
 
   onMount(() => {
     if (hasToken()) {
@@ -13,7 +14,7 @@
 </script>
 
 <div class="loading-screen">
-  <p>Cargando...</p>
+  <p>{$t('common.loading')}</p>
 </div>
 
 <style>

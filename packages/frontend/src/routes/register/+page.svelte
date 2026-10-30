@@ -21,16 +21,16 @@
     let valid = true;
     nameError = ''; emailError = ''; passwordError = ''; confirmPasswordError = '';
 
-    if (!name.trim()) { nameError = 'El nombre es obligatorio'; valid = false; }
-    else if (name.trim().length < 2) { nameError = 'El nombre debe tener al menos 2 caracteres'; valid = false; }
+    if (!name.trim()) { nameError = $t('auth.name_required'); valid = false; }
+    else if (name.trim().length < 2) { nameError = $t('auth.name_min'); valid = false; }
 
-    if (!email.trim()) { emailError = 'El correo electrónico es obligatorio'; valid = false; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { emailError = 'Ingresa un correo electrónico válido'; valid = false; }
+    if (!email.trim()) { emailError = $t('auth.email_required'); valid = false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { emailError = $t('auth.email_invalid'); valid = false; }
 
-    if (!password) { passwordError = 'La contraseña es obligatoria'; valid = false; }
+    if (!password) { passwordError = $t('auth.password_required'); valid = false; }
     else if (password.length < 8) { passwordError = $t('auth.password_min'); valid = false; }
 
-    if (!confirmPassword) { confirmPasswordError = 'Confirma tu contraseña'; valid = false; }
+    if (!confirmPassword) { confirmPasswordError = $t('auth.confirm_required'); valid = false; }
     else if (password !== confirmPassword) { confirmPasswordError = $t('auth.passwords_mismatch'); valid = false; }
 
     return valid;

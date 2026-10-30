@@ -12,6 +12,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
   import { modalPanel, scrim } from '$lib/motion';
   import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
@@ -301,7 +302,12 @@
         days.push(h % 4 === 0 ? `${h}:00` : '');
       }
     } else if (chartPeriod === 'week') {
-      const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      // Weekday names follow the active language (2024-01-01 is a Monday).
+      const dayFmt = new Intl.DateTimeFormat(getIntlTag($preferences.locale), { weekday: 'short' });
+      const dayNames = Array.from({ length: 7 }, (_, d) => {
+        const s = dayFmt.format(new Date(2024, 0, 1 + d));
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      });
       const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
       for (let i = 0; i <= day; i++) {
         days.push(dayNames[i] ?? '');
@@ -653,7 +659,7 @@
         : { transferId: attachTargetId });
       attachSuccess = true;
       setTimeout(() => closeAttachModal(), 1500);
-    } catch (e: unknown) { attachError = e instanceof Error ? e.message : 'Error al subir'; }
+    } catch (e: unknown) { attachError = e instanceof Error ? e.message : $t('common.error'); }
     finally { attachSubmitting = false; }
   }
 
@@ -661,7 +667,7 @@
     try {
       await apiDownloadAttachment(id, filename);
     } catch (e: unknown) {
-      attachError = e instanceof Error ? e.message : 'Error al descargar';
+      attachError = e instanceof Error ? e.message : $t('common.error');
     }
   }
 
@@ -878,7 +884,7 @@
               <span class="pi-icon"><Icon name="repeat" size={12} /></span>
               <span class="pi-name">{sub.name}</span>
               {#if sub.categoryName}<span class="pi-cat">{sub.categoryName}</span>{/if}
-              <span class="days-badge" class:days-urgent={sub.daysRemaining <= 3}>{sub.daysRemaining} días</span>
+              <span class="days-badge" class:days-urgent={sub.daysRemaining <= 3}>{$t('days.n', { n: sub.daysRemaining })}</span>
               <span class="pi-amount">{formatCurrency(sub.amount)}</span>
             </button>
           {:else}
@@ -984,7 +990,7 @@
               <div class="am-top">
                 <span class="am-name">{account.name}</span>
                 <div class="am-badges">
-                  <span class="am-badge {account.type === 'Crédito' ? 'badge-red' : account.type === 'Inversión' ? 'badge-blue' : account.type === 'Efectivo' ? 'badge-purple' : 'badge-green'}">{account.type}</span>
+                  <span class="am-badge {account.type === 'Crédito' ? 'badge-red' : account.type === 'Inversión' ? 'badge-blue' : account.type === 'Efectivo' ? 'badge-purple' : 'badge-green'}">{enumLabel($t, account.type)}</span>
                 </div>
               </div>
               {#if account.bank}<span class="am-bank">{account.bank}</span>{/if}
@@ -993,7 +999,7 @@
               </span>
               {#if account.type === 'Crédito' && account.creditLimit}
                 <div class="am-credit-info">
-                  <span class="am-meta">Límite: {formatCurrency(account.creditLimit)}</span>
+                  <span class="am-meta">{$t('dashboard.limit')}: {formatCurrency(account.creditLimit)}</span>
                   <div class="am-util-bar">
                     <div class="am-util-fill" style="width: {Math.min((Math.abs(getAccountBalance(account)) / account.creditLimit) * 100, 100)}%; background: {(Math.abs(getAccountBalance(account)) / account.creditLimit) * 100 > 70 ? 'var(--accent-red)' : (Math.abs(getAccountBalance(account)) / account.creditLimit) * 100 > 30 ? 'var(--accent-orange)' : 'var(--accent-green)'}"></div>
                   </div>
@@ -1277,8 +1283,8 @@
           <div class="form-field">
             <label for="etx-type">{$t('common.type')}</label>
             <select id="etx-type" bind:value={editTxType}>
-              <option value="Gasto">Gasto</option>
-              <option value="Ingreso">Ingreso</option>
+              <option value="Gasto">{$t('enum.tx.expense')}</option>
+              <option value="Ingreso">{$t('enum.tx.income')}</option>
             </select>
           </div>
           <div class="form-field">
@@ -1457,8 +1463,8 @@
           <div class="form-field">
             <label for="esub-cycle">{$t('subscriptions.cycle')}</label>
             <select id="esub-cycle" bind:value={editSubCycle}>
-              <option value="Mensual">Mensual</option>
-              <option value="Semanal">Semanal</option>
+              <option value="Mensual">{$t('enum.period.monthly')}</option>
+              <option value="Semanal">{$t('enum.period.weekly')}</option>
             </select>
           </div>
           <div class="form-field">

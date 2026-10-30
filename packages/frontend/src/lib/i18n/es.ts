@@ -1112,6 +1112,7 @@ export const es = {
   'receipts.source_cfdi': 'CFDI XML',
   'receipts.source_ocr': 'OCR (imagen)',
   'receipts.source_pdf': 'PDF (texto)',
+  'receipts.source_pdf_ocr': 'PDF escaneado (OCR)',
   'receipts.source_unknown': '—',
   'receipts.error_loading': 'No se pudieron cargar los documentos',
   'receipts.error_analyze': 'No se pudo analizar el archivo',
@@ -1391,6 +1392,77 @@ export const es = {
   'backup.entity.attachments': 'Adjuntos',
   'backup.entity.receiptAnalyses': 'Análisis de recibos',
   'backup.entity.receiptItems': 'Artículos de recibos',
+
+  // ── Enum display labels (issue #15) ──
+  // The stored values stay Spanish; only these labels are translated (see labels.ts).
+  'enum.tx.expense': 'Gasto',
+  'enum.tx.income': 'Ingreso',
+  'enum.category.both': 'Ambos',
+  'enum.account.debit': 'Débito',
+  'enum.account.credit': 'Crédito',
+  'enum.account.investment': 'Inversión',
+  'enum.account.vouchers': 'Vales',
+  'enum.account.cash': 'Efectivo',
+  'enum.period.monthly': 'Mensual',
+  'enum.period.weekly': 'Semanal',
+  'enum.status.active': 'Activa',
+  'enum.status.inactive': 'Inactiva',
+  'enum.status.completed': 'Completada',
+
+  // Days remaining (replaces the Spanish-only formatDaysRemaining strings)
+  'days.overdue': 'Vencido ({n} días)',
+  'days.today': 'Hoy',
+  'days.tomorrow': 'Mañana',
+  'days.n': '{n} días',
+
+  // Sidebar / shell
+  'nav.view_profile': 'Ver perfil',
+  'nav.logout': 'Cerrar sesión',
+  'auth.verifying_session': 'Verificando sesión...',
+
+  // Quick entry (Registro rápido)
+  'quick.back': '← Atrás',
+  'quick.account_label': 'CUENTA *',
+  'quick.category_label': 'CATEGORÍA *',
+  'quick.name_optional': 'Nombre (opcional)',
+  'quick.name_hint': 'Si lo dejas vacío, se usará el nombre de la categoría',
+  'quick.register': '✓ Registrar',
+  'quick.registering': 'Registrando...',
+  'quick.err_amount': 'Ingresa un monto válido mayor a 0',
+  'quick.err_select_account': 'Selecciona una cuenta',
+  'quick.err_select_category': 'Selecciona una categoría',
+  'quick.err_amount_invalid': 'Monto inválido',
+  'quick.err_account_required': 'Cuenta requerida',
+  'quick.err_category_required': 'Categoría requerida',
+  'quick.registered': 'Transacción registrada: {amount} - {name}',
+  'quick.err_register': 'Error al registrar la transacción',
+  'quick.err_load': 'Error al cargar datos',
+
+  // Auth form validation + session errors (previously hardcoded Spanish)
+  'auth.name_required': 'El nombre es obligatorio',
+  'auth.name_min': 'El nombre debe tener al menos 2 caracteres',
+  'auth.email_required': 'El correo electrónico es obligatorio',
+  'auth.email_invalid': 'Ingresa un correo electrónico válido',
+  'auth.password_required': 'La contraseña es obligatoria',
+  'auth.confirm_required': 'Confirma tu contraseña',
+  'errors.session_expired': 'Sesión expirada. Inicia sesión nuevamente.',
+
+  // Receipts: drag & drop / multi-file upload (issue #17)
+  'receipts.drop_title': 'Suelta tus recibos para subirlos',
+  'receipts.drop_hint': 'Imágenes, PDF o XML (CFDI) · hasta 10 MB cada uno',
+  'receipts.upload_multiple': 'Subir varios',
+  'receipts.batch_title': 'Carga de documentos',
+  'receipts.batch_summary': '{ok} de {total} procesados',
+  'receipts.batch_status_queued': 'En cola',
+  'receipts.batch_status_uploading': 'Subiendo...',
+  'receipts.batch_status_analyzing': 'Analizando...',
+  'receipts.batch_status_done': 'Listo',
+  'receipts.batch_status_analysis_failed': 'Subido, pero el análisis falló',
+  'receipts.batch_status_failed': 'Error al subir',
+  'receipts.batch_status_rejected': 'Omitido',
+  'receipts.batch_reject_type': 'Tipo de archivo no permitido',
+  'receipts.batch_reject_size': 'Supera los 10 MB',
+  'receipts.batch_reject_empty': 'El archivo está vacío',
 } satisfies Record<string, string>;
 
 // The set of translation keys, derived from the canonical Spanish dictionary.

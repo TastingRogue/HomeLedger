@@ -14,8 +14,8 @@ configuration:
   DISPLAY_CURRENCY:
     name: Moneda de la instalación
     description: >-
-      Moneda única usada en toda la instalación (MXN, USD, EUR, COP, ARS, CLP,
-      PEN, BRL). HomeLedger v1 usa una sola moneda, sin conversión entre monedas.
+      Moneda única usada en toda la instalación (MXN, USD, EUR, GBP, COP, ARS,
+      CLP, PEN, BRL). HomeLedger v1 usa una sola moneda, sin conversión entre monedas.
   BACKUP_ENABLED:
     name: Respaldos automáticos
     description: >-

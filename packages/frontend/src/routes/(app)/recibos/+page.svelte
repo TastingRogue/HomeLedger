@@ -7,6 +7,7 @@
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
+  import { createBatch, runBatch, countDone, isBusy, UPLOAD_ACCEPT, type BatchItem } from '$lib/utils/batch-upload';
 
   interface Account { id:number; name:string }
   interface Category { id:number; name:string }
@@ -87,6 +88,36 @@
   function closeUpload(){ showUpload=false; uploadFile=null; uploadError=''; }
   function handleKeydown(e:KeyboardEvent){ if(e.key!=='Escape')return; if(showUpload)closeUpload(); else if(selected)close(); }
   function onUploadFile(e:Event){ const input=e.target as HTMLInputElement; uploadFile=input.files?.[0]??null; }
+
+  // ── Drag & drop / multi-file upload (issue #17) ──
+  // Dropping files on the page (or using "Upload several") uploads each one and
+  // analyzes it, with a per-file status list. Files that fail never stop the rest.
+  let dragging=$state(false); let dragDepth=0;
+  let batch=$state<BatchItem[]>([]);
+  const batchBusy=$derived(isBusy(batch)); const batchDone=$derived(countDone(batch));
+  const dragHasFiles=(e:DragEvent)=>Array.from(e.dataTransfer?.types??[]).includes('Files');
+  function onDragEnter(e:DragEvent){ if(!dragHasFiles(e))return; e.preventDefault(); dragDepth++; dragging=true; }
+  function onDragOver(e:DragEvent){ if(!dragHasFiles(e))return; e.preventDefault(); if(e.dataTransfer)e.dataTransfer.dropEffect='copy'; }
+  function onDragLeave(e:DragEvent){ if(!dragHasFiles(e))return; dragDepth=Math.max(0,dragDepth-1); if(dragDepth===0)dragging=false; }
+  function onDrop(e:DragEvent){
+    if(!dragHasFiles(e))return;
+    e.preventDefault(); // otherwise the browser navigates away to open the dropped file
+    dragDepth=0; dragging=false;
+    const files=Array.from(e.dataTransfer?.files??[]);
+    if(files.length===0||selected||showCreateTx)return;
+    if(showUpload){ uploadFile=files[0]??null; return; } // the open dialog takes one file to link to a transaction
+    void startBatch(files);
+  }
+  function onPickMany(e:Event){ const input=e.target as HTMLInputElement; const files=Array.from(input.files??[]); input.value=''; if(files.length)void startBatch(files); }
+  async function startBatch(files:File[]){
+    if(batchBusy)return;
+    batch=createBatch(files); error='';
+    await runBatch(batch,{ upload:(f)=>uploadAttachment(f), analyze:(id)=>analyzeAttachment(id) });
+    await load();
+  }
+  const batchLabel=(it:BatchItem)=>it.status==='rejected'
+    ? $t('receipts.batch_reject_'+(it.reason??'type'))
+    : $t('receipts.batch_status_'+it.status);
   async function submitUpload(){
     uploadError='';
     if(!uploadFile){ uploadError=$t('receipts.upload_need_file'); return; }
@@ -119,12 +150,14 @@
     catch(err){ error=err instanceof Error?err.message:$t('receipts.error_delete'); }
     finally{ deleting=false; }
   }
-  const status=(s:string)=>s==='completed'?$t('receipts.status_completed'):s==='failed'?$t('receipts.status_failed'):s==='processing'?$t('receipts.status_processing'):$t('receipts.status_pending'); const source=(s:string)=>s==='cfdi_xml'?$t('receipts.source_cfdi'):s==='ocr'?$t('receipts.source_ocr'):s==='pdf_text'?$t('receipts.source_pdf'):$t('receipts.source_unknown');
+  const status=(s:string)=>s==='completed'?$t('receipts.status_completed'):s==='failed'?$t('receipts.status_failed'):s==='processing'?$t('receipts.status_processing'):$t('receipts.status_pending'); const source=(s:string)=>s==='cfdi_xml'?$t('receipts.source_cfdi'):s==='ocr'?$t('receipts.source_ocr'):s==='pdf_text'?$t('receipts.source_pdf'):s==='pdf_ocr'?$t('receipts.source_pdf_ocr'):$t('receipts.source_unknown');
 </script>
 <svelte:head><title>{$t('page_title.receipts')} · HomeLedger</title></svelte:head>
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} ondragenter={onDragEnter} ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop} />
+{#if dragging}<div class="drop-overlay" aria-hidden="true"><div class="drop-card"><span class="drop-icon">⬆</span><strong>{$t('receipts.drop_title')}</strong><span>{$t('receipts.drop_hint')}</span></div></div>{/if}
 <div class="page"><header class="header"><div><p class="eyebrow">{$t('receipts.page_eyebrow')}</p><h1>{$t('receipts.page_title')}</h1><p class="subtitle">{$t('receipts.page_subtitle')}</p></div><div class="stats"><span>{$t('receipts.stat_analyzed',{n:receipts.length})}</span><span>{$t('receipts.stat_attachments',{n:attachments.length})}</span></div></header>
-<div class="toolbar"><input bind:value={search} placeholder={$t('receipts.search_placeholder')}/><button class="secondary" onclick={load} disabled={loading}>{$t('receipts.refresh')}</button><button class="upload-btn" onclick={openUpload} disabled={uploading}>{uploading?$t('receipts.uploading'):$t('receipts.upload')}</button></div>
+<div class="toolbar"><input bind:value={search} placeholder={$t('receipts.search_placeholder')}/><button class="secondary" onclick={load} disabled={loading}>{$t('receipts.refresh')}</button><button class="upload-btn" onclick={openUpload} disabled={uploading}>{uploading?$t('receipts.uploading'):$t('receipts.upload')}</button><label class="multi-btn" class:disabled={batchBusy}>{$t('receipts.upload_multiple')}<input type="file" multiple accept={UPLOAD_ACCEPT} onchange={onPickMany} disabled={batchBusy} hidden /></label></div>
+{#if batch.length}<section class="batch-panel" role="status" aria-live="polite"><div class="batch-head"><strong>{$t('receipts.batch_title')}</strong><span>{$t('receipts.batch_summary',{ok:batchDone,total:batch.length})}</span>{#if !batchBusy}<button class="secondary" onclick={()=>batch=[]}>{$t('common.close')}</button>{/if}</div><ul>{#each batch as it (it.id)}<li class={'b-'+it.status}><span class="b-name" title={it.name}>{it.name}</span><span class="b-state" title={it.error??''}>{batchLabel(it)}</span></li>{/each}</ul></section>{/if}
 {#if error}<div class="error">{error}</div>{/if}
 <section class="table-card">{#if loading}<div class="empty">{$t('receipts.loading')}</div>{:else if attachments.length===0}<div class="empty"><strong>{$t('receipts.empty_title')}</strong><span>{$t('receipts.empty_desc')}</span></div>{:else}<div class="table-wrap"><table class="responsive-cards"><thead><tr><th>{$t('receipts.col_date')}</th><th>{$t('receipts.col_merchant')}</th><th>{$t('receipts.col_file')}</th><th>{$t('receipts.col_total')}</th><th>{$t('receipts.col_transaction')}</th><th>{$t('receipts.col_source')}</th><th>{$t('receipts.col_status')}</th><th></th></tr></thead><tbody>{#each filtered as a (a.id)}{@const r=receipts.find(x=>x.attachmentId===a.id)}<tr class:clickable={!!r} onclick={()=>r&&open(r)}><td class="merchant card-title-cell">{r?.merchant??$t('receipts.not_analyzed')}</td><td data-label={$t('receipts.col_date')}>{r?.receiptDate?formatDateShort(r.receiptDate):formatDateShort(a.createdAt)}</td><td class="filename" data-label={$t('receipts.col_file')}>{a.originalName??$t('receipts.col_file')}</td><td class="amount" data-label={$t('receipts.col_total')}>{r?.total!==null&&r?.total!==undefined?formatCurrency(r.total):'—'}</td><td data-label={$t('receipts.col_transaction')}>{r?.transactionName??(a.transactionId?`#${a.transactionId}`:'—')}</td><td data-label={$t('receipts.col_source')}>{r?source(r.sourceType):'—'}</td><td data-label={$t('receipts.col_status')}>{#if r}<span class="status" class:ok={r.status==='completed'} class:bad={r.status==='failed'}>{status(r.status)}</span>{:else}<span class="status">{$t('receipts.status_pending')}</span>{/if}</td><td>{#if !r||r.status==='failed'}<button class="analyze" onclick={(e)=>{e.stopPropagation();analyze(a.id)}} disabled={analyzing===a.id}>{analyzing===a.id?$t('receipts.analyzing'):$t('receipts.analyze')}</button>{:else}<button class="view" onclick={(e)=>{e.stopPropagation();open(r)}}>{$t('receipts.view')}</button>{/if}</td></tr>{/each}</tbody></table></div>{/if}</section></div>
 {#if showUpload}
@@ -340,6 +373,21 @@
 .alert-match{display:flex;gap:.4rem;align-items:center;padding:.5rem .75rem;margin-bottom:.85rem;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:var(--radius-md);color:var(--accent-green);font-size:.72rem}
 .bad-value{color:var(--accent-red)!important}.match-bad{background:rgba(239,68,68,.07)!important;border-color:rgba(239,68,68,.2)!important}.match-bad strong{color:var(--accent-red)!important}.close{background:transparent;border:0;color:var(--text-muted);font-size:1.5rem}.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:.8rem}.detail-grid>div{background:var(--bg-card);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:.7rem .8rem}.detail-grid span{display:block;color:var(--text-muted);font-size:.6rem;text-transform:uppercase;margin-bottom:.2rem}.detail-grid strong{color:var(--text-primary);font-size:.75rem;word-break:break-word}.mono{font-family:monospace;font-size:.62rem!important}.match{padding:.7rem;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.15);border-radius:var(--radius-md);margin-bottom:1rem}.match span{display:block;color:var(--text-muted);font-size:.6rem;text-transform:uppercase}.match strong{color:var(--accent-green);font-size:.72rem}.items{margin:1rem 0}.item{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--border-subtle);font-size:.72rem;color:var(--text-secondary)}.item strong{color:var(--text-primary)}.detail-preview img,.detail-preview iframe{width:100%;max-height:70vh;border:1px solid var(--border-default);border-radius:var(--radius-md);background:#fff;object-fit:contain}.detail-preview iframe{height:70vh}.preview-empty{min-height:180px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--border-default);border-radius:var(--radius-md);color:var(--text-muted);font-size:.7rem}
 .raw-ocr{margin:.4rem 0 .8rem;border:1px solid var(--border-default);border-radius:var(--radius-md);background:var(--bg-card)}.raw-ocr summary{cursor:pointer;padding:.55rem .8rem;color:var(--text-muted);font-size:.72rem;user-select:none}.raw-ocr pre{margin:0;padding:.6rem .8rem;border-top:1px solid var(--border-default);max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.7rem;line-height:1.35;color:var(--text-secondary)}
+/* Drag & drop overlay + multi-file upload (issue #17). pointer-events:none keeps the overlay from swallowing drag events. */
+.drop-overlay{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(11,17,24,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none}
+.drop-card{display:flex;flex-direction:column;align-items:center;gap:.4rem;text-align:center;padding:2.2rem 2.6rem;max-width:26rem;border:2px dashed var(--accent-green);border-radius:var(--radius-lg);background:var(--bg-card);color:var(--text-secondary);font-size:.78rem}
+.drop-card strong{color:var(--text-primary);font-size:1.05rem}.drop-icon{font-size:1.6rem;color:var(--accent-green)}
+.multi-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-default);border-radius:var(--radius-md);padding:.5rem .7rem;font-size:.72rem;cursor:pointer;background:var(--bg-surface);color:var(--text-secondary);white-space:nowrap}
+.multi-btn:hover:not(.disabled){background:var(--bg-hover);color:var(--text-primary)}.multi-btn.disabled{opacity:.5;cursor:not-allowed}
+.batch-panel{margin:0 0 .75rem;padding:.7rem .85rem;border:1px solid var(--border-default);border-radius:var(--radius-lg);background:var(--bg-card)}
+.batch-head{display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;font-size:.78rem;color:var(--text-secondary)}.batch-head strong{color:var(--text-primary)}.batch-head .secondary{margin-left:auto}
+.batch-panel ul{list-style:none;margin:0;padding:0;max-height:14rem;overflow:auto}
+.batch-panel li{display:flex;justify-content:space-between;gap:.8rem;padding:.3rem 0;border-top:1px solid var(--border-subtle);font-size:.72rem}
+.b-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-primary)}.b-state{flex-shrink:0;color:var(--text-muted)}
+.b-done .b-state{color:var(--accent-green)}.b-failed .b-state,.b-analysis_failed .b-state{color:var(--accent-orange)}.b-rejected .b-state{color:var(--accent-red)}
+.b-uploading .b-state,.b-analyzing .b-state{color:var(--accent-blue)}
+@media (prefers-reduced-motion:no-preference){.drop-card{animation:dropIn .15s ease-out}}
+@keyframes dropIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 /* Phones: stack the header (title + stats) and let the toolbar wrap so the
    search field and buttons don't overflow the viewport width. */
 @media (max-width:640px){

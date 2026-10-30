@@ -11,7 +11,8 @@ WORKDIR /app
 # Native dependencies:
 #  - python3/make/g++: build better-sqlite3 and bcrypt
 #  - tini: PID 1 init  |  curl: healthcheck
-#  - poppler-utils: provides `pdftotext` for extracting text from PDF invoices
+#  - poppler-utils: provides `pdftotext` (text of digital PDF invoices) and
+#    `pdftoppm` (rasterizes scanned PDFs so they can be OCR'd).
 #    (image receipts use tesseract.js OCR, pure WASM, no system pkg needed).
 #    Image pre-processing before OCR uses `sharp`, which pulls its own prebuilt
 #    musl libvips binary (@img/sharp-libvips-linuxmusl-*) during npm install —

@@ -4,6 +4,8 @@
   import { apiGet, apiPost, ApiError } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
+  import { preferences, currencyConfig } from '$lib/stores/preferences';
   import type { Account, Category } from '@homeledger/shared';
 
   // --- Constants ---
@@ -112,7 +114,7 @@
   // --- Navigation ---
   function goToStep2() {
     if (!isAmountValid) {
-      errors = { ...errors, amount: 'Ingresa un monto válido mayor a $0' };
+      errors = { ...errors, amount: $t('quick.err_amount') };
       return;
     }
     errors = {};
@@ -122,10 +124,10 @@
   function goToStep3() {
     const newErrors: Record<string, string> = {};
     if (!selectedAccountId) {
-      newErrors.account = 'Selecciona una cuenta';
+      newErrors.account = $t('quick.err_select_account');
     }
     if (!selectedCategoryId) {
-      newErrors.category = 'Selecciona una categoría';
+      newErrors.category = $t('quick.err_select_category');
     }
     if (Object.keys(newErrors).length > 0) {
       errors = newErrors;
@@ -150,9 +152,9 @@
 
     // Final validation
     const newErrors: Record<string, string> = {};
-    if (!isAmountValid) newErrors.amount = 'Monto inválido';
-    if (!selectedAccountId) newErrors.account = 'Cuenta requerida';
-    if (!selectedCategoryId) newErrors.category = 'Categoría requerida';
+    if (!isAmountValid) newErrors.amount = $t('quick.err_amount_invalid');
+    if (!selectedAccountId) newErrors.account = $t('quick.err_account_required');
+    if (!selectedCategoryId) newErrors.category = $t('quick.err_category_required');
 
     if (Object.keys(newErrors).length > 0) {
       errors = newErrors;
@@ -193,7 +195,7 @@
 
       // Show confirmation toast
       const displayName = String(transactionName ?? '').trim() || selectedCategoryName;
-      toastMessage = `Transacción registrada: ${formatCurrency(parsedAmount)} - ${displayName}`;
+      toastMessage = $t('quick.registered', { amount: formatCurrency(parsedAmount), name: displayName });
       showToast = true;
 
       // Reset form
@@ -212,7 +214,7 @@
       if (e instanceof ApiError) {
         errors = { general: e.message };
       } else {
-        errors = { general: 'Error al registrar la transacción' };
+        errors = { general: $t('quick.err_register') };
       }
     } finally {
       submitting = false;
@@ -229,7 +231,7 @@
       accounts = accs;
       categories = cats;
     } catch {
-      errors = { general: 'Error al cargar datos' };
+      errors = { general: $t('quick.err_load') };
     } finally {
       loading = false;
     }
@@ -244,7 +246,7 @@
   <!-- Header -->
   <header class="qr-header">
     <button class="qr-back-btn" onclick={goBack} aria-label={$t('a11y.back')}>←</button>
-    <h1>Registro Rápido</h1>
+    <h1>{$t('page_title.quick_register')}</h1>
     <div class="qr-steps">
       <span class="step-dot" class:active={currentStep >= 1}>1</span>
       <span class="step-line"></span>
@@ -295,7 +297,7 @@
             onclick={() => (transactionType = 'Gasto')}
             type="button"
           >
-            ↓ Gasto
+            ↓ {$t('enum.tx.expense')}
           </button>
           <button
             class="type-btn-step1"
@@ -304,12 +306,12 @@
             onclick={() => (transactionType = 'Ingreso')}
             type="button"
           >
-            ↑ Ingreso
+            ↑ {$t('enum.tx.income')}
           </button>
         </div>
 
         <div class="amount-display">
-          <span class="amount-prefix">MX$</span>
+          <span class="amount-prefix">{currencyConfig[$preferences.currency]?.symbol ?? '$'}</span>
           <span class="amount-value">{amount || '0.00'}</span>
         </div>
         {#if errors.amount}
@@ -332,8 +334,8 @@
         </div>
 
         <div class="step-actions">
-          <button class="btn-clear" onclick={clearAmount} type="button">Limpiar</button>
-          <button class="btn-next" onclick={goToStep2} disabled={!amount} type="button">Siguiente →</button>
+          <button class="btn-clear" onclick={clearAmount} type="button">{$t('common.clear')}</button>
+          <button class="btn-next" onclick={goToStep2} disabled={!amount} type="button">{$t('common.next')}</button>
         </div>
       </section>
     {/if}
@@ -342,12 +344,12 @@
     {#if currentStep === 2}
       <section class="qr-step" aria-label={$t('a11y.quick_step2')}>
         <div class="amount-summary">
-          <span>{transactionType === 'Ingreso' ? '↑ Ingreso' : '↓ Gasto'}:</span>
+          <span>{transactionType === 'Ingreso' ? `↑ ${$t('enum.tx.income')}` : `↓ ${$t('enum.tx.expense')}`}:</span>
           <strong>{formatCurrency(parsedAmount)}</strong>
         </div>
 
         <div class="selector-section">
-          <span class="selector-label">CUENTA *</span>
+          <span class="selector-label">{$t('quick.account_label')}</span>
           {#if errors.account}<span class="field-error">{errors.account}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_account')}>
             {#each sortedAccounts as account, i (account.id)}
@@ -361,14 +363,14 @@
                 type="button"
               >
                 <span class="selector-name">{account.name}</span>
-                <span class="selector-meta">{account.type}</span>
+                <span class="selector-meta">{enumLabel($t, account.type)}</span>
               </button>
             {/each}
           </div>
         </div>
 
         <div class="selector-section">
-          <span class="selector-label">CATEGORÍA *</span>
+          <span class="selector-label">{$t('quick.category_label')}</span>
           {#if errors.category}<span class="field-error">{errors.category}</span>{/if}
           <div class="selector-grid" role="listbox" aria-label={$t('a11y.select_category')}>
             {#each sortedCategories as category, i (category.id)}
@@ -388,8 +390,8 @@
         </div>
 
         <div class="step-actions">
-          <button class="btn-back" onclick={goBack} type="button">← Atrás</button>
-          <button class="btn-next" onclick={goToStep3} disabled={!selectedAccountId || !selectedCategoryId} type="button">Siguiente →</button>
+          <button class="btn-back" onclick={goBack} type="button">{$t('quick.back')}</button>
+          <button class="btn-next" onclick={goToStep3} disabled={!selectedAccountId || !selectedCategoryId} type="button">{$t('common.next')}</button>
         </div>
       </section>
     {/if}
@@ -399,22 +401,22 @@
       <section class="qr-step" aria-label={$t('a11y.quick_step3')}>
         <div class="confirm-summary">
           <div class="confirm-row">
-            <span class="confirm-label">Monto</span>
+            <span class="confirm-label">{$t('common.amount')}</span>
             <span class="confirm-value">{formatCurrency(parsedAmount)}</span>
           </div>
           <div class="confirm-row">
-            <span class="confirm-label">Cuenta</span>
+            <span class="confirm-label">{$t('common.account')}</span>
             <span class="confirm-value">{selectedAccountName}</span>
           </div>
           <div class="confirm-row">
-            <span class="confirm-label">Categoría</span>
+            <span class="confirm-label">{$t('common.category')}</span>
             <span class="confirm-value">{selectedCategoryName}</span>
           </div>
         </div>
 
         <!-- Name field (optional) -->
         <div class="name-field">
-          <label for="qr-name">Nombre (opcional)</label>
+          <label for="qr-name">{$t('quick.name_optional')}</label>
           <input
             id="qr-name"
             type="text"
@@ -422,13 +424,13 @@
             placeholder={$t('dashboard.expense_placeholder')}
             maxlength={100}
           />
-          <span class="name-hint">Si lo dejas vacío, se usará el nombre de la categoría</span>
+          <span class="name-hint">{$t('quick.name_hint')}</span>
         </div>
 
         <div class="step-actions">
-          <button class="btn-back" onclick={goBack} type="button">← Atrás</button>
+          <button class="btn-back" onclick={goBack} type="button">{$t('quick.back')}</button>
           <button class="btn-submit" onclick={submitTransaction} disabled={submitting} type="button">
-            {submitting ? 'Registrando...' : '✓ Registrar'}
+            {submitting ? $t('quick.registering') : $t('quick.register')}
           </button>
         </div>
       </section>

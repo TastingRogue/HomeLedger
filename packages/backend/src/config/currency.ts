@@ -12,7 +12,7 @@ import { SettingsService } from '../services/settings.service.js';
  * The value is stored in `app_settings`, seeded on first run from the
  * `DISPLAY_CURRENCY` env var, and editable by an admin at runtime.
  */
-export const SUPPORTED_CURRENCIES = ['MXN', 'USD', 'EUR', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'] as const;
+export const SUPPORTED_CURRENCIES = ['MXN', 'USD', 'EUR', 'GBP', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 export const SETTING_INSTANCE_CURRENCY = 'instance_currency';

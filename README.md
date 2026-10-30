@@ -103,7 +103,7 @@ plus full JSON backup import/export with preview and validation.
 - **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
 - **Receipts**: Analyze uploaded receipts/attachments to extract transaction details
 - **Admin**: User management, registration control (first-user/open/closed + allowlist), and instance settings — admin-gated
-- **Currency**: single currency per install (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL), set by the admin
+- **Currency**: single currency per install (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL), set by the admin
 - **Language**: Spanish + English with full interface translation
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
 - **Home Assistant**: Addon + Custom Integration with sensors and services
@@ -165,7 +165,7 @@ docker run -d \
 | `-e ADMIN_EMAIL=…` | Email for the first admin user, created on first run. | Any email (default `admin@homeledger.local`) |
 | `-e ADMIN_PASSWORD=…` | **Required.** Password for that admin. | A strong password |
 | `-e DEFAULT_LOCALE=…` | Starting UI language + the language your default categories are seeded in. Each user can change their own later in **Settings**. | `en` or `es` (default `en`) |
-| `-e DISPLAY_CURRENCY=…` | The install's single currency (symbol + unit for all amounts; no conversion). Admin can change it in-app. | `MXN` `USD` `EUR` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
+| `-e DISPLAY_CURRENCY=…` | The install's single currency (symbol + unit for all amounts; no conversion). Admin can change it in-app. | `MXN` `USD` `EUR` `GBP` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
 
 > :bulb: The `\` at the end of each line is a **bash** line-continuation. On
 > **Windows PowerShell**, use a backtick `` ` `` instead, or put the whole
@@ -235,7 +235,7 @@ Override these in production.
 | `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
 | `DEFAULT_LOCALE` | Primary language for the install (the language each user's default categories are seeded in at sign-up, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language and rename/delete their own categories. | `en` (falls back to English if unset/invalid) |
-| `DISPLAY_CURRENCY` | The install's single currency (`MXN`, `USD`, `EUR`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). All amounts use it — HomeLedger v1 is single-currency (no conversion). Admin can change it in-app. | `MXN` |
+| `DISPLAY_CURRENCY` | The install's single currency (`MXN`, `USD`, `EUR`, `GBP`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). All amounts use it — HomeLedger v1 is single-currency (no conversion). Admin can change it in-app. | `MXN` |
 | `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
@@ -372,7 +372,7 @@ All four report into an in-memory status registry, visible to admins at
 
 ## Multi-currency & i18n
 
-- **Currency**: **Single currency per install** (MXN, USD, EUR, COP, ARS, CLP, PEN, BRL), chosen by the admin via `DISPLAY_CURRENCY` (or the admin API). All amounts and totals use this one currency.
+- **Currency**: **Single currency per install** (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL), chosen by the admin via `DISPLAY_CURRENCY` (or the admin API). All amounts and totals use this one currency.
 - **Language**: Spanish / English — switchable per user from Settings
 - **Timezone**: America/Mexico_City (configurable in server environment)
 

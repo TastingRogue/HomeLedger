@@ -40,7 +40,7 @@ options:
 schema:
   TZ: str
   DEFAULT_LOCALE: "list(es|en)"
-  DISPLAY_CURRENCY: "list(MXN|USD|EUR|COP|ARS|CLP|PEN|BRL)"
+  DISPLAY_CURRENCY: "list(MXN|USD|EUR|GBP|COP|ARS|CLP|PEN|BRL)"
   BACKUP_ENABLED: bool
   BACKUP_RETENTION: "int(1,)"
   REGISTRATION_MODE: "list(first_user_only|open|closed)"

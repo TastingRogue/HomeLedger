@@ -16,6 +16,7 @@
   import { formatCurrency, formatPercentage } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { enumLabel } from '$lib/i18n/labels';
   import { modalPanel, scrim } from '$lib/motion';
 
   // ─── State ───
@@ -321,7 +322,7 @@
             </div>
             <div class="cat-card-bottom">
               <span class="cat-type-badge" class:type-gasto={cat.type === 'Gasto'} class:type-ingreso={cat.type === 'Ingreso'} class:type-ambos={cat.type === 'Ambos' || !cat.type}>
-                {cat.type ?? 'Ambos'}
+                {enumLabel($t, cat.type ?? 'Ambos')}
               </span>
             </div>
           </button>
@@ -399,9 +400,9 @@
         <div class="form-field">
           <label for="edit-type">{$t('categories.form_type')}</label>
           <select id="edit-type" bind:value={editType}>
-            <option value="Ambos">Ambos (Gasto e Ingreso)</option>
-            <option value="Gasto">Solo Gasto</option>
-            <option value="Ingreso">Solo Ingreso</option>
+            <option value="Ambos">{$t('categories.type_both')}</option>
+            <option value="Gasto">{$t('categories.type_expense_only')}</option>
+            <option value="Ingreso">{$t('categories.type_income_only')}</option>
           </select>
         </div>
 

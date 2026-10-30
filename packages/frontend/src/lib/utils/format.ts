@@ -2,6 +2,9 @@
  * Currency and number formatting utilities for the frontend.
  * Format: "MX$X,XXX.XX" with comma thousands separator and dot decimal.
  */
+import { get } from 'svelte/store';
+import { t } from '../i18n';
+import { daysRemainingLabel, type Translate } from '../i18n/labels';
 
 /**
  * Format a number as MXN currency: "MX$1,234.56"
@@ -17,7 +20,7 @@ export function formatCurrency(amount: number): string {
       const prefs = JSON.parse(localStorage.getItem('sf_preferences') ?? '{}');
       if (prefs.currency) {
         currency = prefs.currency;
-        const symbols: Record<string, string> = { MXN: 'MX$', USD: '$', EUR: '€', COP: 'COL$', ARS: 'AR$', CLP: 'CL$', PEN: 'S/', BRL: 'R$' };
+        const symbols: Record<string, string> = { MXN: 'MX$', USD: '$', EUR: '€', GBP: '£', COP: 'COL$', ARS: 'AR$', CLP: 'CL$', PEN: 'S/', BRL: 'R$' };
         symbol = symbols[currency] ?? '$';
       }
     } catch {
@@ -96,13 +99,12 @@ export function formatDateShort(date: Date | string): string {
 }
 
 /**
- * Format days remaining as a human-readable label.
+ * Format days remaining as a human-readable label in the active language.
+ * Pass `$t` from a template so the label re-renders when the language changes;
+ * without it the label uses the language active at call time.
  */
-export function formatDaysRemaining(days: number): string {
-  if (days < 0) return `Vencido (${Math.abs(days)} días)`;
-  if (days === 0) return 'Hoy';
-  if (days === 1) return 'Mañana';
-  return `${days} días`;
+export function formatDaysRemaining(days: number, tr: Translate = get(t)): string {
+  return daysRemainingLabel(tr, days);
 }
 
 /**
