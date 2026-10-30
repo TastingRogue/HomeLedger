@@ -21,6 +21,7 @@
     "@fastify/swagger": "^9.8.1",
     "@fastify/swagger-ui": "^6.1.1",
     "@homeledger/shared": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",

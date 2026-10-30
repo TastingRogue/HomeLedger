@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidScope, scopesSatisfy, normalizeScopes, ALL_SCOPES } from './scopes.js';
+import { isValidScope, scopesSatisfy, normalizeScopes, requiredScopeFor, ALL_SCOPES } from './scopes.js';
 
 describe('scopes (P4.13)', () => {
   describe('isValidScope', () => {
@@ -49,6 +49,29 @@ describe('scopes (P4.13)', () => {
     });
     it('every ALL_SCOPES entry is valid', () => {
       for (const s of ALL_SCOPES) expect(isValidScope(s)).toBe(true);
+    });
+  });
+  describe('requiredScopeFor', () => {
+    it('maps resource routes to read/write scopes by method', () => {
+      expect(requiredScopeFor('GET', '/api/v1/transactions?page=2')).toBe('read:transactions');
+      expect(requiredScopeFor('POST', '/api/v1/transactions/quick')).toBe('write:transactions');
+      expect(requiredScopeFor('PUT', '/api/v1/budgets/3')).toBe('write:budgets');
+      expect(requiredScopeFor('DELETE', '/api/v1/accounts/1/')).toBe('write:accounts');
+      expect(requiredScopeFor('GET', '/api/v1/reports/cashflow')).toBe('read:reports');
+    });
+    it('requires a wildcard for routes that have no scope of their own', () => {
+      expect(requiredScopeFor('POST', '/api/v1/api-keys')).toBe('write:*');
+      expect(requiredScopeFor('GET', '/api/v1/backup/export')).toBe('read:*');
+      expect(requiredScopeFor('GET', '/api/v1/search')).toBe('read:*');
+    });
+    it('maps Home Assistant routes to read:reports and leaves MCP to its own checks', () => {
+      expect(requiredScopeFor('GET', '/api/v1/ha/status')).toBe('read:reports');
+      expect(requiredScopeFor('POST', '/api/v1/mcp')).toBeNull();
+    });
+    it('a key with only resource scopes cannot satisfy a wildcard route', () => {
+      expect(scopesSatisfy(['write:transactions'], requiredScopeFor('POST', '/api/v1/api-keys')!)).toBe(false);
+      expect(scopesSatisfy(['write:*'], requiredScopeFor('POST', '/api/v1/api-keys')!)).toBe(true);
+      expect(scopesSatisfy(null, requiredScopeFor('POST', '/api/v1/api-keys')!)).toBe(true);
     });
   });
 });

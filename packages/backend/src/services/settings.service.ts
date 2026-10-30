@@ -39,6 +39,12 @@ export class SettingsService {
       .run(key, value, new Date().toISOString());
   }
 
+  /** Removes a setting. No-op if the key is not present. */
+  static delete(key: string): void {
+    SettingsService.ensureTable();
+    getSqlite().prepare('DELETE FROM app_settings WHERE key = ?').run(key);
+  }
+
   /** Sets a value only if the key is not already present. Returns true if it wrote. */
   static setIfAbsent(key: string, value: string): boolean {
     SettingsService.ensureTable();

@@ -71,3 +71,33 @@ export function normalizeScopes(input: unknown): string[] | null {
   const cleaned = [...new Set(input.map((s) => String(s).trim()).filter((s) => s && isValidScope(s)))];
   return cleaned.length > 0 ? cleaned : null;
 }
+
+const SCOPE_RESOURCE_SET = new Set<string>(SCOPE_RESOURCES);
+
+/**
+ * The scope an API key must hold to call `METHOD path`, or null when the route
+ * enforces its own access rules.
+ *
+ * - `/api/v1/<resource>/...` for a scoped resource: `read:<resource>` for
+ *   GET/HEAD/OPTIONS, `write:<resource>` otherwise.
+ * - `/api/v1/ha/*` (Home Assistant summary data): `read:reports`.
+ * - `/api/v1/mcp/*`: null. The MCP tools check scopes themselves and the
+ *   enable/disable routes accept login sessions only.
+ * - Everything else (api-keys, webhooks, backup, auth, loans, ...) has no
+ *   scope of its own, so it needs the wildcard: `read:*` to read, `write:*`
+ *   to change. This keeps a narrowly scoped key from reaching it, e.g. from
+ *   minting a broader API key.
+ *
+ * Keys with no scopes have full access and are never restricted by this.
+ */
+export function requiredScopeFor(method: string, url: string): string | null {
+  const path = (url.split('?')[0] ?? url).replace(/\/+$/, '');
+  const action: ScopeAction = ['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) ? 'read' : 'write';
+  const prefix = '/api/v1/';
+  const first = path.startsWith(prefix) ? (path.slice(prefix.length).split('/')[0] ?? '') : '';
+
+  if (first === 'mcp') return null;
+  if (first === 'ha') return 'read:reports';
+  if (SCOPE_RESOURCE_SET.has(first)) return `${action}:${first}`;
+  return `${action}:*`;
+}

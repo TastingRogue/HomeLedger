@@ -27,7 +27,8 @@
   import {
     listApiKeys, listScopes, createApiKey, revokeApiKey,
     listWebhookEvents, listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook,
-    type ApiKeyInfo, type CreatedApiKey, type WebhookInfo,
+    getMcpStatus, enableMcp, disableMcp,
+    type ApiKeyInfo, type CreatedApiKey, type WebhookInfo, type McpStatus,
   } from '$lib/api/developer';
   import {
     getLockConfig, webauthnSupported, enableWebauthnLock, enablePinLock, disableLock,
@@ -503,9 +504,58 @@
   let whEnabled = $state(true);
   let webhookBusy = $state(false);
   let webhookTestMsg = $state('');
+  // MCP (opt-in AI-assistant endpoint): off by default, explicit confirmation to enable
+  let mcpStatus = $state<McpStatus | null>(null);
+  let mcpError = $state('');
+  let mcpMsg = $state('');
+  let showMcpModal = $state(false);
+  let mcpAck = $state(false);
+  let mcpPassword = $state('');
+  let mcpTotp = $state('');
+  let mcpNeedsTotp = $state(false);
+  let mcpBusy = $state(false);
+  let mcpModalError = $state('');
+  const mcpEndpoint = $derived(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/v1/mcp`);
+
+  function openMcpModal() {
+    mcpAck = false; mcpPassword = ''; mcpTotp = ''; mcpNeedsTotp = false; mcpModalError = '';
+    showMcpModal = true;
+  }
+
+  function closeMcpModal() {
+    showMcpModal = false; mcpPassword = ''; mcpTotp = '';
+  }
+
+  async function submitEnableMcp() {
+    if (!mcpAck || !mcpPassword || mcpBusy) return;
+    mcpBusy = true; mcpModalError = '';
+    try {
+      mcpStatus = await enableMcp(mcpPassword, mcpTotp.trim() || undefined);
+      mcpMsg = $t('developer.mcp_enabled_ok'); mcpError = '';
+      closeMcpModal();
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.code === 'INVALID_PASSWORD') mcpModalError = $t('developer.mcp_password_invalid');
+      else if (e instanceof ApiError && e.code === 'TOTP_REQUIRED') { mcpNeedsTotp = true; mcpModalError = $t('developer.mcp_totp'); }
+      else if (e instanceof ApiError && e.code === 'TOTP_INVALID') mcpModalError = $t('settings.totp_invalid');
+      else mcpModalError = e instanceof Error ? e.message : 'Error';
+    } finally { mcpBusy = false; }
+  }
+
+  async function submitDisableMcp() {
+    mcpBusy = true; mcpError = ''; mcpMsg = '';
+    try {
+      mcpStatus = await disableMcp();
+      mcpMsg = $t('developer.mcp_disabled_ok');
+    } catch (e: unknown) { mcpError = e instanceof Error ? e.message : 'Error'; }
+    finally { mcpBusy = false; }
+  }
 
   async function loadApiTab() {
-    apiKeysError = ''; webhooksError = '';
+    apiKeysError = ''; webhooksError = ''; mcpError = '';
+    // The enable dialog asks for a 2FA code only when the account has 2FA on.
+    if (!totpLoaded) { totpLoaded = true; loadTotpStatus(); }
+    try { mcpStatus = await getMcpStatus(); }
+    catch (e: unknown) { mcpError = e instanceof Error ? e.message : 'Error'; }
     try {
       [apiKeys, availableScopes] = await Promise.all([listApiKeys(), listScopes()]);
     } catch (e: unknown) { apiKeysError = e instanceof Error ? e.message : 'Error'; }
@@ -625,7 +675,8 @@
 
 <svelte:window onkeydown={(e) => {
   if (e.key !== 'Escape') return;
-  if (restoreTarget) restoreTarget = null;
+  if (showMcpModal) closeMcpModal();
+  else if (restoreTarget) restoreTarget = null;
   else if (deleteTarget) deleteTarget = null;
   else if (resetTarget) resetTarget = null;
   else if (showPasswordModal) showPasswordModal = false;
@@ -914,6 +965,28 @@
                 </li>
               {/each}
             </ul>
+          {/if}
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">
+              {$t('developer.mcp_title')}
+              {#if mcpStatus?.enabled}<span class="badge-green">{$t('developer.mcp_on')}</span>{:else}<span class="badge-muted">{$t('developer.mcp_off')}</span>{/if}
+            </h3>
+            {#if mcpStatus?.enabled}
+              <button class="btn-action-sm danger" onclick={submitDisableMcp} disabled={mcpBusy}>{$t('developer.mcp_disable')}</button>
+            {:else if mcpStatus}
+              <button class="btn-action-sm" onclick={openMcpModal}>{$t('developer.mcp_enable')}</button>
+            {/if}
+          </div>
+          <p class="card-desc">{$t('developer.mcp_desc')}</p>
+          {#if mcpError}<p class="card-msg error">{mcpError}</p>{/if}
+          {#if mcpMsg}<p class="card-msg">{mcpMsg}</p>{/if}
+          {#if mcpStatus?.enabled}
+            <p class="card-desc">{$t('developer.mcp_enabled_since')}: {formatSessionDate(mcpStatus.enabledAt)}</p>
+            <p class="card-desc">{$t('developer.mcp_endpoint')}: <code class="mcp-endpoint">{mcpEndpoint}</code></p>
+            <p class="card-desc">{$t('developer.mcp_auth_hint')}</p>
           {/if}
         </div>
 
@@ -1309,6 +1382,42 @@
   </div>
 {/if}
 
+<!-- MCP enable confirmation modal -->
+{#if showMcpModal}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="modal-backdrop" onclick={closeMcpModal} role="presentation" transition:scrim>
+    <div class="modal-content modal-sm" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1" transition:modalPanel>
+      <div class="modal-header">
+        <h3 class="modal-title">{$t('developer.mcp_confirm_title')}</h3>
+        <button class="modal-close" onclick={closeMcpModal} aria-label={$t('common.close')}>&times;</button>
+      </div>
+      <form class="modal-form" onsubmit={(e) => { e.preventDefault(); submitEnableMcp(); }}>
+        <p class="confirm-text danger-text">{$t('developer.mcp_warn')}</p>
+        <p class="confirm-text">{$t('developer.mcp_warn_tip')}</p>
+        <label class="scope-item">
+          <input type="checkbox" bind:checked={mcpAck} />
+          <span>{$t('developer.mcp_ack')}</span>
+        </label>
+        <div class="form-field">
+          <label for="mcp-password">{$t('developer.mcp_password')}</label>
+          <input id="mcp-password" type="password" autocomplete="current-password" bind:value={mcpPassword} />
+        </div>
+        {#if totpStatus?.enabled || mcpNeedsTotp}
+          <div class="form-field">
+            <label for="mcp-totp">{$t('developer.mcp_totp')}</label>
+            <input id="mcp-totp" type="text" inputmode="numeric" autocomplete="one-time-code" bind:value={mcpTotp} />
+          </div>
+        {/if}
+        {#if mcpModalError}<p class="modal-error">{mcpModalError}</p>{/if}
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick={closeMcpModal}>{$t('common.cancel')}</button>
+          <button type="submit" class="btn-submit" disabled={!mcpAck || !mcpPassword || mcpBusy}>{mcpBusy ? '...' : $t('developer.mcp_enable')}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}
+
 <!-- Admin: reset user password (P1.10) -->
 {#if resetTarget}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -1469,6 +1578,7 @@
   .scope-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-primary); }
   .scope-item input { width: auto; }
   .webhook-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .mcp-endpoint { font-family: var(--font-mono); font-size: 0.72rem; word-break: break-all; user-select: all; }
 
   /* App lock (P4.14) */
   .lock-enable-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; }

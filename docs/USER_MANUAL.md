@@ -691,7 +691,11 @@ header).
 1. Click **Create Key**, give it a name.
 2. **Scopes** (optional): select which permissions the key has (e.g.
    `read:transactions`, `write:accounts`). If you select none, the key has
-   **full access**.
+   **full access**. A scoped key can only use the resources it was granted
+   (`read:x` to read, `write:x` to change; `write:x` includes `read:x`). It
+   cannot reach anything else, including creating other API keys. The Home
+   Assistant status/sensor endpoints need `read:reports`; creating transactions
+   needs `write:transactions`.
 3. The raw key is shown **once** — copy it. After closing, only metadata (name,
    scopes, last used) is visible.
 4. **Revoke** a key to permanently invalidate it.
@@ -719,6 +723,60 @@ local script, or any HTTP server).
 
 Deliveries are **fire-and-forget** (non-blocking, best-effort) with a 5-second
 timeout. The last delivery status is shown next to each webhook.
+
+### MCP (AI assistants)
+
+HomeLedger can act as an [MCP](https://modelcontextprotocol.io) server, so an AI
+assistant (Claude Desktop, Cursor, etc.) can answer questions about your money
+and record transactions for you.
+
+> **Privacy.** Whatever the assistant reads is sent to that assistant's
+> provider. MCP is **off by default** and only you can turn it on.
+
+**Enable it**
+
+1. In **Settings → API**, find the **MCP server** card and click **Enable MCP**.
+2. Read the warning, tick the acknowledgement, and enter your password (and your
+   2FA code if you use 2FA). An API key cannot enable MCP for itself.
+3. Create an API key for the assistant (**Create key**). Pick only the scopes it
+   needs. A **read-only** key (for example `read:accounts`, `read:categories`,
+   `read:transactions`) is the safest; add `write:transactions` only if you want
+   it to create or edit transactions.
+4. Point your MCP client at the endpoint shown in the card, for example
+   `https://your-host/api/v1/mcp`, and send the key as
+   `Authorization: Bearer <key>` (or in the `X-API-Key` header). Example for a
+   client that reads a JSON config:
+
+   ```json
+   {
+     "mcpServers": {
+       "homeledger": {
+         "url": "https://your-host/api/v1/mcp",
+         "headers": { "Authorization": "Bearer <your-api-key>" }
+       }
+     }
+   }
+   ```
+
+**What the assistant can do**
+
+| Tools | Scope needed |
+|-------|--------------|
+| `list_accounts` | `read:accounts` |
+| `list_categories` | `read:categories` |
+| `list_transactions`, `get_transaction` | `read:transactions` |
+| `list_budgets`, `get_budget_summary` | `read:budgets` |
+| `list_goals` | `read:goals` |
+| `list_subscriptions` | `read:subscriptions` |
+| `get_dashboard_report`, `get_cashflow_report` | `read:reports` |
+| `get_net_worth` | `read:networth` |
+| `create_transaction`, `update_transaction` | `write:transactions` |
+
+There is no delete tool: deleting always stays in the app. A key with no scopes
+has full access, so give assistants scoped keys.
+
+**Turn it off.** Click **Disable MCP** in the same card. Every MCP call is
+refused immediately. Revoking the API key also cuts off that client.
 
 ---
 

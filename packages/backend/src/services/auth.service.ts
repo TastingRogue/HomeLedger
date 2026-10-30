@@ -616,6 +616,32 @@ export class AuthService {
   }
 
   /**
+   * Re-verify a logged-in user before a sensitive action (e.g. exposing data
+   * through MCP). Checks the password and, when 2FA is enabled, a TOTP/backup
+   * code. Throws AuthError (INVALID_PASSWORD, TOTP_REQUIRED, TOTP_INVALID).
+   */
+  static async verifyReauth(userId: number, password: string, totpCode?: string): Promise<void> {
+    const db = getDb();
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    if (!user) {
+      throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+    }
+    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordOk) {
+      throw new AuthError('La contraseña es incorrecta', 'INVALID_PASSWORD');
+    }
+    if (user.totpEnabled) {
+      const provided = (totpCode ?? '').trim();
+      if (!provided) {
+        throw new AuthError('Se requiere el código de verificación de dos pasos', 'TOTP_REQUIRED');
+      }
+      if (!AuthService.verifySecondFactor(userId, user.totpSecret, user.totpBackupCodes, provided)) {
+        throw new AuthError('Código de verificación inválido', 'TOTP_INVALID');
+      }
+    }
+  }
+
+  /**
    * Disable TOTP 2FA. Requires a valid current TOTP or backup code so a
    * hijacked access token alone can't turn it off.
    */

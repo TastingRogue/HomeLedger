@@ -714,7 +714,11 @@ encabezado `X-API-Key`).
 1. Haz clic en **Crear clave**, dale un nombre.
 2. **Permisos (scopes)** (opcional): selecciona qué permisos tiene la clave (p.
    ej. `read:transactions`, `write:accounts`). Si no seleccionas ninguno, la
-   clave tiene **acceso completo**.
+   clave tiene **acceso completo**. Una clave con permisos solo puede usar los
+   recursos que se le dieron (`read:x` para leer, `write:x` para modificar;
+   `write:x` incluye `read:x`). No puede acceder a nada más, ni siquiera crear
+   otras claves de API. Los endpoints de estado/sensores de Home Assistant
+   requieren `read:reports`; crear movimientos requiere `write:transactions`.
 3. La clave se muestra **una sola vez** — cópiala. Después de cerrar, solo la
    metadata (nombre, permisos, último uso) es visible.
 4. **Revoca** una clave para invalidarla permanentemente.
@@ -743,6 +747,63 @@ Home Assistant, un script local o cualquier servidor HTTP).
 Las entregas son **de tipo "dispara y olvida"** (no bloqueantes, mejor esfuerzo)
 con un tiempo de espera de 5 segundos. El estado de la última entrega se muestra
 junto a cada webhook.
+
+### MCP (asistentes de IA)
+
+HomeLedger puede funcionar como servidor [MCP](https://modelcontextprotocol.io),
+para que un asistente de IA (Claude Desktop, Cursor, etc.) responda preguntas
+sobre tu dinero y registre movimientos por ti.
+
+> **Privacidad.** Lo que el asistente lea se envía al proveedor de ese asistente.
+> MCP viene **desactivado por defecto** y solo tú puedes activarlo.
+
+**Cómo activarlo**
+
+1. En **Ajustes → API**, busca la tarjeta **Servidor MCP** y haz clic en
+   **Activar MCP**.
+2. Lee la advertencia, marca la confirmación e introduce tu contraseña (y tu
+   código 2FA si lo usas). Una clave de API no puede activar MCP por sí sola.
+3. Crea una clave de API para el asistente (**Crear clave**). Elige solo los
+   permisos que necesite. Una clave de **solo lectura** (por ejemplo
+   `read:accounts`, `read:categories`, `read:transactions`) es lo más seguro;
+   añade `write:transactions` solo si quieres que cree o edite movimientos.
+4. Apunta tu cliente MCP al endpoint que muestra la tarjeta, por ejemplo
+   `https://tu-host/api/v1/mcp`, y envía la clave como
+   `Authorization: Bearer <clave>` (o en el encabezado `X-API-Key`). Ejemplo para
+   un cliente con configuración JSON:
+
+   ```json
+   {
+     "mcpServers": {
+       "homeledger": {
+         "url": "https://tu-host/api/v1/mcp",
+         "headers": { "Authorization": "Bearer <tu-clave-de-api>" }
+       }
+     }
+   }
+   ```
+
+**Qué puede hacer el asistente**
+
+| Herramientas | Permiso necesario |
+|--------------|-------------------|
+| `list_accounts` | `read:accounts` |
+| `list_categories` | `read:categories` |
+| `list_transactions`, `get_transaction` | `read:transactions` |
+| `list_budgets`, `get_budget_summary` | `read:budgets` |
+| `list_goals` | `read:goals` |
+| `list_subscriptions` | `read:subscriptions` |
+| `get_dashboard_report`, `get_cashflow_report` | `read:reports` |
+| `get_net_worth` | `read:networth` |
+| `create_transaction`, `update_transaction` | `write:transactions` |
+
+No existe una herramienta para borrar: eliminar siempre se hace desde la
+aplicación. Una clave sin permisos tiene acceso completo, así que da a los
+asistentes claves con permisos limitados.
+
+**Cómo desactivarlo.** Haz clic en **Desactivar MCP** en la misma tarjeta. Toda
+llamada MCP se rechaza de inmediato. Revocar la clave de API también corta a ese
+cliente.
 
 ---
 

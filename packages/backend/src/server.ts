@@ -11,6 +11,7 @@ import { registerAuthMiddleware, registerRateLimitMiddleware, registerErrorHandl
 import { registerOpenApi } from './openapi.js';
 import { apiKeyRoutes } from './routes/v1/api-keys.routes.js';
 import { webhookRoutes } from './routes/v1/webhooks.routes.js';
+import { mcpRoutes } from './routes/v1/mcp.routes.js';
 import { requireRole } from './middleware/auth.middleware.js';
 import { startScheduler, stopScheduler } from './scheduler/index.js';
 import { getSchedulerStatus } from './scheduler/status.js';
@@ -39,7 +40,11 @@ import { parseTrustProxy } from './config/trust-proxy.js';
 
 export async function buildApp() {
   const options: FastifyServerOptions = {
-    logger: { level: process.env['LOG_LEVEL'] || 'info' },
+    logger: {
+      level: process.env['LOG_LEVEL'] || 'info',
+      // Never write credentials to the logs.
+      redact: ['req.headers["x-api-key"]', 'req.headers.authorization'],
+    },
     trustProxy: parseTrustProxy(process.env['TRUST_PROXY']),
   };
   const app = Fastify(options);
@@ -107,6 +112,7 @@ export async function buildApp() {
   await app.register(searchRoutes, { prefix: '/api/v1/search' });
   await app.register(apiKeyRoutes, { prefix: '/api/v1/api-keys' });
   await app.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
+  await app.register(mcpRoutes, { prefix: '/api/v1/mcp' });
 
   try {
     // SvelteKit (adapter-node) generates this file during the frontend build.

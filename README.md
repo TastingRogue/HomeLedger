@@ -1,18 +1,61 @@
-# HomeLedger
+<div align="center">
+
+# 💰 HomeLedger
+
+**Your money, on your own server.**
+A free, open-source, self-hosted personal finance manager.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.1.1-22c55e.svg)](CHANGELOG.md)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://hub.docker.com/r/irving1flores/homeledger)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant)](ha-integration/)
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ec4899?logo=githubsponsors)](https://github.com/sponsors/TastingRogue)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/irving1flores/homeledger)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant&logoColor=white)](ha-integration/)
+[![MCP](https://img.shields.io/badge/MCP-opt--in-8b5cf6)](docs/USER_MANUAL.md#mcp-ai-assistants)
 
-> **HomeLedger** is a free, open-source, self-hosted personal finance manager — an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
+<a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="HomeLedger dashboard with demo data" width="820" /></a>
 
-HomeLedger is a **self-hosted personal finance app** for people who want to own their financial data instead of trusting it to a cloud service — a privacy-friendly, open-source alternative to Mint, YNAB or Monarch. It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS integration. Bilingual (English / Spanish) with a configurable install currency.
+[**Quick Start**](#quick-start) ·
+[**Features**](#features) ·
+[**Screenshots**](#screenshots) ·
+[**User Manual**](docs/USER_MANUAL.md) ·
+[**Docker**](#docker-recommended-for-production) ·
+[**Home Assistant**](#home-assistant) ·
+[**API**](#api-endpoints)
 
-**Using HomeLedger:** [User Manual](docs/USER_MANUAL.md) · [Screenshots](#screenshots) · [Features](#features) · [Quick Start](#quick-start) · [Docker](#docker-recommended-for-production) · [Environment Variables](#environment-variables) · [Upgrading](#upgrading) · [Account Recovery](#account-recovery-locked-out) · [Home Assistant](#home-assistant) · [API](#api-endpoints)
+</div>
 
-**Contributing:** [Development](#development) · [Contributing guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Support the Project](#support-the-project)
+---
+
+## ❤️ Support the Project
+
+HomeLedger is built and maintained in spare time, and it will always be free.
+If it helps you keep your finances in order, here are a few ways to give back:
+
+<div align="center">
+
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on%20GitHub-%E2%9D%A4-ec4899?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TastingRogue)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/TastingRogue)
+
+</div>
+
+| Can't donate? These help just as much | |
+|---|---|
+| ⭐ **Star the repo** | Helps other people find it |
+| 🐛 **Report bugs** | [Open an issue](https://github.com/TastingRogue/HomeLedger/issues/new/choose) |
+| 💡 **Suggest features** | [Start a discussion or request](https://github.com/TastingRogue/HomeLedger/issues/new/choose) |
+| 🛠️ **Contribute** | See the [Contributing guide](CONTRIBUTING.md) |
+
+---
+
+## About
+
+> **HomeLedger** is a free, open-source, self-hosted personal finance manager: an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
+
+HomeLedger is a **self-hosted personal finance app** for people who want to own their financial data instead of trusting it to a cloud service. It is a privacy-friendly, open-source alternative to Mint, YNAB or Monarch. It runs anywhere Docker runs (home server, VPS, NAS, homelab or Raspberry Pi) and optionally integrates with **Home Assistant** as an add-on and HACS integration. Bilingual (English / Spanish) with a configurable install currency.
+
+| | |
+|---|---|
+| **Using HomeLedger** | [User Manual](docs/USER_MANUAL.md) · [Environment Variables](#environment-variables) · [Upgrading](#upgrading) · [Account Recovery](#account-recovery-locked-out) |
+| **Contributing** | [Development](#development) · [Contributing guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) |
 
 ## Screenshots
 
@@ -108,6 +151,7 @@ plus full JSON backup import/export with preview and validation.
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
 - **Home Assistant**: Addon + Custom Integration with sensors and services
 - **API REST**: All endpoints under `/api/v1` with JWT + API key auth
+- **MCP server (opt-in)**: Let AI assistants such as Claude Desktop read your finances and record transactions at `/api/v1/mcp`. Off by default; each user must confirm before enabling (see [User Manual](docs/USER_MANUAL.md#mcp-ai-assistants))
 
 ## Tech Stack
 
@@ -572,15 +616,6 @@ templates.
 By participating, you agree to abide by our
 **[Code of Conduct](.github/CODE_OF_CONDUCT.md)**. To report a security
 vulnerability, please follow our **[Security Policy](.github/SECURITY.md)**.
-
-## Support the Project
-
-If HomeLedger is useful to you, consider supporting its development:
-
-- ⭐ **Star this repo** — helps with visibility
-- 🐛 **Report bugs** — open an issue
-- 💡 **Suggest features** — discussions welcome
-- ❤️ **Sponsor** — [GitHub Sponsors](https://github.com/sponsors/TastingRogue) | [Buy Me a Coffee](https://buymeacoffee.com/TastingRogue)
 
 ## License
 

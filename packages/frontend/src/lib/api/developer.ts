@@ -86,3 +86,25 @@ export function deleteWebhook(id: number): Promise<void> {
 export function testWebhook(id: number): Promise<{ status: string }> {
   return apiPost<{ status: string }>(`/webhooks/${id}/test`);
 }
+
+// ============================
+// MCP (opt-in AI-assistant endpoint)
+// ============================
+
+export interface McpStatus {
+  enabled: boolean;
+  enabledAt: string | null;
+}
+
+export function getMcpStatus(): Promise<McpStatus> {
+  return apiGet<McpStatus>('/mcp/status');
+}
+
+/** Enabling needs an explicit acknowledgement plus the user's password (and 2FA code if set up). */
+export function enableMcp(password: string, totpCode?: string): Promise<McpStatus> {
+  return apiPost<McpStatus>('/mcp/enable', { acknowledged: true, password, ...(totpCode ? { totpCode } : {}) });
+}
+
+export function disableMcp(): Promise<McpStatus> {
+  return apiPost<McpStatus>('/mcp/disable', {});
+}

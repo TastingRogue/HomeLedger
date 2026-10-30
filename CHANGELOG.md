@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **MCP server for AI assistants** (#14) — Streamable HTTP endpoint at
+  `/api/v1/mcp` with tools to read accounts, categories, transactions, budgets,
+  goals, subscriptions, reports and net worth, and to create/update transactions.
+  **Off by default, per user.** Enabling is done from Settings → API after an
+  explicit acknowledgement plus password (and 2FA code) re-entry, from a login
+  session only. Access needs an API key (`Authorization: Bearer` or `X-API-Key`);
+  each tool enforces the key's scopes. No delete tool.
 - **GBP (£) currency** (#18) — available as the install's display currency
   (`DISPLAY_CURRENCY=GBP`, admin setting, per-account currency).
 - **Drag and drop, multiple receipts at once** (#17) — drop any number of
@@ -21,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **API-key scopes were not enforced on the REST API.** A key limited to
+  `read:accounts` could still create transactions, read every other resource, or
+  mint a new unrestricted API key. Scopes are now checked for every request made
+  with an API key. A scoped key can only use the resources it was granted;
+  routes with no scope of their own (API keys, webhooks, backup, loans, search,
+  ...) need `read:*` / `write:*`, and the Home Assistant endpoints need
+  `read:reports`. Keys created without scopes (full access) and login sessions
+  are unaffected. **If you gave Home Assistant or a script a scoped key, check
+  that it holds the scopes above.**
 - **Incomplete English translation** (#15) — stored values such as account /
   category / goal types, budget period, subscription cycle and status, the Quick
   Entry screen, the sidebar ("View profile", "Log out"), login/register

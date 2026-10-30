@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService, AuthError, type TokenPayload } from '../services/auth.service.js';
-import { scopesSatisfy } from '../config/scopes.js';
+import { scopesSatisfy, requiredScopeFor } from '../config/scopes.js';
 
 /**
  * Routes that do not require authentication.
@@ -32,6 +32,15 @@ function isPublicRoute(url: string): boolean {
     return true;
   }
   return PUBLIC_ROUTES.some((route) => path === route);
+}
+
+/** Raw API keys are 32 random bytes rendered as 64 hex characters. */
+const API_KEY_FORMAT = /^[0-9a-f]{64}$/i;
+
+/** True for the MCP protocol endpoint itself (not its /status, /enable, /disable siblings). */
+function isMcpEndpoint(url: string): boolean {
+  const path = (url.split('?')[0] ?? url).replace(/\/+$/, '');
+  return path === '/api/v1/mcp';
 }
 
 /**
@@ -77,9 +86,15 @@ export function registerAuthMiddleware(app: FastifyInstance): void {
       return;
     }
 
-    // Try JWT Bearer token first
+    // MCP clients send credentials as `Authorization: Bearer <token>`. API keys
+    // are 64 hex chars (JWTs are not), so on the MCP endpoint ONLY we treat such
+    // a bearer value as an API key. Everywhere else Bearer is always a JWT.
     const bearerToken = extractBearerToken(request.headers.authorization);
-    if (bearerToken) {
+    const bearerApiKey =
+      bearerToken && isMcpEndpoint(request.url) && API_KEY_FORMAT.test(bearerToken) ? bearerToken : null;
+
+    // Try JWT Bearer token first
+    if (bearerToken && !bearerApiKey) {
       try {
         const payload = AuthService.validateToken(bearerToken);
         (request as FastifyRequest & { user: TokenPayload }).user = payload;
@@ -106,11 +121,23 @@ export function registerAuthMiddleware(app: FastifyInstance): void {
     }
 
     // Try API key
-    const apiKey = extractApiKey(request);
+    const apiKey = extractApiKey(request) ?? bearerApiKey;
     if (apiKey) {
       try {
         const validation = await AuthService.validateApiKey(apiKey);
         if (validation) {
+          // Enforce the key's scopes for every route in one place, so no route
+          // can forget to. Unscoped (full-access) keys always pass.
+          const required = requiredScopeFor(request.method, request.url);
+          if (required && !scopesSatisfy(validation.scopes, required)) {
+            return reply.status(403).send({
+              success: false,
+              error: {
+                code: 'INSUFFICIENT_SCOPE',
+                message: `La API key no tiene el permiso requerido: ${required}`,
+              },
+            });
+          }
           (request as FastifyRequest & { user: TokenPayload }).user = validation.payload;
           request.authSource = 'apikey';
           request.apiKeyScopes = validation.scopes;
