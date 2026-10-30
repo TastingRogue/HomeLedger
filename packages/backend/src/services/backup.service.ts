@@ -44,7 +44,7 @@ const UPLOAD_DIR = path.join(DATA_DIR, 'attachments');
  * the `tags` + `transactionTags` arrays to the backup (older backups simply omit
  * them and restore with no tags).
  */
-export const APP_VERSION = '1.1.2';
+export const APP_VERSION = '1.1.3';
 
 /**
  * Error personalizado para operaciones de respaldo.
