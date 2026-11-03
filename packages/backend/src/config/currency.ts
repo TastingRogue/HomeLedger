@@ -1,16 +1,8 @@
 import { SettingsService } from '../services/settings.service.js';
 
 /**
- * Instance currency (single-currency-per-install model, P1.13 Option A).
- *
- * HomeLedger v1 is single-currency: all amounts are stored as plain numbers and
- * every total sums them directly, so the whole install shares ONE currency.
- * That currency is an instance setting (admin-chosen), not per-account — mixing
- * currencies is intentionally not supported (there is no FX conversion). True
- * multi-currency is a post-1.0 feature.
- *
- * The value is stored in `app_settings`, seeded on first run from the
- * `DISPLAY_CURRENCY` env var, and editable by an admin at runtime.
+ * Base currency for consolidated reports. Individual accounts may use another
+ * supported currency and a manually configured exchange rate to this base.
  */
 export const SUPPORTED_CURRENCIES = ['MXN', 'USD', 'EUR', 'GBP', 'COP', 'ARS', 'CLP', 'PEN', 'BRL'] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
@@ -28,7 +20,7 @@ export function seedCurrencySettingFromEnv(): void {
   SettingsService.setIfAbsent(SETTING_INSTANCE_CURRENCY, isSupportedCurrency(env) ? env : DEFAULT_CURRENCY);
 }
 
-/** The single currency used across the whole install. */
+/** The base currency used for consolidated totals. */
 export function getInstanceCurrency(): SupportedCurrency {
   const stored = SettingsService.get(SETTING_INSTANCE_CURRENCY);
   return isSupportedCurrency(stored) ? stored : DEFAULT_CURRENCY;

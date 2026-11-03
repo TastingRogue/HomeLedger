@@ -1,59 +1,56 @@
-import { writable, get } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { themes, isThemeId, getThemeDefinition } from '../themes/registry';
+import { resolveAppearance, applyDocumentAppearance } from '../themes/runtime';
+import type { ThemeId, ColorMode } from '../themes/types';
 
-export type Theme = 'dark' | 'light';
+// Preserve the existing public API and storage keys for installed browsers.
+export type Theme = ColorMode;
+export type UiSkin = ThemeId;
 
-const STORAGE_KEY = 'sf_theme';
-
-function loadFromStorage(): Theme {
-  if (!browser) return 'dark';
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-  } catch {
-    /* localStorage unavailable — fall back to default */
+function loadPreference(key: string): string | null {
+  if (browser) {
+    try { return localStorage.getItem(key); } catch { /* Storage is optional. */ }
   }
-  return 'dark';
+  return null;
 }
 
-/**
- * Reflect the active theme on the document root so the CSS variables defined
- * under `:root[data-theme='light']` take effect. Dark is the default palette on
- * bare `:root`, so we only set the attribute for light and remove it otherwise.
- */
-function applyTheme(theme: Theme) {
+const initial = resolveAppearance(themes, loadPreference('sf_ui_skin'), loadPreference('sf_theme'));
+export const theme = writable<Theme>(initial.mode);
+export const uiSkin = writable<UiSkin>(initial.id);
+export const activeTheme = derived(uiSkin, getThemeDefinition);
+
+let pendingFrame: number | undefined;
+
+function applyAppearance() {
   if (!browser) return;
   const root = document.documentElement;
-  if (theme === 'light') {
-    root.setAttribute('data-theme', 'light');
-    root.style.colorScheme = 'light';
+  root.classList.add('theme-changing');
+  applyDocumentAppearance(resolveAppearance(themes, get(uiSkin), get(theme)));
+  void root.offsetHeight;
+  if (typeof requestAnimationFrame === 'function') {
+    if (pendingFrame !== undefined) cancelAnimationFrame(pendingFrame);
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = requestAnimationFrame(() => {
+        root.classList.remove('theme-changing');
+        pendingFrame = undefined;
+      });
+    });
   } else {
-    root.removeAttribute('data-theme');
-    root.style.colorScheme = 'dark';
+    root.classList.remove('theme-changing');
   }
 }
 
-export const theme = writable<Theme>(loadFromStorage());
-
-// Persist and apply on every change.
-theme.subscribe((value) => {
+function persist(key: string, value: string) {
   if (!browser) return;
-  try {
-    localStorage.setItem(STORAGE_KEY, value);
-  } catch {
-    /* localStorage unavailable — ignore persistence */
-  }
-  applyTheme(value);
-});
-
-export function setTheme(next: Theme) {
-  theme.set(next);
+  try { localStorage.setItem(key, value); } catch { /* Storage is optional. */ }
+  applyAppearance();
 }
 
-export function toggleTheme() {
-  theme.set(get(theme) === 'dark' ? 'light' : 'dark');
-}
+theme.subscribe(value => persist('sf_theme', value));
+uiSkin.subscribe(value => persist('sf_ui_skin', value));
 
-export function getTheme(): Theme {
-  return get(theme);
-}
+export function setTheme(next: Theme) { theme.set(next === 'light' ? 'light' : 'dark'); }
+export function setUiSkin(next: UiSkin) { uiSkin.set(isThemeId(next) ? next : 'normal'); }
+export function toggleTheme() { setTheme(get(theme) === 'dark' ? 'light' : 'dark'); }
+export function getTheme(): Theme { return get(theme); }

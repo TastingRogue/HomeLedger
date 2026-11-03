@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listGoals,
@@ -250,6 +251,8 @@
   onMount(() => {
     loadGoals();
   });
+
+  exposeViewActions({'view.refresh':()=>loadGoals(),'goals.create':()=>openCreateForm(), 'goals.edit':async r=>{let row=goals.find(x=>x.id===r?.id);if(!row){await loadGoals();row=goals.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditForm(row);}, 'fund.edit':async r=>{let row=goals.find(x=>x.id===r?.id);if(!row){await loadGoals();row=goals.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openFundModal(row);}, 'withdraw.edit':async r=>{let row=goals.find(x=>x.id===r?.id);if(!row){await loadGoals();row=goals.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openWithdrawModal(row);}});
 </script>
 
 <svelte:head>

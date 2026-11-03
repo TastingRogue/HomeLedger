@@ -1,0 +1,198 @@
+/* HomeLedger — Premium Dark Fintech Design System */
+
+:root {
+  /* ─── Backgrounds ─── */
+  --bg-deep: #0b1118;
+  --bg-default: #0f1720;
+  --bg-surface: #131a24;
+  --bg-elevated: #1a2332;
+  --bg-hover: #1e2a3a;
+  --bg-card: #161e2a;
+
+  /* ─── Text ─── */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  /* Lightened from #64748b so muted text clears WCAG AA (4.5:1) on every
+     surface (was 3.3–4.0:1, failing on cards/elevated). */
+  --text-muted: #7c8ba3;
+  --text-link: #60a5fa;
+
+  /* ─── Accents ─── */
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-green: #22c55e;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-yellow: #eab308;
+  --accent-pink: #ec4899;
+  --accent-gray: #64748b;
+  --accent-cyan: #06b6d4;
+
+  /* ─── Colored Tag Backgrounds ─── */
+  --tag-blue-bg: rgba(59, 130, 246, 0.12);
+  --tag-green-bg: rgba(34, 197, 94, 0.12);
+  --tag-red-bg: rgba(239, 68, 68, 0.12);
+  --tag-orange-bg: rgba(245, 158, 11, 0.12);
+  --tag-purple-bg: rgba(139, 92, 246, 0.12);
+  --tag-yellow-bg: rgba(234, 179, 8, 0.12);
+
+  /* ─── Semantic ─── */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-glow: rgba(59, 130, 246, 0.15);
+  --color-success: #22c55e;
+  --color-success-subtle: rgba(34, 197, 94, 0.12);
+  --color-warning: #f59e0b;
+  --color-warning-subtle: rgba(245, 158, 11, 0.12);
+  --color-danger: #ef4444;
+  --color-danger-subtle: rgba(239, 68, 68, 0.12);
+  --color-income: #22c55e;
+  --color-expense: #ef4444;
+
+  /* ─── Borders ─── */
+  --border-default: #1e2a3a;
+  --border-subtle: #172033;
+
+  /* ─── Sidebar (distinct from content surfaces) ─── */
+  --sidebar-bg: #0a0f16;
+  --sidebar-border: var(--border-default);
+  --sidebar-active-bg: rgba(139, 92, 246, 0.15);
+  --sidebar-active-text: #a78bfa;
+
+  /* ─── Translucent materials (P3.D) ───
+     Semi-transparent surface colors for chrome/panels that sit over content as
+     a `backdrop-filter` material. Kept as tokens so each theme tunes its own
+     opacity, and so the prefers-reduced-transparency block can swap them for
+     the solid equivalents in one place. */
+  --sidebar-bg-glass: rgba(10, 15, 22, 0.72);
+  --surface-glass: rgba(19, 26, 36, 0.82);
+  --material-blur: blur(20px) saturate(180%);
+
+  /* ─── Radius ─── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ─── Spacing ─── */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --spacing-2xl: 2rem;
+
+  /* ─── Typography ─── */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ─── Type: tracking (letter-spacing) & leading (line-height) (P3.F) ───
+     Tracking is size-specific per apple-design §15: large text reads too loose,
+     so it wants NEGATIVE tracking; body sits near 0; small uppercase micro-labels
+     want slightly POSITIVE tracking for legibility. Leading is inverse to size:
+     tight on headings, comfortable on body. */
+  --tracking-display: -0.02em;   /* page titles / large display numbers */
+  --tracking-heading: -0.01em;   /* section headings */
+  --tracking-body: 0em;          /* body copy */
+  --tracking-label: 0.04em;      /* uppercase micro-labels (field labels, chips) */
+  --tracking-wide: 0.06em;       /* eyebrows / very small all-caps */
+  --leading-tight: 1.1;          /* large headings */
+  --leading-heading: 1.2;        /* sub-headings */
+  --leading-body: 1.5;           /* body copy */
+
+  /* ─── Transitions ─── */
+  --transition-fast: 0.1s ease;
+  --transition-base: 0.2s ease;
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* ─── Legacy aliases ─── */
+  --color-bg-deepest: var(--bg-deep);
+  --color-bg: var(--bg-deep);
+  --color-surface: var(--bg-surface);
+  --color-surface-elevated: var(--bg-elevated);
+  --color-surface-hover: var(--bg-hover);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-primary-subtle: var(--tag-blue-bg);
+  --color-primary-dark: var(--color-primary-hover);
+}
+
+/* ═══════════════════════════════════════════
+   LIGHT THEME
+   Overrides only the surface/text/border/shadow tokens; the accent hues stay
+   the same so charts and status colors remain consistent across themes.
+   Activated by setTheme('light') which sets data-theme="light" on <html>.
+   ═══════════════════════════════════════════ */
+:root[data-ui='normal'][data-theme='light'],
+:root:not([data-ui])[data-theme='light'] {
+  /* ─── Backgrounds ─── */
+  /* A cool, low-chroma slate scale: the app canvas is a soft gray-blue and
+     cards sit on top as clean white, giving clear elevation without harsh lines. */
+  --bg-deep: #eef1f6;
+  --bg-default: #f5f7fb;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f3f5f9;
+  --bg-hover: #e7ecf3;
+  --bg-card: #ffffff;
+
+  /* ─── Text ─── */
+  --text-primary: #16202e;
+  --text-secondary: #4a5769;
+  /* Darkened from #8492a6 so muted text clears WCAG AA (4.5:1) on cards/white
+     surfaces (was 2.8–3.2:1; now 4.5–5.1 on surface/elevated/card). */
+  --text-muted: #616e88;
+  --text-link: #2563eb;
+
+  /* ─── Accents (slightly deepened for contrast on light surfaces) ─── */
+  --accent-blue: #2563eb;
+  --accent-purple: #7c3aed;
+  --accent-green: #16a34a;
+  --accent-orange: #ea8a06;
+  --accent-red: #dc2626;
+  --accent-yellow: #ca9a04;
+  --accent-cyan: #0891b2;
+  --text-link: #2563eb;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-success: #16a34a;
+  --color-warning: #ea8a06;
+  --color-danger: #dc2626;
+  --color-income: #16a34a;
+  --color-expense: #dc2626;
+
+  /* ─── Tag backgrounds (a touch stronger so they read on white) ─── */
+  --tag-blue-bg: rgba(37, 99, 235, 0.10);
+  --tag-green-bg: rgba(22, 163, 74, 0.10);
+  --tag-red-bg: rgba(220, 38, 38, 0.10);
+  --tag-orange-bg: rgba(234, 138, 6, 0.12);
+  --tag-purple-bg: rgba(124, 58, 237, 0.10);
+  --tag-yellow-bg: rgba(202, 154, 4, 0.14);
+
+  /* ─── Borders ─── */
+  --border-default: #dde3ec;
+  --border-subtle: #e9edf3;
+
+  /* ─── Sidebar ─── */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e4e9f0;
+  --sidebar-active-bg: rgba(124, 58, 237, 0.10);
+  --sidebar-active-text: #7c3aed;
+
+  /* ─── Translucent materials (light) ─── */
+  --sidebar-bg-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass: rgba(255, 255, 255, 0.85);
+
+  /* ─── Shadows (softer on light) ─── */
+  --shadow-sm: 0 1px 2px rgba(20, 32, 46, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 32, 46, 0.08);
+  --shadow-lg: 0 10px 28px rgba(20, 32, 46, 0.10);
+  --shadow-card: 0 1px 3px rgba(20, 32, 46, 0.06);
+}

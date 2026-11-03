@@ -11,7 +11,7 @@ A free, open-source, self-hosted personal finance manager.
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Integration-41BDF5?logo=homeassistant&logoColor=white)](ha-integration/)
 [![MCP](https://img.shields.io/badge/MCP-opt--in-8b5cf6)](docs/USER_MANUAL.md#mcp-ai-assistants)
 
-<a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="HomeLedger dashboard with demo data" width="820" /></a>
+<a href="docs/screenshots/dashboard.jpg"><img src="docs/screenshots/dashboard.jpg" alt="HomeLedger dashboard with demo data" width="820" /></a>
 
 [**Quick Start**](#quick-start) ·
 [**Features**](#features) ·
@@ -59,80 +59,95 @@ HomeLedger is a **self-hosted personal finance app** for people who want to own 
 
 ## Screenshots
 
-> [!NOTE]
-> **All screenshots below use generated demo/test data** — no real financial
-> information is shown. You can reproduce the exact dataset by importing
-> [`homeledger-demo-backup.json`](homeledger-demo-backup.json) from
-> **Settings → Data & Backup → Import**, or regenerate it with
-> `node scripts/generate-demo-backup.mjs`.
+These screenshots show the current application running in Docker with synthetic
+English demo data. No real financial information is shown.
 
-### Dashboard
+### Normal
 
-A complete financial overview: net worth, income vs. expenses, spending by
-category, account health, upcoming payments, goals and budgets at a glance.
+The original dashboard supports light and dark mode, with balances, cash flow,
+spending categories, upcoming payments and quick actions.
 
-![HomeLedger dashboard populated with demo data](docs/screenshots/dashboard.png)
+![HomeLedger Normal dashboard with demo data](docs/screenshots/dashboard.jpg)
 
-### Transactions
+<details>
+<summary>Original theme: focused workflow screenshots</summary>
 
-Income and expenses split into two columns and grouped by month, with a
-card grid view and quick filtering.
+#### Transactions
 
-![Transactions screen showing demo income and expense cards](docs/screenshots/transactions.png)
+A compact table view with filters and month groups.
 
-### Budgets &amp; Goals
+![HomeLedger Normal — transactions with demo data](docs/screenshots/transactions-normal.jpg)
 
-Category budgets with allocation-vs-spent progress, and savings goals that turn
-objectives into visible progress (fund / withdraw / debt payoff).
+#### Budgets
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/budgets.png" alt="Monthly budget with per-category progress bars (demo data)" /></td>
-    <td width="50%"><img src="docs/screenshots/goals.png" alt="Savings goals with progress bars (demo data)" /></td>
-  </tr>
-</table>
+![HomeLedger Normal — budgets with demo data](docs/screenshots/budgets-normal.jpg)
 
-### Subscriptions &amp; Transfers
+#### Savings goals
 
-Recurring payments with auto-charge and a calendar view, plus transfers between
-your own accounts that don't affect income or expenses.
+![HomeLedger Normal — savings goals with demo data](docs/screenshots/goals-normal.jpg)
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/subscriptions.png" alt="Recurring subscriptions list (demo data)" /></td>
-    <td width="50%"><img src="docs/screenshots/transfers.png" alt="Account transfers list (demo data)" /></td>
-  </tr>
-</table>
+#### Subscriptions
 
-### Categories
+![HomeLedger Normal — subscriptions with demo data](docs/screenshots/subscriptions-normal.jpg)
 
-Each user gets their own fully editable set of default categories at sign-up,
-with expense analysis and type classification (Expense / Income / Both).
+#### Transfers
 
-![Category expense analysis and category grid (demo data)](docs/screenshots/categories.png)
+![HomeLedger Normal — transfers with demo data](docs/screenshots/transfers-normal.jpg)
 
-### Receipts &amp; Data Management
+#### Categories
 
-Upload receipts/invoices, analyze them (OCR) and link them to a transaction —
-plus full JSON backup import/export with preview and validation.
+![HomeLedger Normal — categories with demo data](docs/screenshots/categories-normal.jpg)
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/receipts.png" alt="Receipt OCR analysis linked to a transaction (demo data)" /></td>
-    <td width="50%"><img src="docs/screenshots/import.png" alt="Backup import/export wizard" /></td>
-  </tr>
-</table>
+#### Receipts and invoices
 
-> Screenshots are stored in [`docs/screenshots/`](docs/screenshots/). Both light
-> and dark themes are supported — swap in either from the header toggle.
+Review the original document alongside extracted fields and OCR text.
+
+![HomeLedger Normal — receipt detail and OCR with demo data](docs/screenshots/receipts-normal.jpg)
+
+#### Data and backup
+
+Export a portable copy of your financial data.
+
+![HomeLedger Normal — backup export with demo data](docs/screenshots/import-normal.jpg)
+
+</details>
+
+### Cyberpunk 2077
+
+A burgundy and black interface with electric yellow headers, cyan income,
+coral expenses and compact terminal panels. The theme covers the dashboard,
+accounts, planning, reports, forms and authentication screens.
+
+![HomeLedger Cyberpunk dashboard with demo data](docs/screenshots/dashboard-cyberpunk.jpg)
+
+![Cyberpunk financial reports with demo data](docs/screenshots/reports-cyberpunk.jpg)
+
+The mobile calendar uses a readable agenda with every event available. The
+example below shows one complete day.
+
+<img src="docs/screenshots/calendar-mobile.jpg" alt="Cyberpunk calendar agenda on mobile with demo data" width="390" />
+
+## Interface themes
+
+Choose **Settings → Profile → Interface design → Normal / Cyberpunk 2077**.
+The choice applies immediately and is saved in your browser. Cyberpunk has its
+own dark palette; your Normal light/dark preference is preserved when switching.
+Both designs use the same accounts, data and financial workflows.
+
+Themes live in separate folders and are discovered through a typed registry.
+See [Creating and contributing themes](docs/THEMES.md) to add a palette or an
+optional page composition without changing the settings UI or database.
+Cyberpunk 2077 is an unofficial visual inspiration; this project is not affiliated
+with CD PROJEKT RED.
 
 ## Features
 
+- **Interface themes**: Normal (light/dark) and modular Cyberpunk 2077, selected in Settings
 - **Multi-account**: Debit, Credit, Investment, Vouchers, Cash — with dynamic balance tracking
 - **Transactions**: Full income/expense recording with split by type, subcategories, per-transaction category splits, month grouping, card grid + table views, and **CSV export**
 - **Transfers**: Movements between accounts with fund validation and edit support
 - **Subscriptions**: Recurring payment management with auto-charge, catch-up after downtime, and visual calendar
-- **Budgets**: Category-based spending control with progress bars and dashboard integration
+- **Budgets**: Category and tag-based spending control with progress bars and dashboard integration
 - **Savings Goals**: Objective tracking with fund/withdraw actions and progress visualization
 - **Loans**: Track principal, interest and term with an amortization schedule, payment recording, and payoff progress
 - **Credit Monitoring**: Utilization bars, health status, and linked subscriptions
@@ -146,7 +161,7 @@ plus full JSON backup import/export with preview and validation.
 - **Dashboard**: Complete financial summary with editable items, combo charts, period dropdowns
 - **Receipts**: Analyze uploaded receipts/attachments to extract transaction details
 - **Admin**: User management, registration control (first-user/open/closed + allowlist), and instance settings — admin-gated
-- **Currency**: single currency per install (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL), set by the admin
+- **Currency**: base currency per install (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL), with per-account currencies and manual exchange rates
 - **Language**: Spanish + English with full interface translation
 - **Responsive**: Scales to any screen resolution with dynamic font sizing
 - **Home Assistant**: Addon + Custom Integration with sensors and services
@@ -209,7 +224,7 @@ docker run -d \
 | `-e ADMIN_EMAIL=…` | Email for the first admin user, created on first run. | Any email (default `admin@homeledger.local`) |
 | `-e ADMIN_PASSWORD=…` | **Required.** Password for that admin. | A strong password |
 | `-e DEFAULT_LOCALE=…` | Starting UI language + the language your default categories are seeded in. Each user can change their own later in **Settings**. | `en` or `es` (default `en`) |
-| `-e DISPLAY_CURRENCY=…` | The install's single currency (symbol + unit for all amounts; no conversion). Admin can change it in-app. | `MXN` `USD` `EUR` `GBP` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
+| `-e DISPLAY_CURRENCY=…` | The base currency for consolidated totals. Accounts can use other currencies with manual exchange rates. | `MXN` `USD` `EUR` `GBP` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
 
 > :bulb: The `\` at the end of each line is a **bash** line-continuation. On
 > **Windows PowerShell**, use a backtick `` ` `` instead, or put the whole
@@ -220,35 +235,17 @@ docker run -d \
 
 ### Run from Docker Desktop (no command line)
 
-The image ships with built-in demo defaults, so you don't need to set any
-environment variables — but you **must** map the port, otherwise the browser
-will show `ERR_CONNECTION_REFUSED`.
+The image requires a strong `JWT_SECRET` before it can start.
 
-1. Open the **Images** tab and click **Run** on `irving1flores/homeledger`.
-2. Expand **Optional settings**.
-3. Under **Ports**, set **Host port** to `3000` (the container listens on
-   `3000`). Without this step the container runs but is not reachable from your
-   browser.
-4. *(Optional)* Add a volume so your data survives restarts: **Host path** a
-   folder of your choice, **Container path** `/data`.
-5. *(Optional)* Under **Environment variables**, set `DEFAULT_LOCALE` to `en` or
-   `es` for the starting language, and `DISPLAY_CURRENCY` (e.g. `USD`, `MXN`) for
-   the currency. You can also switch your language later in **Settings**.
-6. Click **Run**, then open <http://localhost:3000>.
-
-Log in with the demo credentials:
-
-- **Email:** `admin@homeledger.local`
-- **Password:** `changeme123`
-
-> :information_source: `EXPOSE 3000` in the image only documents the port; it
-> does not publish it. Docker Desktop only maps it when you set a Host port
-> (step 3), which is equivalent to `-p 3000:3000` on the command line.
->
-> :warning: **These defaults are insecure and public.** For any real
-> deployment, override `JWT_SECRET`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` (in
-> Optional settings → Environment variables, or with the `-e` flags shown
-> above).
+1. Open **Images** and click **Run** on `irving1flores/homeledger`.
+2. Expand **Optional settings** and map host port `3000` to container port `3000`.
+3. Mount a persistent folder or volume at `/data`.
+4. Under **Environment variables**, set `JWT_SECRET` to a random value of at
+   least 32 characters. Optionally set `ADMIN_EMAIL` and `ADMIN_PASSWORD` to
+   create an administrator at startup.
+5. Optionally set `DEFAULT_LOCALE` (`en` or `es`) and `DISPLAY_CURRENCY`.
+6. Click **Run** and open <http://localhost:3000>. Without a bootstrapped admin,
+   register the first account to become the administrator.
 
 **Option 2 — Build from source with Docker Compose**
 
@@ -267,19 +264,19 @@ docker compose up -d
 
 ## Environment Variables
 
-The Docker image ships with insecure demo defaults so it runs out of the box.
-Override these in production.
+The Docker image has no built-in credentials. Supply `JWT_SECRET` at runtime;
+production startup rejects missing or known insecure values.
 
 | Variable | Description | Default (Docker image) |
 |----------|-------------|------------------------|
-| `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | insecure demo value — **change in production** |
+| `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | unset — **required** |
 | `CORS_ORIGIN` | Comma-separated allowed origins; unset reflects the request origin | unset (reflect origin) |
 | `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
-| `ADMIN_PASSWORD` | Admin password | `changeme123` — **change in production** |
-| `ALLOW_INSECURE_DEFAULTS` | Allow booting in production with the insecure demo `JWT_SECRET`/`ADMIN_PASSWORD` (logs a loud warning). If unset, the app **refuses to start** in production on insecure values. The demo image sets this so it runs out of the box. | `true` (Docker image) · unset (local) |
+| `ADMIN_PASSWORD` | Admin password | unset — optional admin bootstrap |
+| `ALLOW_INSECURE_DEFAULTS` | Explicitly bypass startup security checks for disposable demos only. | `false` |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
 | `DEFAULT_LOCALE` | Primary language for the install (the language each user's default categories are seeded in at sign-up, and the UI's default language before any user picks one): `es` or `en`. Users can still switch their own language and rename/delete their own categories. | `en` (falls back to English if unset/invalid) |
-| `DISPLAY_CURRENCY` | The install's single currency (`MXN`, `USD`, `EUR`, `GBP`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). All amounts use it — HomeLedger v1 is single-currency (no conversion). Admin can change it in-app. | `MXN` |
+| `DISPLAY_CURRENCY` | Base currency for consolidated totals (`MXN`, `USD`, `EUR`, `GBP`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). Accounts have their own currency and manual exchange rate to base. | `MXN` |
 | `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |
 | `PORT` | Server port (app + API) | `3000` |
@@ -416,15 +413,14 @@ All four report into an in-memory status registry, visible to admins at
 
 ## Multi-currency & i18n
 
-- **Currency**: **Single currency per install** (MXN, USD, EUR, GBP, COP, ARS, CLP, PEN, BRL), chosen by the admin via `DISPLAY_CURRENCY` (or the admin API). All amounts and totals use this one currency.
-- **Language**: Spanish / English — switchable per user from Settings
-- **Timezone**: America/Mexico_City (configurable in server environment)
-
-> :information_source: **On currencies (v1):** HomeLedger v1 is **single-currency
-> per install** — it does not convert between currencies, so mixing currencies is
-> intentionally not supported (accounts must use the instance currency). Choosing
-> a currency sets the symbol and unit for the whole install. **Multi-currency with
-> conversion is planned post-1.0** (see the roadmap). Language is per-user.
+- **Currency:** an administrator chooses the base currency. Each account can use
+  a supported currency and a manually maintained exchange rate to base.
+  Consolidated totals convert account amounts using those rates; amounts on
+  individual accounts remain in their native currency. Cross-currency transfers
+  require a destination amount. Rates are not fetched automatically and default
+  to 1 when omitted, so set them explicitly for foreign-currency accounts.
+- **Language:** Spanish / English, switchable per user in Settings.
+- **Timezone:** America/Mexico_City by default, configurable in the environment.
 
 ## Home Assistant
 
@@ -476,7 +472,7 @@ HomeLedger instance — the add-on above, a Docker deployment, etc. It polls
 locally every 5 minutes (no cloud).
 
 **Prerequisites:** a running HomeLedger instance reachable from HA, and an
-**API key** generated in HomeLedger (used as a Bearer token).
+**API key** generated in HomeLedger (sent with the `X-API-Key` header).
 
 1. **Add the repository to HACS**
    - In HACS, open the **⋮** menu → **Custom repositories**.

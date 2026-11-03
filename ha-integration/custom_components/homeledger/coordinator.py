@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+
 import logging
 from typing import Any
 
@@ -10,6 +11,7 @@ import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import CONF_API_KEY, CONF_API_URL, DEFAULT_SCAN_INTERVAL, DOMAIN
@@ -38,7 +40,7 @@ class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Fetch data from HomeLedger API."""
         try:
             async with aiohttp.ClientSession() as session:
-                headers = {"Authorization": f"Bearer {self.api_key}"}
+                headers = {"X-API-Key": self.api_key}
                 async with session.get(
                     f"{self.api_url}/api/v1/ha/status",
                     headers=headers,
@@ -72,7 +74,7 @@ class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Create a transaction via the HomeLedger API."""
         async with aiohttp.ClientSession() as session:
             headers = {
-                "Authorization": f"Bearer {self.api_key}",
+                "X-API-Key": self.api_key,
                 "Content-Type": "application/json",
             }
             payload = {
@@ -81,7 +83,7 @@ class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "type": transaction_type,
                 "accountId": account_id,
                 "categoryId": category_id,
-                "date": None,  # API will use current date
+                "date": dt_util.now().date().isoformat(),
             }
             async with session.post(
                 f"{self.api_url}/api/v1/transactions",
@@ -104,7 +106,7 @@ class HomeLedgerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Create a quick expense via the HomeLedger API."""
         async with aiohttp.ClientSession() as session:
             headers = {
-                "Authorization": f"Bearer {self.api_key}",
+                "X-API-Key": self.api_key,
                 "Content-Type": "application/json",
             }
             payload = {

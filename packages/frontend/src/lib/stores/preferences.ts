@@ -42,7 +42,11 @@ function loadFromStorage(): UserPreferences {
 
 function saveToStorage(prefs: UserPreferences) {
   if (!browser) return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // Preferences still work for this session when browser storage is blocked.
+  }
 }
 
 export const preferences = writable<UserPreferences>(loadFromStorage());

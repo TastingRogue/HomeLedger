@@ -61,27 +61,27 @@ export const createAccountSchema = z
       .int('El día de corte debe ser un número entero')
       .min(1, 'El día de corte debe estar entre 1 y 31')
       .max(31, 'El día de corte debe estar entre 1 y 31')
-      .optional(),
+      .nullable().optional(),
 
     paymentDueDay: z
       .number({ error: 'El día de pago debe ser un número' })
       .int('El día de pago debe ser un número entero')
       .min(1, 'El día de pago debe estar entre 1 y 31')
       .max(31, 'El día de pago debe estar entre 1 y 31')
-      .optional(),
+      .nullable().optional(),
 
     apr: z
       .number({ error: 'La tasa (APR) debe ser un número' })
       .min(0, 'La tasa (APR) no puede ser negativa')
       .max(1000, 'La tasa (APR) no puede exceder 1000%')
-      .optional(),
+      .nullable().optional(),
 
     minimumPayment: z
       .number({ error: 'El pago mínimo debe ser un número' })
       .min(0, 'El pago mínimo no puede ser negativo')
       .max(999999999.99, 'El pago mínimo no puede exceder 999,999,999.99')
       .refine(hasAtMostTwoDecimals, { message: twoDecimalMsg })
-      .optional(),
+      .nullable().optional(),
 
     linkedSubscriptionIds: z
       .array(z.number().int().positive('Los IDs de suscripciones deben ser números positivos'))

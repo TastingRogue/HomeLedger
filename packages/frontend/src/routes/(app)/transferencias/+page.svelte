@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import { apiGet, ApiError } from '$lib/api/client';
   import { listTransfers, createTransfer, updateTransfer, deleteTransfer } from '$lib/api/transfers';
@@ -102,6 +103,8 @@
   }
 
   onMount(async () => { await loadAccounts(); await loadTransfers(); });
+
+  exposeViewActions({'view.refresh':()=>loadTransfers(),'transfer-delete.edit':r=>{const row=transfers.find(x=>x.id===r?.id);if(!row)throw new Error('Unable to load this record. Refresh and try again.');openDeleteModal(row);},'transfers.create':r=>{openCreateForm();if(r?.destinationAccountId)formDestinationAccountId=String(r.destinationAccountId);if(typeof r?.name==='string')formName=r.name;}, 'transfers.edit':async r=>{let row=transfers.find(x=>x.id===r?.id);if(!row){await loadTransfers();row=transfers.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditForm(row);}});
 </script>
 
 <svelte:head><title>{$t('transfers.title')} | HomeLedger</title></svelte:head>

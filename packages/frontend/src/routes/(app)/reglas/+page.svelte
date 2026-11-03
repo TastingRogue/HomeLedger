@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listRules,
@@ -258,6 +259,8 @@
       deleteSubmitting = false;
     }
   }
+
+  exposeViewActions({'view.refresh':()=>load(),'rule-delete.edit':r=>{deleteTarget=rules.find(x=>x.id===r?.id)??null;},'rules.create':()=>openCreate(), 'rules.edit':async r=>{let row=rules.find(x=>x.id===r?.id);if(!row){await load();row=rules.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEdit(row);}});
 </script>
 
 <svelte:head><title>{$t('page_title.rules')} · HomeLedger</title></svelte:head>

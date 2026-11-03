@@ -110,10 +110,11 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok || body.success === false) {
+    const code=body.error?.code ?? body.code ?? 'UNKNOWN_ERROR';
     throw new ApiError(
       response.status,
-      body.error?.code ?? body.code ?? 'UNKNOWN_ERROR',
-      body.error?.message ?? body.message ?? 'Error desconocido',
+      code,
+      code==='NO_TRANSACTIONS'?get(t)('import.no_transactions'):code==='VALIDATION_ERROR'?get(t)('common.validation_error'):body.error?.message ?? body.message ?? 'Error desconocido',
       body.error?.details ?? body.details
     );
   }
@@ -177,7 +178,11 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
   }
 
-  return handleResponse<T>(response);
+  const result = await handleResponse<T>(response);
+  if (browser && !['GET', 'HEAD'].includes(method.toUpperCase()) && !skipAuth) {
+    window.dispatchEvent(new Event('homeledger:data-changed'));
+  }
+  return result;
 }
 
 export async function apiGet<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
@@ -290,5 +295,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
     }
     response = await doFetch(newToken);
   }
-  return handleResponse<T>(response);
+  const result = await handleResponse<T>(response);
+  if (browser) window.dispatchEvent(new Event('homeledger:data-changed'));
+  return result;
 }

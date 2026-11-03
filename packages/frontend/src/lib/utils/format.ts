@@ -84,7 +84,7 @@ export function formatTime(date: Date | string): string {
  * Accepts Date object or ISO string.
  */
 export function formatDateShort(date: Date | string): string {
-  if (typeof date === 'string') {
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     // Parse YYYY-MM-DD as local date (avoid UTC shift)
     const parts = date.split('T')[0]!.split('-');
     if (parts.length === 3) {
@@ -97,6 +97,7 @@ export function formatDateShort(date: Date | string): string {
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
 }
+
 
 /**
  * Format days remaining as a human-readable label in the active language.
@@ -111,10 +112,16 @@ export function formatDaysRemaining(days: number, tr: Translate = get(t)): strin
  * Convert an ISO date string to a datetime-local input value.
  */
 export function toDatetimeLocal(isoString: string): string {
+  if(/^\d{4}-\d{2}-\d{2}$/.test(isoString))return `${isoString}T00:00`;
   const d = new Date(isoString);
   const offset = d.getTimezoneOffset();
   const local = new Date(d.getTime() - offset * 60000);
   return local.toISOString().slice(0, 16);
+}
+
+/** Today's calendar date in the browser's local timezone, for date-only forms. */
+export function localDateString(date=new Date()):string {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
 /**

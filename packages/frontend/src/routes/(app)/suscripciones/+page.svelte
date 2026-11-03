@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { localDateString } from '$lib/utils/format';
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listSubscriptions,
@@ -185,7 +187,7 @@
     editingSub = null;
     formName = '';
     formAmount = '';
-    formStartDate = new Date().toISOString().split('T')[0]!;
+    formStartDate = localDateString();
     formCycle = 'Mensual';
     formCategoryId = '';
     formAccountId = '';
@@ -302,9 +304,14 @@
     }
   }
 
-  onMount(() => {
-    loadData();
+  onMount(async () => {
+    await loadData();
+    const id=Number(new URLSearchParams(window.location.search).get('edit'));
+    const subscription=subscriptionsList.find(row=>row.id===id);
+    if(subscription) openEditForm(subscription);
   });
+
+  exposeViewActions({'view.refresh':()=>loadData(),'subscription-delete.edit':r=>{deactivateTarget=subscriptionsList.find(x=>x.id===r?.id)??null;},'subscriptions.create':()=>openCreateForm(), 'subscriptions.edit':async r=>{let row=subscriptionsList.find(x=>x.id===r?.id);if(!row){await loadData();row=subscriptionsList.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditForm(row);}});
 </script>
 
 <svelte:head>

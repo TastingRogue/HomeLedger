@@ -3,6 +3,8 @@
   import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
 
+  import { localDateString, toDatetimeLocal } from '$lib/utils/format';
+
   let { value = $bindable(), showTime = false }: { value: string; showTime?: boolean } = $props();
 
   let open = $state(false);
@@ -30,7 +32,7 @@
 
   let selectedDate = $derived.by(() => {
     if (!value) return null;
-    return new Date(value);
+    return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value + 'T00:00' : value);
   });
 
   let displayText = $derived.by(() => {
@@ -113,13 +115,13 @@
     if (showTime && selectedDate) {
       d.setHours(selectedDate.getHours(), selectedDate.getMinutes());
     }
-    value = d.toISOString().slice(0, showTime ? 16 : 10);
+    value = showTime ? toDatetimeLocal(d.toISOString()) : localDateString(d);
     if (!showTime) open = false;
   }
 
   function setToday() {
     const now = new Date();
-    value = now.toISOString().slice(0, showTime ? 16 : 10);
+    value = showTime ? toDatetimeLocal(now.toISOString()) : localDateString(now);
     viewYear = now.getFullYear();
     viewMonth = now.getMonth();
     if (!showTime) open = false;
@@ -131,7 +133,7 @@
     const [h, m] = input.value.split(':').map(Number);
     const d = new Date(selectedDate);
     d.setHours(h ?? 0, m ?? 0);
-    value = d.toISOString().slice(0, 16);
+    value = toDatetimeLocal(d.toISOString());
   }
 
   let timeValue = $derived.by(() => {
@@ -177,7 +179,7 @@
 
       {#if showTime}
         <div class="dp-time">
-          <label>Hora
+          <label>{$t('datepicker.time')}
           <input type="time" value={timeValue} onchange={handleTimeChange} />
           </label>
         </div>

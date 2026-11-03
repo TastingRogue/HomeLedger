@@ -5,6 +5,7 @@ import {
   formatDateShort,
   formatDaysRemaining,
   toDatetimeLocal,
+  localDateString,
 } from './format';
 import { es } from '../i18n/es';
 import { en } from '../i18n/en';
@@ -79,8 +80,12 @@ describe('formatDateShort', () => {
     expect(formatDateShort('2024-12-31')).toBe('31/12/2024');
   });
 
-  it('handles an ISO datetime string by taking the date part', () => {
+  it('handles an ISO datetime string using its local calendar day', () => {
     expect(formatDateShort('2024-03-09T23:30:00.000Z')).toBe('09/03/2024');
+  });
+  it('does not change a locally entered date when its ISO timestamp crosses UTC midnight',()=>{
+    const local=new Date(2026,10,1,23,30);
+    expect(formatDateShort(local.toISOString())).toBe('01/11/2026');
   });
 
   it('formats a Date object as dd/MM/yyyy with zero padding', () => {
@@ -122,6 +127,12 @@ describe('formatDaysRemaining', () => {
 });
 
 describe('toDatetimeLocal', () => {
+  it('defaults date-only forms to the local calendar day',()=>{
+    expect(localDateString(new Date(2026,10,1,23,30))).toBe('2026-11-01');
+  });
+  it('preserves a date-only record without moving it into the preceding day',()=>{
+    expect(toDatetimeLocal('2026-11-01')).toBe('2026-11-01T00:00');
+  });
   it('produces a 16-char datetime-local value (YYYY-MM-DDTHH:mm)', () => {
     const out = toDatetimeLocal('2024-06-15T10:30:00.000Z');
     expect(out).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);

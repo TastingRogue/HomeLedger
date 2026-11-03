@@ -6,12 +6,10 @@
  *
  * - In production (NODE_ENV=production), insecure values REFUSE to start —
  *   unless the operator explicitly opts into the zero-config demo by setting
- *   ALLOW_INSECURE_DEFAULTS=true (that's what the demo Docker image does).
+ *   ALLOW_INSECURE_DEFAULTS=true (an explicit operator opt-in).
  * - Outside production (dev/test), insecure values only log a loud warning.
  *
- * The goal: anyone deploying "for real" (their own env / compose, or overriding
- * the demo image) is protected by default, while the out-of-the-box demo image
- * still boots for people just trying it.
+ * Docker images ship without credentials and require runtime configuration.
  */
 
 /** Known-insecure demo values shipped in the Dockerfile / .env.example. */

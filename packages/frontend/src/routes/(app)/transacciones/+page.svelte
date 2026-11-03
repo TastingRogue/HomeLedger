@@ -1,5 +1,10 @@
 <script lang="ts">
+  import { hasViewActions } from '$lib/themes/view-actions';
+  import Icon from '$lib/components/Icon.svelte';
+  import TransactionLog from '$lib/components/TransactionLog.svelte';
+  const composedView=hasViewActions();
   import { onMount } from 'svelte';
+  import { groupTransactionsByMonth } from '$lib/utils/transaction-groups';
   import { goto } from '$app/navigation';
   import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
   import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '$lib/api/transactions';
@@ -44,7 +49,7 @@
   let categoryOptions = $derived([{ value: '', label: $t('common.all') }, ...categories.map(c => ({ value: String(c.id), label: c.name }))]);
 
   // View toggle
-  let viewMode = $state<'gallery' | 'table'>('gallery');
+  let viewMode = $state<'gallery' | 'table'>(composedView ? 'table' : 'gallery');
 
   // Detail popup
   let selectedTransaction = $state<Transaction | null>(null);
@@ -101,40 +106,8 @@
 
   let isEditing = $derived(editingTransaction !== null);
 
-  // --- Month Grouping ---
-  interface MonthGroup {
-    key: string;
-    label: string;
-    total: number;
-    transactions: Transaction[];
-  }
-
-  let monthGroups = $derived.by(() => {
-    const groups = new Map<string, Transaction[]>();
-    for (const tx of transactions) {
-      const date = new Date(tx.date);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const arr = groups.get(key) ?? [];
-      arr.push(tx);
-      groups.set(key, arr);
-    }
-
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const result: MonthGroup[] = [];
-
-    for (const [key, txs] of groups) {
-      const [year, month] = key.split('-');
-      const monthIdx = parseInt(month!, 10) - 1;
-      const label = `${monthNames[monthIdx]} ${year}`;
-      const totalGastos = txs
-        .filter(t => t.type === 'Gasto')
-        .reduce((sum, t) => sum + t.amount, 0);
-      result.push({ key, label, total: totalGastos, transactions: txs });
-    }
-
-    result.sort((a, b) => b.key.localeCompare(a.key));
-    return result;
-  });
+  // Table totals include expenses only; gallery totals use each type separately.
+  let monthGroups = $derived(groupTransactionsByMonth(transactions, tx => tx.type === 'Gasto' ? tx.amount : 0));
 
   // Split transactions by type
   let gastos = $derived(transactions.filter(t => t.type === 'Gasto'));
@@ -142,30 +115,8 @@
   let totalGastos = $derived(gastos.reduce((s, t) => s + Math.abs(t.amount), 0));
   let totalIngresos = $derived(ingresos.reduce((s, t) => s + t.amount, 0));
 
-  // Group by month
-  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
-  function groupByMonth(txs: Transaction[]): { key: string; label: string; total: number; transactions: Transaction[] }[] {
-    const groups = new Map<string, Transaction[]>();
-    for (const tx of txs) {
-      const d = new Date(tx.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const arr = groups.get(key) ?? [];
-      arr.push(tx);
-      groups.set(key, arr);
-    }
-    return Array.from(groups.entries())
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([key, txs]) => {
-        const [year, month] = key.split('-');
-        const label = `${monthNames[parseInt(month!, 10) - 1]} ${year}`;
-        const total = txs.reduce((s, t) => s + Math.abs(t.amount), 0);
-        return { key, label, total, transactions: txs };
-      });
-  }
-
-  let gastosByMonth = $derived(groupByMonth(gastos));
-  let ingresosByMonth = $derived(groupByMonth(ingresos));
+  let gastosByMonth = $derived(groupTransactionsByMonth(gastos));
+  let ingresosByMonth = $derived(groupTransactionsByMonth(ingresos));
 
   // Current month key for auto-expand
   let currentMonthKey = $derived.by(() => {
@@ -592,7 +543,10 @@
     }
   }
 
-  onMount(async () => { await Promise.all([loadAccounts(), loadCategories()]); await loadTransactions(); });
+  onMount(async () => { await Promise.all([loadAccounts(), loadCategories()]); await loadTransactions();
+    const id = Number(new URLSearchParams(window.location.search).get('transaction'));
+    if (Number.isInteger(id) && id > 0) { try { openDetail(await apiGet<Transaction>(`/transactions/${id}`)); } catch(e) { error=e instanceof Error?e.message:$t('common.error'); } }
+  });
 </script>
 
 <svelte:head><title>{$t('transactions.title')} | HomeLedger</title></svelte:head>
@@ -606,8 +560,8 @@
     </div>
     <div class="header-actions">
       <div class="view-toggle">
-        <button class="toggle-btn" class:active={viewMode === 'table'} onclick={() => (viewMode = 'table')} title={$t('transactions.view_table')}>📋</button>
-        <button class="toggle-btn" class:active={viewMode === 'gallery'} onclick={() => (viewMode = 'gallery')} title={$t('transactions.view_gallery')}>🃏</button>
+        <button class="toggle-btn" class:active={viewMode === 'table'} onclick={() => (viewMode = 'table')} title={$t('transactions.view_table')} aria-label={$t('transactions.view_table')}><Icon name="file-text" size={17}/></button>
+        <button class="toggle-btn" class:active={viewMode === 'gallery'} onclick={() => (viewMode = 'gallery')} title={$t('transactions.view_gallery')} aria-label={$t('transactions.view_gallery')}><Icon name="layout-grid" size={17}/></button>
       </div>
       <button class="btn-new" onclick={openCreateForm}>{$t('common.new')}</button>
     </div>
@@ -669,6 +623,8 @@
     <div class="state-msg"><div class="spinner"></div><span>{$t('common.loading')}</span></div>
   {:else if transactions.length === 0}
     <div class="state-msg"><p>{$t('transactions.no_results')}</p></div>
+  {:else if composedView && viewMode === 'table'}
+    <TransactionLog items={transactions} open={row=>{const item=transactions.find(tx=>tx.id===row.id);if(item)openDetail(item);}} edit={row=>{const item=transactions.find(tx=>tx.id===row.id);if(item)openEditForm(item);}} remove={row=>{const item=transactions.find(tx=>tx.id===row.id);if(item)openDeleteModal(item);}}/>
   {:else if viewMode === 'gallery'}
     <!-- Split View: Gastos | Ingresos grouped by month -->
     <div class="split-view">
@@ -688,7 +644,7 @@
             <div class="split-grid">
               {#each group.transactions as tx (tx.id)}
                 <button class="tx-card card-gasto" type="button" onclick={() => openDetail(tx)}>
-                  <span class="card-name">{tx.name}</span>
+                  <span class="tx-visual" aria-hidden="true"><Icon name={tx.type === 'Ingreso' ? 'trending-up' : 'coins'} size={18}/></span><span class="card-name">{tx.name}</span>
                   <span class="card-amount amount-red">-{formatCurrency(tx.amount)}</span>
                   <span class="card-meta"><span class="meta-dot expense"></span> {getCategoryName(tx.categoryId)}</span>
                   <span class="card-meta"><span class="meta-dot account"></span> {getAccountName(tx.accountId)}</span>
@@ -718,7 +674,7 @@
             <div class="split-grid">
               {#each group.transactions as tx (tx.id)}
                 <button class="tx-card card-ingreso" type="button" onclick={() => openDetail(tx)}>
-                  <span class="card-name">{tx.name}</span>
+                  <span class="tx-visual" aria-hidden="true"><Icon name={tx.type === 'Ingreso' ? 'trending-up' : 'coins'} size={18}/></span><span class="card-name">{tx.name}</span>
                   <span class="card-amount amount-green">+{formatCurrency(tx.amount)}</span>
                   <span class="card-meta"><span class="meta-dot income"></span> {getCategoryName(tx.categoryId)}</span>
                   <span class="card-meta"><span class="meta-dot account"></span> {getAccountName(tx.accountId)}</span>
@@ -826,7 +782,7 @@
   <div class="overlay" role="dialog" aria-modal="true" onclick={closePanel} tabindex="-1" transition:scrim>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal modal-detail" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
+    <div class="modal modal-detail transaction-detail" onclick={(e) => e.stopPropagation()} role="document" transition:modalPanel>
       <header class="modal-header">
         <h2>{selectedTransaction.name}</h2>
         <button class="close-btn" onclick={closePanel} aria-label={$t('common.close')}>×</button>
@@ -1258,6 +1214,7 @@
   .month-total.expense { color: var(--accent-red); }
   .month-total.income { color: var(--accent-green); }
 
+  .tx-visual { display:none; }
   .tx-card {
     display: flex; flex-direction: column; gap: 0.3rem;
     padding: 0.7rem 0.8rem; background: var(--bg-card); border: 1px solid var(--border-default);

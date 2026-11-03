@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listAccounts,
@@ -318,6 +319,8 @@
   }
 
   onMount(() => { loadAccounts(); });
+
+  exposeViewActions({'view.refresh':()=>loadAccounts(),'account-deactivate.edit':r=>{deactivateTarget=accounts.find(x=>x.id===r?.id)??null;},'accounts.create':()=>openCreateForm(), 'accounts.edit':async r=>{let row=accounts.find(x=>x.id===r?.id);if(!row){await loadAccounts();row=accounts.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditForm(row);}, 'account-detail.edit':async r=>{let row=accounts.find(x=>x.id===r?.id);if(!row){await loadAccounts();row=accounts.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');void openAccountDetail(row);}});
 </script>
 
 <svelte:head>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { watchChartTheme, createThemePalette } from '$lib/utils/chart-theme';
 
   let { labels, datasets, height = 200 }: {
     labels: string[];
@@ -10,13 +11,17 @@
 
   let canvas: HTMLCanvasElement;
   let chart: any = null;
+  let disposed = false;
+  let stopWatchingTheme: (() => void) | undefined;
 
   onMount(async () => {
     if (!browser) return;
     const { Chart, registerables } = await import('chart.js');
+    if (disposed || !canvas?.isConnected) return;
     Chart.register(...registerables);
 
     chart = new Chart(canvas, {
+      plugins: [createThemePalette()],
       type: 'line',
       data: { labels, datasets: datasets.map(d => ({ ...d, borderWidth: 2, pointRadius: 2, pointBackgroundColor: d.borderColor, tension: d.tension ?? 0.3, fill: d.fill ?? false })) },
       options: {
@@ -30,9 +35,10 @@
         },
       },
     });
+    stopWatchingTheme = watchChartTheme(chart);
   });
 
-  onDestroy(() => { chart?.destroy(); });
+  onDestroy(() => { disposed = true; stopWatchingTheme?.(); chart?.destroy(); });
 </script>
 
 <div class="chart-container" style="height: {height}px">

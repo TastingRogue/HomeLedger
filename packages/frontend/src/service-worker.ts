@@ -9,7 +9,7 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 
 // Cache names
 const CACHE_NAME = `homeledger-cache-${version}`;
-const API_CACHE_NAME = `homeledger-api-${version}`;
+// API responses are private and must never be persisted in Cache Storage.
 
 // Dedicated offline fallback page (prerendered → a static HTML file). Served for
 // navigation requests when both the network and the cached landing page miss.
@@ -40,7 +40,7 @@ sw.addEventListener('activate', (event) => {
 			.then((keys) =>
 				Promise.all(
 					keys
-						.filter((key) => key !== CACHE_NAME && key !== API_CACHE_NAME)
+						.filter((key) => key.startsWith('homeledger-') && key !== CACHE_NAME)
 						.map((key) => caches.delete(key))
 				)
 			)
@@ -48,7 +48,7 @@ sw.addEventListener('activate', (event) => {
 	);
 });
 
-// Fetch: network-first for API, cache-first for assets
+// Fetch: network-only for API, cache-first for public assets
 sw.addEventListener('fetch', (event) => {
 	const { request } = event;
 	const url = new URL(request.url);
@@ -59,21 +59,23 @@ sw.addEventListener('fetch', (event) => {
 	// Skip chrome-extension and other non-http requests
 	if (!url.protocol.startsWith('http')) return;
 
-	// API calls: network-first strategy
+	// Never read or write cached API data, including caches from older sessions.
+	if (url.origin !== sw.location.origin) return;
 	if (url.pathname.startsWith('/api/')) {
-		event.respondWith(networkFirst(request, API_CACHE_NAME));
+		event.respondWith(fetch(request, { cache: 'no-store' }));
+		return;
+	}
+
+	// HTML must check the network even when a prerendered route belongs to the
+	// shell. Otherwise /offline can retain references to bundles from an old build.
+	if (request.mode === 'navigate') {
+		event.respondWith(networkFirst(request, CACHE_NAME));
 		return;
 	}
 
 	// App shell and static assets: cache-first strategy
 	if (APP_SHELL.includes(url.pathname)) {
 		event.respondWith(cacheFirst(request));
-		return;
-	}
-
-	// Navigation requests (HTML pages): network-first with offline fallback
-	if (request.mode === 'navigate') {
-		event.respondWith(networkFirst(request, CACHE_NAME));
 		return;
 	}
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { localDateString } from '$lib/utils/format';
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listBudgets,
@@ -118,7 +120,7 @@
     editingBudget = null;
     formName = '';
     formPeriod = 'Mensual';
-    formStartDate = new Date().toISOString().split('T')[0]!;
+    formStartDate = localDateString();
     formAllocations = [{ categoryId: '', allocated: '' }];
     formTagAllocations = [];
     formRolloverEnabled = false;
@@ -288,6 +290,8 @@
   onMount(() => {
     loadData();
   });
+
+  exposeViewActions({'view.refresh':()=>loadData(),'budget-delete.edit':r=>{deleteTarget=budgets.find(x=>x.id===r?.id)??null;},'budgets.create':()=>openCreateForm(), 'budgets.edit':async r=>{let row=budgets.find(x=>x.id===r?.id);if(!row){await loadData();row=budgets.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditForm(row);}});
 </script>
 
 <svelte:head>

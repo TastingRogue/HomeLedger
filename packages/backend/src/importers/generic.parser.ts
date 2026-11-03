@@ -43,7 +43,15 @@ export class GenericCSVParser implements BankParser {
     if (!headerRow) return [];
 
     const dataRows = rows.slice(skipRows + 1);
-    const mappings = options?.fieldMappings ?? this.getFieldMappings();
+    const normalizeHeader=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+    const aliases:Record<string,string[]>={
+      date:['fecha','date'],description:['descripcion','description','concepto'],
+      amount:['monto','amount','importe'],reference:['referencia','reference'],balance:['saldo','balance'],
+    };
+    const mappings = options?.fieldMappings ?? this.getFieldMappings().map(mapping=>({
+      ...mapping,
+      sourceColumn:headerRow.find(header=>aliases[mapping.targetField]?.includes(normalizeHeader(header)))??mapping.sourceColumn,
+    }));
 
     const transactions: ParsedTransaction[] = [];
 
@@ -58,7 +66,7 @@ export class GenericCSVParser implements BankParser {
       const getValue = (targetField: string): string => {
         const mapping = mappings.find(m => m.targetField === targetField);
         if (!mapping) return '';
-        const colIdx = headerRow.indexOf(mapping.sourceColumn);
+        const colIdx = headerRow.findIndex(header=>normalizeHeader(header)===normalizeHeader(mapping.sourceColumn));
         if (colIdx === -1) return '';
         return row[colIdx]?.trim() ?? '';
       };

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import { apiGet, apiPost } from '$lib/api/client';
   import { analyzeAttachment, listReceipts, updateReceipt, setReceiptItemCategory, createTransactionFromReceipt, type ReceiptAnalysis } from '$lib/api/receipts';
@@ -151,6 +152,8 @@
     finally{ deleting=false; }
   }
   const status=(s:string)=>s==='completed'?$t('receipts.status_completed'):s==='failed'?$t('receipts.status_failed'):s==='processing'?$t('receipts.status_processing'):$t('receipts.status_pending'); const source=(s:string)=>s==='cfdi_xml'?$t('receipts.source_cfdi'):s==='ocr'?$t('receipts.source_ocr'):s==='pdf_text'?$t('receipts.source_pdf'):s==='pdf_ocr'?$t('receipts.source_pdf_ocr'):$t('receipts.source_unknown');
+
+  exposeViewActions({'view.refresh':()=>load(),'receipts.create':()=>{void openUpload();}, 'receipts.edit':async r=>{let row=receipts.find(x=>x.id===r?.id);if(!row){await load();row=receipts.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');void open(row);}});
 </script>
 <svelte:head><title>{$t('page_title.receipts')} · HomeLedger</title></svelte:head>
 <svelte:window onkeydown={handleKeydown} ondragenter={onDragEnter} ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop} />
@@ -231,10 +234,12 @@
 <div class="overlay" role="presentation" onclick={close} transition:scrim>
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()} transition:modalPanel>
+  <div class="modal receipt-detail-modal" role="dialog" aria-modal="true" tabindex="-1" onclick={(e)=>e.stopPropagation()} transition:modalPanel>
     <div class="detail-head">
       <div><p class="eyebrow">{$t('receipts.eyebrow_document')}</p><h2>{selected.merchant??selected.filename}</h2><span class="muted">{selected.filename}</span></div>
-      <div class="detail-head-actions">
+      <button class="close" onclick={close} aria-label={$t('common.close')}>×</button>
+    </div>
+      <div class="detail-head-actions receipt-toolbar">
         {#if editing}
           <button class="reanalyze" onclick={saveEdit} disabled={saving}>{saving?$t('receipts.saving'):$t('receipts.save')}</button>
           <button class="ghost" onclick={cancelEdit} disabled={saving}>{$t('receipts.cancel')}</button>
@@ -244,9 +249,7 @@
           <button class="ghost" onclick={download}>{$t('receipts.download')}</button>
           <button class="danger" onclick={remove} disabled={deleting}>{$t('receipts.delete')}</button>
         {/if}
-        <button class="close" onclick={close}>×</button>
       </div>
-    </div>
     {#if selected.error}<div class="error">{selected.error}</div>{/if}
     <div class="detail-body">
       <div class="detail-info">
@@ -270,11 +273,11 @@
         {:else}
           <div class="detail-grid">
             <div><span>{$t('receipts.field_date')}</span><strong>{selected.receiptDate?formatDateShort(selected.receiptDate):'—'}</strong></div>
-            <div><span>{$t('receipts.field_total')}</span><strong class:bad-value={mismatch}>{selected.total!==null?formatCurrency(selected.total):'—'}</strong></div>
+            <div class="receipt-total"><span>{$t('receipts.field_total')}</span><strong class:bad-value={mismatch}>{selected.total!==null?formatCurrency(selected.total):'—'}</strong></div>
             <div><span>{$t('receipts.field_subtotal')}</span><strong>{selected.subtotal!==null?formatCurrency(selected.subtotal):'—'}</strong></div>
             <div><span>{$t('receipts.field_tax')}</span><strong>{selected.tax!==null?formatCurrency(selected.tax):'—'}</strong></div>
             <div><span>{$t('receipts.field_rfc')}</span><strong>{selected.rfc??'—'}</strong></div>
-            <div><span>{$t('receipts.field_uuid')}</span><strong class="mono">{selected.uuid??'—'}</strong></div>
+            <div class="receipt-uuid" class:has-uuid={Boolean(selected.uuid)}><span>{$t('receipts.field_uuid')}</span><strong class="mono">{selected.uuid??'—'}</strong></div>
             <div><span>{$t('receipts.field_source')}</span><strong>{source(selected.sourceType)}</strong></div>
             <div><span>{$t('receipts.field_confidence')}</span><strong>{Math.round(selected.confidence*100)}%</strong></div>
           </div>

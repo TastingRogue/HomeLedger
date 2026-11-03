@@ -3,6 +3,9 @@ import type { TranslationKey } from './es';
 // Typed against TranslationKey: if a key is missing or misspelled relative to the
 // canonical `es` dictionary, this fails to compile — that's the parity guarantee.
 export const en: Record<TranslationKey, string> = {
+  'appearance.title': 'Interface design',
+  'appearance.description': 'Choose your HomeLedger style. Changes apply instantly and are saved in this browser.',
+  'appearance.selected': 'Selected',
   // Navigation
   'nav.dashboard': 'Dashboard',
   'nav.search': 'Search',
@@ -128,7 +131,7 @@ export const en: Record<TranslationKey, string> = {
   'dashboard.greeting.afternoon': 'Good afternoon',
   'dashboard.greeting.evening': 'Good evening',
   'dashboard.subtitle': 'Here\'s a summary of your finances.',
-  'dashboard.net_worth': 'Net Worth',
+  'dashboard.net_worth': 'Account balance',
   'dashboard.available': 'Available',
   'dashboard.income_month': 'Monthly Income',
   'dashboard.expenses_month': 'Monthly Expenses',
@@ -141,6 +144,8 @@ export const en: Record<TranslationKey, string> = {
   'dashboard.attach_receipt': 'Attach Receipt',
   'dashboard.upcoming_payments': 'Upcoming Payments',
   'dashboard.important_alerts': 'Important Alerts',
+  'dashboard.other_category': 'Other',
+  'dashboard.cash_flow': 'Cash flow',
   'dashboard.expenses_vs_income': 'Expenses vs Income',
   'dashboard.expenses_by_category': 'Expenses by Category',
   'dashboard.accounts': 'Accounts',
@@ -230,6 +235,7 @@ export const en: Record<TranslationKey, string> = {
   'common.create': 'Create',
   'common.close': 'Close',
   'common.loading': 'Loading...',
+  'common.validation_error': 'Some values are invalid. Review the fields and try again.',
   'common.error': 'The operation could not be completed. Check your connection and try again.',
   'common.error_invalid_input': 'Please review the fields: some data is missing or invalid.',
   'common.success': 'Success',
@@ -482,7 +488,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.preferences': 'Preferences',
   'settings.currency': 'Currency',
   'settings.currency_desc': 'Symbol used to display amounts',
-  'settings.currency_admin_desc': 'Currency for the whole install. Changing it relabels every amount; nothing is converted.',
+  'settings.currency_admin_desc': 'Base currency for consolidated reports. Account amounts use their configured exchange rates.',
   'settings.currency_admin_only': 'Set by the administrator',
   'settings.language': 'Language',
   'settings.language_desc': 'Interface language',
@@ -895,6 +901,8 @@ export const en: Record<TranslationKey, string> = {
   'reports.networth': 'Net Worth',
   'reports.savings': 'Savings',
   'reports.cashflow_title': 'Cash Flow',
+  'reports.trends_title': 'Income and expense trends',
+  'reports.trends_desc': 'Monthly income and expenses over the last six months.',
   'reports.cashflow_desc': 'Income vs expenses for the current period.',
   'reports.income': 'Income',
   'reports.expenses': 'Expenses',
@@ -904,7 +912,7 @@ export const en: Record<TranslationKey, string> = {
   'reports.no_categories': 'No category data for this period.',
   'reports.networth_title': 'Net Worth Evolution',
   'reports.networth_desc': 'How your net worth has changed over time.',
-  'reports.current_networth': 'Current net worth',
+  'reports.current_networth': 'Account balance',
   'reports.coming_soon': 'Evolution chart coming soon.',
   'reports.savings_title': 'Savings Rate',
   'reports.savings_desc': 'Percentage of income you save each month.',
@@ -980,6 +988,7 @@ export const en: Record<TranslationKey, string> = {
   'import.type_label': 'Type',
   'import.size_label': 'Size',
   'import.invalid_json': 'Invalid JSON',
+  'import.no_transactions': 'No transactions to import. Check the column headers and selected rows.',
   'import.empty_file': 'Empty file',
   'import.no_version': 'File does not have a "version" field.',
   'import.no_data': 'No accounts or transactions found.',
@@ -1081,6 +1090,7 @@ export const en: Record<TranslationKey, string> = {
   // Date picker
   'datepicker.select_date': 'Select date',
   'datepicker.today': 'Today',
+  'datepicker.time': 'Time',
 
   // Receipts (table / list / statuses)
   'receipts.page_eyebrow': 'DOCUMENTS',
@@ -1373,7 +1383,7 @@ export const en: Record<TranslationKey, string> = {
   'admin.allowlist_placeholder': 'someone@example.com',
   'admin.allowlist_desc': 'One email per line. If empty, anyone can register in open mode.',
   'admin.currency_title': 'Instance currency',
-  'admin.currency_desc': 'Single currency for the whole install. Affects all users.',
+  'admin.currency_desc': 'Base currency for consolidated reports. Account amounts use their configured exchange rates.',
   'admin.snapshots_title': 'Database backups',
   'admin.snapshots_desc': 'Full, compressed copies of the database for disaster recovery.',
   'admin.create_snapshot': 'Create backup now',

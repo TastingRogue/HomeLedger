@@ -1,10 +1,19 @@
 <script lang="ts">
+  import { listAlerts, type AlertData } from '$lib/api/alerts';
+  import { getAlertTitle, getAlertMessage } from '$lib/utils/alert-copy';
+  let dashboardAlerts = $state<AlertData[]>([]);
+  import { allTransactions, inBaseCurrency } from "$lib/utils/financial-data";
+  import { getViewCharts } from '$lib/themes/view-actions';
+  import { dashboardSeries, dashboardCategories } from '$lib/utils/dashboard-period';
+  const viewCharts=getViewCharts();
+  const CashFlow=viewCharts?.cashFlow;
+  const chartMoney=(value:number)=>viewCharts?new Intl.NumberFormat(getIntlTag($preferences.locale),{style:'currency',currency:$preferences.currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:2}).format(value):formatCurrency(value);
   import { onMount } from 'svelte';
   import { apiGet, apiPost, apiPut, apiDelete } from '$lib/api/client';
   import { createTransfer } from '$lib/api/transfers';
   import { createGoal, type GoalType } from '$lib/api/goals';
   import { uploadAttachment, downloadAttachment as apiDownloadAttachment } from '$lib/api/attachments';
-  import { formatCurrency, formatDateShort, formatDaysRemaining } from '$lib/utils/format';
+  import { formatCurrency, formatDateShort, formatDaysRemaining, toDatetimeLocal } from '$lib/utils/format';
   import BarChart from '$lib/components/BarChart.svelte';
   import DoughnutChart from '$lib/components/DoughnutChart.svelte';
   import ComboChart from '$lib/components/ComboChart.svelte';
@@ -16,7 +25,7 @@
   import { modalPanel, scrim } from '$lib/motion';
   import { getIntlTag } from '$lib/i18n/registry';
   import { preferences } from '$lib/stores/preferences';
-  import { theme, setTheme } from '$lib/stores/theme';
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { userProfile } from '$lib/stores/user';
 
   // Localized short month names for chart labels/date ranges (follows app language).
@@ -28,91 +37,7 @@
     })
   );
 
-  // ─── Types ───
-  interface AccountData {
-    id: number;
-    name: string;
-    type: string;
-    bank?: string;
-    initialBalance: number;
-    balance?: number;
-    calculatedBalance?: number;
-    balanceLimit?: number | null;
-    creditLimit?: number | null;
-    status?: string;
-  }
-
-  interface DashboardData {
-    consolidatedBalance: number;
-    monthlySummary: { totalIncome: number; totalExpenses: number };
-    categoryBreakdown: { categoryId: number; categoryName: string; total: number; percentage: number }[];
-    accountHealth: { id: number; name: string; balance: number; balanceLimit: number | null; status: string }[];
-    nextSubscriptions: { id: number; name: string; amount: number; daysRemaining: number; accountId: number; accountName?: string }[];
-    activeGoals: { id: number; name: string; savedAmount: number; targetAmount: number; progress: number }[];
-  }
-
-  interface Transaction {
-    id: number;
-    name: string;
-    amount: number;
-    type: string;
-    date: string;
-    accountId?: number;
-    categoryId?: number;
-    categoryName?: string;
-    accountName?: string;
-  }
-
-  interface SubscriptionCalendar {
-    id: number;
-    name: string;
-    amount: number;
-    cycle?: string;
-    daysRemaining: number;
-    nextDate?: string;
-    accountName?: string;
-    categoryName?: string;
-  }
-
-  interface CategoryAnalysis {
-    categoryId: number;
-    categoryName: string;
-    totalExpenses: number;
-    total?: number;
-    percentage?: number;
-  }
-
-  interface Goal {
-    id: number;
-    name: string;
-    targetAmount: number;
-    savedAmount: number;
-    progress: number;
-    type: string;
-    status: string;
-  }
-
-  interface Category {
-    id: number;
-    name: string;
-    type?: 'Gasto' | 'Ingreso' | 'Ambos';
-  }
-
-  interface TransferData {
-    id: number;
-    name: string;
-    amount: number;
-    date: string;
-    sourceAccountId: number;
-    destinationAccountId: number;
-  }
-
-  interface TrendEntry {
-    month: string;
-    income: number;
-    expenses: number;
-    net: number;
-  }
+  import type { AccountData, DashboardData, Transaction, SubscriptionCalendar, CategoryAnalysis, Goal, Category, TransferData, TrendEntry } from '$lib/types/dashboard';
 
   // ─── State ───
   let loading = $state(true);
@@ -219,27 +144,6 @@
     { value: 'month', label: $t('dashboard.period_month') },
   ];
 
-  function getPeriodRange(period: 'today' | 'week' | 'month'): { start: Date; end: Date } {
-    const now = new Date();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    let start: Date;
-    if (period === 'today') {
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    } else if (period === 'week') {
-      const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // Monday as start
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0);
-    } else {
-      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-    }
-    return { start, end };
-  }
-
-  function isInPeriod(dateStr: string, period: 'today' | 'week' | 'month'): boolean {
-    const { start, end } = getPeriodRange(period);
-    const d = new Date(dateStr);
-    return d >= start && d <= end;
-  }
-
   // ─── Derived ───
   let creditAccounts = $derived(accounts.filter(a => a.type === 'Crédito'));
   let totalBalance = $derived(
@@ -287,19 +191,18 @@
   );
 
   // Category colors for donut
-  const catColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
+  const catColors = viewCharts?.categoryColors ?? ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
   // Generate chart labels based on period
   let chartLabels = $derived.by(() => {
     const now = new Date();
-    const { start } = getPeriodRange(chartPeriod);
+
     const days: string[] = [];
-    const months = shortMonths;
 
     if (chartPeriod === 'today') {
       // Show hours
       for (let h = 0; h <= now.getHours(); h++) {
-        days.push(h % 4 === 0 ? `${h}:00` : '');
+        days.push(`${h}:00`);
       }
     } else if (chartPeriod === 'week') {
       // Weekday names follow the active language (2024-01-01 is a Monday).
@@ -313,109 +216,24 @@
         days.push(dayNames[i] ?? '');
       }
     } else {
-      for (let i = 1; i <= now.getDate(); i++) {
-        if (i % 5 === 1 || i === now.getDate()) days.push(`${i} ${months[now.getMonth()]}`);
-        else days.push('');
+      for (let i = 1; i <= new Date(now.getFullYear(),now.getMonth()+1,0).getDate(); i++) {
+        days.push(String(i).padStart(2,'0'));
       }
     }
     return days;
   });
 
   // Chart data filtered by period
-  let chartIncomeData = $derived.by(() => {
-    const now = new Date();
-    if (chartPeriod === 'today') {
-      const hourly: number[] = new Array(now.getHours() + 1).fill(0);
-      for (const tx of transactions) {
-        if (tx.type === 'Ingreso' && isInPeriod(tx.date, 'today')) {
-          const h = new Date(tx.date).getHours();
-          if (h >= 0 && h < hourly.length) hourly[h] += tx.amount;
-        }
-      }
-      return hourly;
-    } else if (chartPeriod === 'week') {
-      const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-      const daily: number[] = new Array(day + 1).fill(0);
-      const { start } = getPeriodRange('week');
-      for (const tx of transactions) {
-        if (tx.type === 'Ingreso' && isInPeriod(tx.date, 'week')) {
-          const d = new Date(tx.date);
-          const idx = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-          if (idx >= 0 && idx < daily.length) daily[idx] += tx.amount;
-        }
-      }
-      return daily;
-    } else {
-      const daily: number[] = new Array(now.getDate()).fill(0);
-      for (const tx of transactions) {
-        if (tx.type === 'Ingreso') {
-          const d = new Date(tx.date);
-          if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-            const idx = d.getDate() - 1;
-            if (idx >= 0 && idx < daily.length) daily[idx] += tx.amount;
-          }
-        }
-      }
-      return daily;
-    }
-  });
-
-  let chartExpenseData = $derived.by(() => {
-    const now = new Date();
-    if (chartPeriod === 'today') {
-      const hourly: number[] = new Array(now.getHours() + 1).fill(0);
-      for (const tx of transactions) {
-        if (tx.type === 'Gasto' && isInPeriod(tx.date, 'today')) {
-          const h = new Date(tx.date).getHours();
-          if (h >= 0 && h < hourly.length) hourly[h] += Math.abs(tx.amount);
-        }
-      }
-      return hourly;
-    } else if (chartPeriod === 'week') {
-      const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-      const daily: number[] = new Array(day + 1).fill(0);
-      const { start } = getPeriodRange('week');
-      for (const tx of transactions) {
-        if (tx.type === 'Gasto' && isInPeriod(tx.date, 'week')) {
-          const d = new Date(tx.date);
-          const idx = Math.floor((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-          if (idx >= 0 && idx < daily.length) daily[idx] += Math.abs(tx.amount);
-        }
-      }
-      return daily;
-    } else {
-      const daily: number[] = new Array(now.getDate()).fill(0);
-      for (const tx of transactions) {
-        if (tx.type === 'Gasto') {
-          const d = new Date(tx.date);
-          if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-            const idx = d.getDate() - 1;
-            if (idx >= 0 && idx < daily.length) daily[idx] += Math.abs(tx.amount);
-          }
-        }
-      }
-      return daily;
-    }
-  });
+  const periodSeries=$derived(dashboardSeries(inBaseCurrency(transactions,accounts),chartPeriod));
+  const chartIncomeData=$derived(periodSeries.income);
+  const chartExpenseData=$derived(periodSeries.expenses);
 
   // Filtered totals for chart period
   let periodIncome = $derived(chartIncomeData.reduce((s, v) => s + v, 0));
   let periodExpenses = $derived(chartExpenseData.reduce((s, v) => s + v, 0));
 
   // Category data filtered by donut period
-  let periodCatData = $derived.by(() => {
-    const filtered = transactions.filter(tx => tx.type === 'Gasto' && isInPeriod(tx.date, donutPeriod));
-    const catMap = new Map<string, number>();
-    for (const tx of filtered) {
-      const name = tx.categoryName ?? 'Otros';
-      catMap.set(name, (catMap.get(name) ?? 0) + Math.abs(tx.amount));
-    }
-    const total = Array.from(catMap.values()).reduce((s, v) => s + v, 0);
-    return Array.from(catMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([name, amount]) => ({ categoryName: name, total: amount, percentage: total > 0 ? (amount / total) * 100 : 0 }));
-  });
+  const periodCatData=$derived(dashboardCategories(inBaseCurrency(transactions,accounts),donutPeriod,$t('dashboard.other_category')));
 
   // ─── Helpers ───
   function getAccountBalance(account: AccountData): number {
@@ -437,7 +255,7 @@
   function getDateRange(): string {
     const now = new Date();
     const months = shortMonths;
-    return `01 – ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+    return `01 – ${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
   }
 
   // ─── Quick Transaction Modal ───
@@ -543,7 +361,7 @@
     editTx = tx;
     editTxName = tx.name;
     editTxAmount = String(tx.amount);
-    editTxDate = tx.date.slice(0, 16);
+    editTxDate = toDatetimeLocal(tx.date);
     editTxAccountId = tx.accountId ?? null;
     editTxCategoryId = tx.categoryId ?? null;
     editTxType = (tx.type as 'Gasto' | 'Ingreso');
@@ -586,7 +404,7 @@
     editTf = tf;
     editTfName = tf.name;
     editTfAmount = String(tf.amount);
-    editTfDate = tf.date.slice(0, 16);
+    editTfDate = toDatetimeLocal(tf.date);
     editTfSourceId = tf.sourceAccountId;
     editTfDestId = tf.destinationAccountId;
     editTfError = null;
@@ -741,10 +559,10 @@
   // ─── Data Loading ───
   async function loadAll() {
     try {
-      const [dashRes, accRes, txRes, calRes, catRes, goalRes, catsRes, trendsRes, transfersRes, budgetsRes] = await Promise.allSettled([
+      const [dashRes, accRes, txRes, calRes, catRes, goalRes, catsRes, trendsRes, transfersRes, budgetsRes, alertsRes] = await Promise.allSettled([
         apiGet<DashboardData>('/reports/dashboard'),
         apiGet<AccountData[]>('/accounts'),
-        apiGet<{ items: Transaction[] }>('/transactions', { pageSize: 100, page: 1 }),
+        allTransactions(),
         apiGet<SubscriptionCalendar[]>('/subscriptions/calendar'),
         apiGet<CategoryAnalysis[]>('/categories/analysis'),
         apiGet<{ data: Goal[] }>('/goals'),
@@ -752,10 +570,12 @@
         apiGet<{ entries: TrendEntry[] }>('/reports/trends', { months: 2 }),
         apiGet<TransferData[]>('/transfers'),
         apiGet<any[]>('/budgets'),
+        listAlerts(),
       ]);
       if (dashRes.status === 'fulfilled') dashboard = dashRes.value;
+      if (alertsRes.status === 'fulfilled') dashboardAlerts = alertsRes.value.filter(row=>!row.isRead);
       if (accRes.status === 'fulfilled') accounts = accRes.value;
-      if (txRes.status === 'fulfilled') transactions = (txRes.value as any).items ?? txRes.value as any;
+      if (txRes.status === 'fulfilled') transactions = txRes.value;
       if (calRes.status === 'fulfilled') calendar = Array.isArray(calRes.value) ? calRes.value : (calRes.value as any).items ?? [];
       if (catRes.status === 'fulfilled') catAnalysis = Array.isArray(catRes.value) ? catRes.value : (catRes.value as any).items ?? [];
       if (goalRes.status === 'fulfilled') { const raw = goalRes.value; goals = Array.isArray(raw) ? raw : (raw as any).data ?? []; }
@@ -784,24 +604,7 @@
     </div>
     <div class="header-right">
       <span class="date-range">{getDateRange()}</span>
-      <div class="theme-toggle" role="group" aria-label={$t('settings.theme')}>
-        <button
-          type="button"
-          class="theme-icon"
-          class:active={$theme === 'dark'}
-          aria-pressed={$theme === 'dark'}
-          title={$t('settings.theme_dark')}
-          onclick={() => setTheme('dark')}
-        >🌙</button>
-        <button
-          type="button"
-          class="theme-icon"
-          class:active={$theme === 'light'}
-          aria-pressed={$theme === 'light'}
-          title={$t('settings.theme_light')}
-          onclick={() => setTheme('light')}
-        >☀️</button>
-      </div>
+      <ThemeToggle />
     </div>
   </header>
 
@@ -876,7 +679,7 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title"><Icon name="calendar" size={14} /> {$t('dashboard.upcoming_payments')}</h3>
-          <a href="/suscripciones" class="card-link">{$t('dashboard.view_calendar')}</a>
+          <a href="/calendario" class="card-link">{$t('dashboard.view_calendar')}</a>
         </div>
         <div class="payments-list">
           {#each calendar.slice(0, 4) as sub (sub.id)}
@@ -901,15 +704,15 @@
           <a href="/alertas" class="card-link">{$t('dashboard.view_all')}</a>
         </div>
         <div class="alerts-list">
-          {#each (dashboard?.accountHealth ?? []).filter(a => a.balanceLimit && a.balance < a.balanceLimit).slice(0, 3) as alert}
-            <div class="alert-item">
+          {#each dashboardAlerts.slice(0, 3) as alert}
+            <a class="alert-item" href="/alertas">
               <span class="alert-icon"><Icon name="alert-triangle" size={14} /></span>
               <div class="alert-text">
-                <span class="alert-title">{alert.name}</span>
-                <span class="alert-desc">{$t('dashboard.balance_low')}</span>
+                <span class="alert-title">{getAlertTitle(alert,$t)}</span>
+                <span class="alert-desc">{getAlertMessage(alert,$t)}</span>
               </div>
               <span class="alert-arrow">→</span>
-            </div>
+            </a>
           {:else}
             <p class="empty-text">{$t('dashboard.no_alerts')}</p>
           {/each}
@@ -924,23 +727,23 @@
         <!-- Gastos vs Ingresos Chart -->
         <div class="card chart-card">
           <div class="card-header">
-            <h3 class="card-title"><Icon name="bar-chart" size={14} /> {$t('dashboard.expenses_vs_income')}</h3>
+            <h3 class="card-title"><Icon name="bar-chart" size={14} /> {$t(CashFlow?'dashboard.cash_flow':'dashboard.expenses_vs_income')}</h3>
             <Dropdown bind:value={chartPeriod} options={periodOptions} />
           </div>
           <div class="chart-totals">
-            <span class="chart-total green">{formatCurrency(periodIncome)}</span>
-            <span class="chart-total red">{formatCurrency(periodExpenses)}</span>
+            <span class="chart-total green">{chartMoney(periodIncome)}</span>
+            <span class="chart-total red">{chartMoney(periodExpenses)}</span>
           </div>
           <div class="chart-legend-inline">
             <span class="legend-item"><span class="legend-dot green"></span>{$t('dashboard.income')}</span>
             <span class="legend-item"><span class="legend-dot red"></span>{$t('dashboard.expenses')}</span>
           </div>
-          <ComboChart
+          {#if CashFlow}<CashFlow labels={chartLabels} income={chartIncomeData} expenses={chartExpenseData} incomeLabel={$t('dashboard.income')} expenseLabel={$t('dashboard.expenses')} height={185}/>{:else}<ComboChart
             labels={chartLabels}
             barDataset={{ label: $t('dashboard.income'), data: chartIncomeData, backgroundColor: 'rgba(34, 197, 94, 0.7)' }}
             lineDataset={{ label: $t('dashboard.expenses'), data: chartExpenseData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)' }}
             height={200}
-          />
+          />{/if}
         </div>
 
         <!-- Gastos por categoría donut -->
@@ -952,12 +755,12 @@
           {#if periodCatData.length > 0}
             <div class="donut-layout">
               <div class="donut-chart-area">
-                <DoughnutChart
+                <DoughnutChart themePalette={!viewCharts?.categoryColors}
                   labels={periodCatData.map(c => c.categoryName)}
                   data={periodCatData.map(c => c.total)}
                   colors={catColors.slice(0, periodCatData.length)}
-                  height={160}
-                  centerText={formatCurrency(periodCatData.reduce((s, c) => s + c.total, 0))}
+                  height={viewCharts?180:160}
+                  centerText={chartMoney(periodCatData.reduce((s, c) => s + c.total, 0))}
                 />
               </div>
               <div class="cat-breakdown">
@@ -966,7 +769,7 @@
                     <span class="cat-dot" style="background: {catColors[i % catColors.length]}"></span>
                     <span class="cat-name">{cat.categoryName}</span>
                     <span class="cat-pct">{cat.percentage.toFixed(1)}%</span>
-                    <span class="cat-amount">{formatCurrency(cat.total)}</span>
+                    <span class="cat-amount">{chartMoney(cat.total)}</span>
                   </div>
                 {/each}
               </div>
@@ -986,9 +789,10 @@
         </div>
         <div class="accounts-scroll">
           {#each accounts.slice(0, 5) as account (account.id)}
-            <div class="account-mini">
+            <div class="account-mini" data-account-type={account.type}>
+              <span class="am-symbol" aria-hidden="true"><Icon name={account.type === 'Crédito' ? 'credit-card' : account.type === 'Inversión' ? 'trending-up' : account.type === 'Efectivo' ? 'wallet' : 'building'} size={21}/></span>
               <div class="am-top">
-                <span class="am-name">{account.name}</span>
+                <span class="am-name" title={account.name}>{account.name}</span>
                 <div class="am-badges">
                   <span class="am-badge {account.type === 'Crédito' ? 'badge-red' : account.type === 'Inversión' ? 'badge-blue' : account.type === 'Efectivo' ? 'badge-purple' : 'badge-green'}">{enumLabel($t, account.type)}</span>
                 </div>
@@ -1003,7 +807,7 @@
                   <div class="am-util-bar">
                     <div class="am-util-fill" style="width: {Math.min((Math.abs(getAccountBalance(account)) / account.creditLimit) * 100, 100)}%; background: {(Math.abs(getAccountBalance(account)) / account.creditLimit) * 100 > 70 ? 'var(--accent-red)' : (Math.abs(getAccountBalance(account)) / account.creditLimit) * 100 > 30 ? 'var(--accent-orange)' : 'var(--accent-green)'}"></div>
                   </div>
-                  <span class="am-util-pct">{((Math.abs(getAccountBalance(account)) / account.creditLimit) * 100).toFixed(0)}%</span>
+                  <span class="am-util-pct">{$t('accounts.utilization')} {((Math.abs(getAccountBalance(account)) / account.creditLimit) * 100).toFixed(0)}%</span>
                 </div>
               {:else}
                 <span class="am-meta">{$t('dashboard.current_balance')}</span>
@@ -1169,7 +973,7 @@
           <div class="modal-actions">
             <button type="button" class="btn-cancel" onclick={closeQuickModal}>{$t('common.cancel')}</button>
             <button type="submit" class="btn-submit" class:btn-red={quickType === 'Gasto'} class:btn-green={quickType === 'Ingreso'} disabled={quickSubmitting}>
-              {quickSubmitting ? '...' : $t('dashboard.register_type', { type: quickType })}
+              {quickSubmitting ? '...' : $t('dashboard.register_type', { type: enumLabel($t, quickType) })}
             </button>
           </div>
         </form>
@@ -1515,10 +1319,6 @@
   .greeting-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
   .header-right { display: flex; align-items: center; gap: 0.5rem; }
   .date-range { font-size: 0.72rem; color: var(--text-secondary); background: var(--bg-elevated); padding: 0.35rem 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-default); }
-  .theme-toggle { display: flex; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; }
-  .theme-icon { padding: 0.3rem 0.5rem; font-size: 0.8rem; cursor: pointer; opacity: 0.5; background: none; border: none; line-height: 1; transition: opacity 0.15s, background 0.15s; }
-  .theme-icon:hover { opacity: 0.8; }
-  .theme-icon.active { opacity: 1; background: var(--bg-hover); }
 
   /* SUMMARY CARDS */
   .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; }
@@ -1619,6 +1419,7 @@
   .cat-amount { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); text-align: right; white-space: nowrap; padding-left: 0.5rem; }
 
   /* ACCOUNTS */
+  .am-symbol { display:none; }
   .accounts-scroll { display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.25rem; }
   .account-mini { flex: 1 0 220px; max-width: 300px; padding: 0.7rem; background: var(--bg-elevated); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: 0.15rem; }
   .am-top { display: flex; align-items: center; justify-content: space-between; gap: 0.3rem; }

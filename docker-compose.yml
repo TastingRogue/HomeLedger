@@ -20,14 +20,14 @@ services:
       PORT: 3000
       HOST: 0.0.0.0
       DATA_DIR: /data
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-strong-random-secret}
+      JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@homeledger.local}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-to-a-strong-password}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       TZ: ${TZ:-America/Mexico_City}
       # Primary language for the install (system categories + default UI
       # language): 'es' or 'en'. Falls back to English. Users can still switch.
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
-      # Single display currency for the whole install (no conversion in v1).
+      # Base currency for consolidated totals.
       DISPLAY_CURRENCY: ${DISPLAY_CURRENCY:-MXN}
       # Automated backups: gzip whole-DB snapshots under /data/backups, keeping
       # the newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.

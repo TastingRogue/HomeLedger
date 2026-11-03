@@ -1,0 +1,40 @@
+/* Only workflow dialogs are projected from route controllers. No second page. */
+.cp-route-controller { display:contents; }
+:root[data-ui='cyberpunk'] .cp-route-controller>:is(.page,.panel,.loading) { display:none; }
+:root[data-ui='cyberpunk'] .cp-shared-view>.page { width:100%; max-width:none; margin:0; padding:0; }
+:root[data-ui='cyberpunk'] .cp-shared-view .page-header { justify-content:flex-end; margin-bottom:16px; padding:0; border:0; }
+:root[data-ui='cyberpunk'] .cp-shared-view .page-header>div:first-child:has(h1) { display:none; }
+:root[data-ui='cyberpunk'] .cp-shared-view .page-header:has(>div:only-child) { display:none; }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(.table-container,.table-card,.chart-card,.result-group,.summary-card,.filters-bar) { border:1px solid #74691e; border-radius:0; background:#110c10ed; box-shadow:none; }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(.card-title,.result-group h2) { display:inline-flex; font:600 13px 'HL Rajdhani',sans-serif; padding:4px 23px 4px 9px; color:#100b10!important; background:#fcee0a; letter-spacing:1px; text-transform:uppercase; clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%); }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(.filters-bar,.filters,.search-bar) { display:flex; flex-wrap:wrap; gap:12px; padding:13px; }
+:root[data-ui='cyberpunk'] .cp-shared-view .filter-item { flex:1 1 160px; min-width:0; }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(table,.data-table) { width:100%; border-collapse:collapse; font:14px 'HL Rajdhani',sans-serif; }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(th,td) { padding:10px 12px; border-bottom:1px solid #35232d; }
+:root[data-ui='cyberpunk'] .cp-shared-view th { font:600 11px 'HL Rajdhani',sans-serif; color:#bfa8b0; letter-spacing:1px; text-transform:uppercase; }
+:root[data-ui='cyberpunk'] .cp-shared-view :is(.col-amount,.amount,.hit-amount,.summary-value,.cat-amount) { font-family:'HL Tech',monospace; font-variant-numeric:tabular-nums; }
+:root[data-ui='cyberpunk'] .cp-shared-view .summary-row { gap:12px; }
+:root[data-ui='cyberpunk'] .cp-shared-view .summary-value { font-size:30px; }
+:root[data-ui='cyberpunk'] .cp-shared-view .charts-grid { gap:20px; }
+:root[data-ui='cyberpunk'] .cp-shared-view .result-group { padding:15px; margin-top:20px; }
+:root[data-ui='cyberpunk'] .cp-shared-view .hit { border-radius:0; background:transparent; border-bottom:1px solid #46303c; }
+@media(min-width:1800px) { :root[data-ui='cyberpunk'] .cp-account-grid { grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); } :root[data-ui='cyberpunk'] .cp-goal-grid { grid-template-columns:repeat(auto-fit,minmax(410px,1fr)); } }
+@media(max-width:720px) {
+  :root[data-ui='cyberpunk'] .cp-shared-view :is(.filters-bar,.filters,.search-bar) { padding:10px; gap:10px; }
+  :root[data-ui='cyberpunk'] .cp-shared-view .summary-value { font-size:22px; }
+  :root[data-ui='cyberpunk'] .cp-shared-view .filter-item { flex-basis:140px; }
+}
+
+:root[data-ui='cyberpunk'] .cp-shared-view .page-header :is(h1,.page-subtitle) { display:none; }
+:root[data-ui='cyberpunk'] .cp-shared-view .page-header:not(:has(button,a,input,select)) { display:none; }
+/* Selected settings cards use a neon surface, with their own text palette. */
+:root[data-ui='cyberpunk'][data-ui] .reg-mode.selected {
+  --text-primary:#100b10;
+  --text-secondary:#29212a;
+  --text-muted:#39303a;
+  color:#100b10;
+}
+:root[data-ui='cyberpunk'][data-ui] .reg-mode.selected .reg-mode-label { color:#100b10; font-weight:700; }
+:root[data-ui='cyberpunk'][data-ui] .reg-mode.selected .reg-mode-desc { color:#39303a; }
+:root[data-ui='cyberpunk'][data-ui] .reg-mode .reg-mode-desc { font-size:12px; line-height:1.5; letter-spacing:.4px; }
+:root[data-ui='cyberpunk'][data-ui] .reg-mode.selected input { accent-color:#100b10; }
