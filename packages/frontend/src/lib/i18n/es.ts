@@ -2,6 +2,9 @@
 // Do NOT annotate as Record<string, string> — that would erase the literal keys
 // and defeat the compile-time key-parity check other dictionaries rely on.
 export const es = {
+  'appearance.title': 'Diseño de la interfaz',
+  'appearance.description': 'Elige el estilo de HomeLedger. Se aplica al instante y se guarda en este navegador.',
+  'appearance.selected': 'Seleccionado',
   // Navigation
   'nav.dashboard': 'Panel Principal',
   'nav.search': 'Buscar',
@@ -127,7 +130,7 @@ export const es = {
   'dashboard.greeting.afternoon': '¡Buenas tardes',
   'dashboard.greeting.evening': '¡Buenas noches',
   'dashboard.subtitle': 'Aquí tienes el resumen de tus finanzas.',
-  'dashboard.net_worth': 'Patrimonio Neto',
+  'dashboard.net_worth': 'Saldo de cuentas',
   'dashboard.available': 'Disponible',
   'dashboard.income_month': 'Ingresos del mes',
   'dashboard.expenses_month': 'Gastos del mes',
@@ -140,6 +143,8 @@ export const es = {
   'dashboard.attach_receipt': 'Adjuntar Comprobante',
   'dashboard.upcoming_payments': 'Próximos pagos',
   'dashboard.important_alerts': 'Alertas importantes',
+  'dashboard.other_category': 'Otros',
+  'dashboard.cash_flow': 'Flujo de efectivo',
   'dashboard.expenses_vs_income': 'Gastos vs Ingresos',
   'dashboard.expenses_by_category': 'Gastos por categoría',
   'dashboard.accounts': 'Cuentas',
@@ -229,6 +234,7 @@ export const es = {
   'common.create': 'Crear',
   'common.close': 'Cerrar',
   'common.loading': 'Cargando...',
+  'common.validation_error': 'Algunos valores no son válidos. Revisa los campos e inténtalo de nuevo.',
   'common.error': 'No se pudo completar la operación. Revisa tu conexión e intenta de nuevo.',
   'common.error_invalid_input': 'Revisa los campos: hay datos faltantes o inválidos.',
   'common.success': 'Éxito',
@@ -481,7 +487,7 @@ export const es = {
   'settings.preferences': 'Preferencias',
   'settings.currency': 'Moneda',
   'settings.currency_desc': 'Símbolo utilizado para mostrar montos',
-  'settings.currency_admin_desc': 'Moneda de toda la instalación. Al cambiarla se reetiquetan todos los montos; no se convierte nada.',
+  'settings.currency_admin_desc': 'Moneda base de los reportes consolidados. Los importes de las cuentas usan sus tipos de cambio configurados.',
   'settings.currency_admin_only': 'Definida por el administrador',
   'settings.language': 'Idioma',
   'settings.language_desc': 'Idioma de la interfaz',
@@ -894,6 +900,8 @@ export const es = {
   'reports.networth': 'Patrimonio',
   'reports.savings': 'Ahorro',
   'reports.cashflow_title': 'Flujo de efectivo',
+  'reports.trends_title': 'Tendencias de ingresos y gastos',
+  'reports.trends_desc': 'Ingresos y gastos mensuales durante los últimos seis meses.',
   'reports.cashflow_desc': 'Ingresos vs gastos del periodo actual.',
   'reports.income': 'Ingresos',
   'reports.expenses': 'Gastos',
@@ -903,7 +911,7 @@ export const es = {
   'reports.no_categories': 'No hay datos de categorías para este periodo.',
   'reports.networth_title': 'Evolución del patrimonio',
   'reports.networth_desc': 'Cómo ha cambiado tu patrimonio a lo largo del tiempo.',
-  'reports.current_networth': 'Patrimonio actual',
+  'reports.current_networth': 'Saldo de cuentas',
   'reports.coming_soon': 'Gráfica de evolución disponible próximamente.',
   'reports.savings_title': 'Tasa de ahorro',
   'reports.savings_desc': 'Porcentaje de ingresos que logras ahorrar cada mes.',
@@ -979,6 +987,7 @@ export const es = {
   'import.type_label': 'Tipo',
   'import.size_label': 'Tamaño',
   'import.invalid_json': 'JSON inválido',
+  'import.no_transactions': 'No hay movimientos para importar. Revisa los encabezados y las filas seleccionadas.',
   'import.empty_file': 'Archivo vacío',
   'import.no_version': 'El archivo no tiene campo "version".',
   'import.no_data': 'No se encontraron cuentas ni transacciones.',
@@ -1080,6 +1089,7 @@ export const es = {
   // Date picker
   'datepicker.select_date': 'Seleccionar fecha',
   'datepicker.today': 'Hoy',
+  'datepicker.time': 'Hora',
 
   // Receipts (table / list / statuses)
   'receipts.page_eyebrow': 'DOCUMENTOS',
@@ -1372,7 +1382,7 @@ export const es = {
   'admin.allowlist_placeholder': 'ejemplo@correo.com',
   'admin.allowlist_desc': 'Un correo por línea. Si está vacía, cualquiera puede registrarse en modo abierto.',
   'admin.currency_title': 'Moneda de la instancia',
-  'admin.currency_desc': 'Moneda única para toda la instalación. Afecta a todos los usuarios.',
+  'admin.currency_desc': 'Moneda base de los reportes consolidados. Los importes de las cuentas usan sus tipos de cambio configurados.',
   'admin.snapshots_title': 'Respaldos de la base de datos',
   'admin.snapshots_desc': 'Copias completas y comprimidas de la base de datos para recuperación ante desastres.',
   'admin.create_snapshot': 'Crear respaldo ahora',

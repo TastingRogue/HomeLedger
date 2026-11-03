@@ -1,19 +1,22 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { watchChartTheme, createThemePalette } from '$lib/utils/chart-theme';
 
-  let { labels, data, colors, height = 200, centerText = '' }: {
+  let { labels, data, colors, height = 200, centerText = '', themePalette = false }: {
     labels: string[];
     data: number[];
     colors: string[];
     height?: number;
     centerText?: string;
+    themePalette?: boolean;
   } = $props();
 
   let canvas: HTMLCanvasElement;
   let wrap: HTMLDivElement;
   let chart: any = null;
-  let themeObserver: MutationObserver | null = null;
+  let disposed = false;
+  let stopWatchingTheme: (() => void) | undefined;
   // Hide the center total while hovering a slice, so the tooltip (drawn on the
   // canvas, under the HTML overlay) isn't covered by the center label.
   let hovering = $state(false);
@@ -27,27 +30,14 @@
     return v || fallback;
   }
 
-  // The slice separators should match the CARD surface the donut sits on, so on
-  // dark they blend into the dark card and on light they read as thin white gaps
-  // — never a hard black line.
-  function applyThemeColors() {
-    if (!chart) return;
-    const surface = token('--bg-card', '#161e2a');
-    chart.data.datasets[0].borderColor = surface;
-    const tt = chart.options.plugins.tooltip;
-    tt.backgroundColor = token('--bg-elevated', '#1a2332');
-    tt.borderColor = token('--border-default', '#1e2a3a');
-    tt.titleColor = token('--text-primary', '#f1f5f9');
-    tt.bodyColor = token('--text-primary', '#f1f5f9');
-    chart.update('none');
-  }
-
   onMount(async () => {
     if (!browser) return;
     const { Chart, registerables } = await import('chart.js');
+    if (disposed || !canvas?.isConnected) return;
     Chart.register(...registerables);
 
-    chart = new Chart(canvas, {
+    chart = new Chart<'doughnut'>(canvas, {
+      plugins: themePalette ? [createThemePalette<'doughnut'>()] : [],
       type: 'doughnut',
       data: {
         labels,
@@ -82,9 +72,7 @@
       },
     });
 
-    // Re-theme the chart when the user toggles light/dark (data-theme on <html>).
-    themeObserver = new MutationObserver(applyThemeColors);
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    stopWatchingTheme = watchChartTheme(chart);
   });
 
   $effect(() => {
@@ -97,8 +85,8 @@
     }
   });
 
-  onDestroy(() => {
-    themeObserver?.disconnect();
+  onDestroy(() => { disposed = true;
+    stopWatchingTheme?.();
     chart?.destroy();
   });
 </script>

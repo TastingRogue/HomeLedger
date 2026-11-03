@@ -69,7 +69,7 @@ flotante "+"** (abajo a la derecha) está siempre visible y abre la pantalla de
 
 ### Moneda e idioma
 
-HomeLedger usa una **sola moneda por instalación** (p. ej. MXN, USD, EUR). El
+HomeLedger usa una **moneda base por instalación** (p. ej. MXN, USD, EUR). El
 administrador la define durante la configuración o en Ajustes. Las cuentas
 individuales pueden opcionalmente usar otra moneda con un tipo de cambio (ver
 [Cuentas](#3-cuentas)), y las agregaciones entre cuentas convierten a la moneda
@@ -641,7 +641,8 @@ Abre **Ajustes** desde la barra lateral (ícono de engrane).
 
 - Edita tu **nombre**. El correo y el rol son de solo lectura.
 - **Idioma**: alterna entre español e inglés (surte efecto de inmediato).
-- **Tema**: Oscuro o Claro.
+- **Diseño de la interfaz**: Normal o Cyberpunk 2077, aplicado al instante y guardado en este navegador.
+- **Tema**: Oscuro o Claro para el diseño Normal. Cyberpunk usa su propia paleta oscura y conserva tu preferencia anterior.
 
 ### Pestaña Datos
 
@@ -852,8 +853,10 @@ ventana, ícono y entrada en el menú inicio (o pantalla de inicio).
 
 Cuando pierdes conectividad a internet:
 - Aparece un pequeño aviso **"Estás sin conexión"** en la parte superior.
-- Las páginas y datos en caché siguen funcionando (el service worker usa una
-  estrategia de red primero con respaldo en caché).
+- Las páginas y los recursos de la aplicación en caché siguen disponibles. Los
+  datos financieros de la API requieren conexión y nunca se guardan en la caché
+  del service worker. Los datos ya visibles pueden permanecer hasta navegar o
+  recargar la página.
 - Si una página aún no se ha cacheado, se muestra una **página sin conexión**
   dedicada con un botón de Reintentar.
 - Cuando vuelve la conexión, el aviso desaparece automáticamente.

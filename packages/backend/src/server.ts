@@ -1,6 +1,8 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
+
 import { initializeDatabase, closeDatabase, getSqlite } from './db/connection.js';
 import { seed } from './db/seed.js';
 import { assertSecureStartup } from './security-check.js';
@@ -38,6 +40,10 @@ import { tagRoutes } from './routes/v1/tags.routes.js';
 import { searchRoutes } from './routes/v1/search.routes.js';
 import { parseTrustProxy } from './config/trust-proxy.js';
 
+const { version: appVersion } = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+) as { version: string };
+
 export async function buildApp() {
   const options: FastifyServerOptions = {
     logger: {
@@ -61,6 +67,11 @@ export async function buildApp() {
   // OpenAPI/Swagger must be registered BEFORE the auth middleware + routes so it
   // can collect route schemas and serve its docs without an auth challenge.
   await registerOpenApi(app);
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.url.startsWith('/api/')) {
+      reply.header('Cache-Control', 'no-store');
+    }
+  });
   registerAuthMiddleware(app);
   registerErrorHandler(app);
   // Liveness/readiness probe with a real DB connectivity check. Returns 503 when
@@ -76,7 +87,7 @@ export async function buildApp() {
     const payload = {
       status: dbOk ? 'ok' : 'error',
       db: dbOk ? 'ok' : 'error',
-      version: '0.1.0',
+      version: appVersion,
       timestamp: new Date().toISOString(),
     };
     return reply.code(dbOk ? 200 : 503).send(payload);

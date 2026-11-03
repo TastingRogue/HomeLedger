@@ -15,9 +15,8 @@ WORKDIR /app
 #    `pdftoppm` (rasterizes scanned PDFs so they can be OCR'd).
 #    (image receipts use tesseract.js OCR, pure WASM, no system pkg needed).
 #    Image pre-processing before OCR uses `sharp`, which pulls its own prebuilt
-#    musl libvips binary (@img/sharp-libvips-linuxmusl-*) during npm install —
-#    no `vips` apk package required. The lockfile-free `npm install` below is
-#    what lets npm resolve that platform-specific optional binary.
+#    musl libvips binary (@img/sharp-libvips-linuxmusl-*) during npm ci;
+#    no `vips` apk package is required.
 RUN apk add --no-cache python3 make g++ tini curl poppler-utils
 
 # Copy workspace manifests first for dependency caching.
@@ -26,13 +25,8 @@ COPY packages/shared/package.json ./packages/shared/
 COPY packages/backend/package.json ./packages/backend/
 COPY packages/frontend/package.json ./packages/frontend/
 
-# Regenerate dependencies from scratch inside the Alpine/musl container.
-# A lockfile generated on another OS (e.g. Windows) omits the platform-specific
-# optional native binaries this image needs (@rollup/rollup-linux-x64-musl,
-# @esbuild/linux-x64, better-sqlite3). Removing the lockfile forces npm to
-# re-resolve and install the correct musl binaries for this platform.
-# See https://github.com/npm/cli/issues/4828
-RUN rm -f package-lock.json && npm install --no-audit --no-fund
+# Install the exact dependency versions recorded in the committed lockfile.
+RUN npm ci --no-audit --no-fund
 
 # Copy the source code used by both Docker Compose services.
 COPY package.json package-lock.json tsconfig.base.json ./
@@ -60,7 +54,7 @@ ENV DATA_DIR=/data
 # Primary language for the install (system categories + default UI language).
 # 'es' or 'en'; falls back to English if unset/invalid. Users can still switch.
 ENV DEFAULT_LOCALE=en
-# The install's single display currency (single-currency per install, no conversion).
+# Base currency for consolidated reports; accounts may use other currencies.
 ENV DISPLAY_CURRENCY=MXN
 # Automated backups: gzip whole-DB snapshots under $DATA_DIR/backups, keeping the
 # newest BACKUP_RETENTION. Disable with BACKUP_ENABLED=false.
@@ -71,18 +65,9 @@ ENV BACKUP_CRON="0 3 * * *"
 # only the first user (admin) can register, then registration is closed.
 ENV REGISTRATION_MODE=first_user_only
 
-# Default runtime config so the image runs out of the box (e.g. Docker Desktop
-# "Run" with no extra settings): it boots, creates an admin user and lets you
-# log in. These are INSECURE demo defaults — override them in production via
-# `-e JWT_SECRET=... -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=...`.
-# ALLOW_INSECURE_DEFAULTS lets the app boot with these demo values despite
-# NODE_ENV=production (it logs a loud warning). Any real deployment that sets
-# its own secrets — or drops this flag — is protected: the app refuses to start
-# on insecure values. See packages/backend/src/security-check.ts.
-ENV JWT_SECRET=insecure-dev-secret-change-me-min-32-characters-long
-ENV ADMIN_EMAIL=admin@homeledger.local
-ENV ADMIN_PASSWORD=changeme123
-ENV ALLOW_INSECURE_DEFAULTS=true
+# Supply JWT_SECRET at runtime. An admin may be created through first-user
+# registration, or by supplying ADMIN_EMAIL and ADMIN_PASSWORD explicitly.
+ENV ALLOW_INSECURE_DEFAULTS=false
 
 RUN mkdir -p /data
 

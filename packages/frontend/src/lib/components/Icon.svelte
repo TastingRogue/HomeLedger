@@ -13,7 +13,23 @@
   stroke-linejoin="round"
   class={className}
 >
-  {#if name === 'gem'}
+  {#if name === 'more-horizontal'}
+    <circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>
+  {:else if name === 'plus'}
+    <path d="M12 5v14M5 12h14"/>
+  {:else if name === 'database'}
+    <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 4 18 4 18 0V5M3 12c0 4 18 4 18 0"/>
+  {:else if name === 'file-text'}
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>
+  {:else if name === 'upload'}
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 16V3m-5 5 5-5 5 5"/>
+  {:else if name === 'log-out'}
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M9 12h12m-5-5 5 5-5 5"/>
+  {:else if name === 'refresh-cw'}
+    <path d="M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 15-4L23 10M1 14l4.5 5a9 9 0 0 0 15-4"/>
+  {:else if name === 'menu'}
+    <path d="M3 6h18M3 12h18M3 18h18"/>
+  {:else if name === 'gem'}
     <path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>
   {:else if name === 'wallet'}
     <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a1 1 0 0 0 0 4h4v-4z"/>
@@ -91,5 +107,7 @@
     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
   {:else if name === 'search'}
     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  {:else}
+    <path d="M20 13l-7 7a2 2 0 0 1-3 0L2 12V2h10l8 8a2 2 0 0 1 0 3Z"/><circle cx="7" cy="7" r="1"/>
   {/if}
 </svg>

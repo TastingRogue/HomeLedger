@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { localDateString } from '$lib/utils/format';
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     listLoans,
@@ -78,7 +80,7 @@
   function openCreate() {
     editing = null;
     fName = ''; fPrincipal = ''; fRate = ''; fTerm = '';
-    fStart = new Date().toISOString().split('T')[0]!;
+    fStart = localDateString();
     formError = '';
     showForm = true;
   }
@@ -127,7 +129,7 @@
   function openPayment(loan: Loan) {
     payTarget = loan;
     pAmount = ''; pPrincipal = ''; pInterest = '';
-    pDate = new Date().toISOString().split('T')[0]!;
+    pDate = localDateString();
     payError = '';
   }
   function closePayment() { payTarget = null; }
@@ -200,6 +202,8 @@
     else if (payTarget) closePayment();
     else if (showForm) closeForm();
   }
+
+  exposeViewActions({'view.refresh':()=>load(),'loan-delete.edit':r=>{deleteTarget=loans.find(x=>x.id===r?.id)??null;},'loans.create':()=>openCreate(), 'loans.edit':async r=>{let row=loans.find(x=>x.id===r?.id);if(!row){await load();row=loans.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEdit(row);}, 'payment.edit':async r=>{let row=loans.find(x=>x.id===r?.id);if(!row){await load();row=loans.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openPayment(row);}, 'loan-detail.edit':async r=>{let row=loans.find(x=>x.id===r?.id);if(!row){await load();row=loans.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');void openDetail(row);}});
 </script>
 
 <svelte:head><title>{$t('page_title.loans')} · HomeLedger</title></svelte:head>

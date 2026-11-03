@@ -11,6 +11,7 @@ describe('GET /api/v1/transactions/export.csv (wiring)', () => {
       const res = await app.inject({ method: 'GET', url: '/api/v1/transactions/export.csv' });
       // Not 404 → the route exists; 401 → the auth guard protects it.
       expect(res.statusCode).toBe(401);
+      expect(res.headers['cache-control']).toBe('no-store');
     } finally {
       await app.close();
     }

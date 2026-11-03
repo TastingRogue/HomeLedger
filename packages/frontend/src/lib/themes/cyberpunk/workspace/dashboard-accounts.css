@@ -1,0 +1,29 @@
+/* Compact account summaries; the surrounding dashboard keeps its layout. */
+:root[data-ui='cyberpunk'] .cp-dashboard .accounts-scroll { gap:12px; padding-bottom:6px; scroll-snap-type:x proximity; }
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini {
+  --account-accent:#48ddd3;
+  position:relative; flex:1 0 210px; max-width:none; min-width:0; padding:16px;
+  border:1px solid #60404d; border-top:2px solid var(--account-accent); border-radius:0 0 10px 0;
+  background:linear-gradient(135deg,#48ddd309,transparent 60%),#100c10; scroll-snap-align:start;
+  display:flex; flex-direction:column; gap:5px;
+}
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini[data-account-type='Crédito'] { --account-accent:#ff6068; background:linear-gradient(135deg,#ff60680d,transparent 60%),#100c10; }
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini[data-account-type='Inversión'] { --account-accent:#70aaff; }
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini[data-account-type='Efectivo'] { --account-accent:#fcee0a; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-symbol { display:grid; place-items:center; position:absolute; top:15px; left:15px; width:34px; height:34px; color:var(--account-accent); border:1px solid #49323e; background:#ffffff03; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-top { padding-left:44px; min-height:34px; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:4px; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-name { font:600 15px/1.2 'HL Rajdhani',sans-serif; overflow-wrap:anywhere; color:#f0e6ec; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-badge { font:600 10px/1.3 'HL Rajdhani',sans-serif; letter-spacing:.7px; border-radius:0; padding:1px 5px; color:var(--account-accent); background:#ffffff06; border:1px solid #49323e; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-bank { font:11px/1.4 'HL Tech',monospace; color:#b397a6; padding-left:44px; min-height:15px; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-balance { margin:14px 0 8px; color:#fcee0a; font:24px/1.2 'HL Tech',monospace; letter-spacing:-.4px; overflow-wrap:anywhere; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-balance.negative { color:#ff6068; }
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini:not(:has(.am-bank)) .am-balance { margin-top:34px; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-meta { color:#bda6b2; font-size:11px; }
+:root[data-ui='cyberpunk'] .cp-dashboard .account-mini>.am-meta { border-top:1px solid #35232d; padding-top:10px; margin-top:auto; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-credit-info { margin-top:auto; padding-top:10px; border-top:1px solid #35232d; display:grid; grid-template-columns:1fr auto; gap:8px; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-credit-info .am-meta { grid-column:1/-1; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-util-bar { grid-column:1; align-self:center; height:6px; border-radius:0; background:#35232d; }
+:root[data-ui='cyberpunk'] .cp-dashboard .am-util-pct { grid-column:2; color:var(--account-accent); font:11px 'HL Tech',monospace; }
+@media(max-width:720px) {
+  :root[data-ui='cyberpunk'] .cp-dashboard .account-mini { flex-basis:220px; }
+}

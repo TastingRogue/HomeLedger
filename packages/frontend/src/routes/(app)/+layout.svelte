@@ -1,8 +1,12 @@
 <script lang="ts">
+  import QuickEntryHost from '$lib/components/QuickEntryHost.svelte';
   import { onMount } from 'svelte';
+  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '$lib/stores/theme';
+  const ThemeWorkspace = $derived($activeTheme.workspace);
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { hasToken, clearTokens } from '$lib/api';
+  import { hasToken, logout } from '$lib/api';
   import '$lib/styles/shared.css';
   import Icon from '$lib/components/Icon.svelte';
   import Logo from '$lib/components/Logo.svelte';
@@ -14,6 +18,7 @@
   import type { Snippet } from 'svelte';
 
   let { children }: { children: Snippet } = $props();
+  let quickRevision = $state(0);
   let ready = $state(false);
   let sidebarOpen = $state(false);
   // Optional client-side app lock (P4.14): when enabled, the app UI stays hidden
@@ -30,13 +35,16 @@
     }
   });
 
+  onMount(() => { const update = () => quickRevision++; window.addEventListener('homeledger:quick-entry-saved', update); return () => window.removeEventListener('homeledger:quick-entry-saved', update); });
+
   function unlock() {
     locked = false;
   }
 
-  function handleLogout() {
-    clearTokens();
-    goto('/login');
+  async function handleLogout() {
+    await logout();
+    userProfile.set(null);
+    await goto('/login');
   }
 
   function toggleSidebar() {
@@ -95,12 +103,17 @@
   const showFab = $derived($page.url.pathname !== '/registro-rapido');
 </script>
 
+
 {#if ready && locked}
   <LockScreen onUnlocked={unlock} />
 {/if}
 
 {#if ready}
   <OfflineBanner />
+  {#if !locked}<QuickEntryHost />{/if}
+  {#if ThemeWorkspace}
+    <ThemeComposition load={ThemeWorkspace} props={{ path: $page.url.pathname, children }}/>
+  {:else}
   <div class="app-layout">
     <!-- Sidebar overlay (mobile) -->
     {#if sidebarOpen}
@@ -163,7 +176,7 @@
 
     <!-- Main content -->
     <main class="main-content">
-      {@render children()}
+      {#key quickRevision}{@render children()}{/key}
       <footer class="app-footer">
         <span>{$t('footer.rights')}</span>
       </footer>
@@ -176,6 +189,7 @@
       </a>
     {/if}
   </div>
+  {/if}
 {:else}
   <div class="auth-check">
     <div class="auth-spinner"></div>

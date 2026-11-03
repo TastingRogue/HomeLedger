@@ -1,4 +1,7 @@
 <script lang="ts">
+  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '$lib/stores/theme';
+  const ThemeFrame = $derived($activeTheme.authFrame);
   import { goto } from '$app/navigation';
   import { authApi, ApiError } from '$lib/api';
   import { authStore } from '$lib/stores';
@@ -104,6 +107,7 @@
   <title>{$t('page_title.login')} - HomeLedger</title>
 </svelte:head>
 
+{#snippet content()}
 <div class="login-container">
   <div class="login-card">
     <div class="brand-mark"><Logo size={56} /></div>
@@ -196,6 +200,8 @@
     {/if}
   </div>
 </div>
+{/snippet}
+{#if ThemeFrame}<ThemeComposition load={ThemeFrame} props={{ kind: 'login', children: content }}/>{:else}{@render content()}{/if}
 
 <style>
   .login-container {

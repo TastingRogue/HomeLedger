@@ -40,7 +40,8 @@ export const confirmImportSchema = z.object({
     .optional(),
 
   selectedTransactionIds: z
-    .array(z.number().int().positive('Los IDs deben ser números positivos'))
+    // These are zero-based preview row indices, not database transaction IDs.
+    .array(z.number().int().nonnegative('Los índices de fila no pueden ser negativos'))
     .optional(),
 
   defaultCategoryId: z

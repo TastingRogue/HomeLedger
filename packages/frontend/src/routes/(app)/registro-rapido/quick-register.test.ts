@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { ApiError } from '$lib/api/client';
-import QuickRegister from './+page.svelte';
+import QuickRegister from '$lib/components/QuickEntryForm.svelte';
 
 vi.mock('$app/environment', () => ({ browser: true }));
 const goto = vi.fn();
@@ -57,7 +57,7 @@ describe('quick register (create transaction)', () => {
       if (path === '/accounts') return Promise.resolve([]);
       return Promise.resolve(CATEGORIES);
     });
-    render(QuickRegister);
+    render(QuickRegister, { close: vi.fn(), saved: vi.fn() });
     expect(await screen.findByRole('button', { name: /crear|create|cuenta|account/i })).toBeInTheDocument();
     // No keypad in the empty state.
     expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('quick register (create transaction)', () => {
 
   it('blocks advancing past step 1 with an invalid (zero) amount', async () => {
     mockLoadOk();
-    render(QuickRegister);
+    render(QuickRegister, { close: vi.fn(), saved: vi.fn() });
     // Wait for load — the "1" key appears once step 1 renders.
     await screen.findByRole('button', { name: '1' });
 
@@ -79,7 +79,7 @@ describe('quick register (create transaction)', () => {
   it('walks the 3-step flow and posts to /transactions/quick when no name is given', async () => {
     mockLoadOk();
     apiPost.mockResolvedValue({ id: 99 });
-    render(QuickRegister);
+    render(QuickRegister, { close: vi.fn(), saved: vi.fn() });
     await screen.findByRole('button', { name: '1' });
 
     // Step 1: enter 150
@@ -110,7 +110,7 @@ describe('quick register (create transaction)', () => {
   it('posts to /transactions (named endpoint) when a name is entered', async () => {
     mockLoadOk();
     apiPost.mockResolvedValue({ id: 1 });
-    render(QuickRegister);
+    render(QuickRegister, { close: vi.fn(), saved: vi.fn() });
     await screen.findByRole('button', { name: '1' });
 
     await typeAmount('42');
@@ -132,7 +132,7 @@ describe('quick register (create transaction)', () => {
   it('surfaces the API error message when the post fails', async () => {
     mockLoadOk();
     apiPost.mockRejectedValue(new ApiError(400, 'BAD', 'No se pudo guardar'));
-    render(QuickRegister);
+    render(QuickRegister, { close: vi.fn(), saved: vi.fn() });
     await screen.findByRole('button', { name: '1' });
 
     await typeAmount('10');

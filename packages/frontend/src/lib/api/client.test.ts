@@ -12,7 +12,34 @@ import {
   setTokens,
   clearTokens,
   hasToken,
+  apiRequest,
 } from './client';
+import { setLocale } from '../stores/preferences';
+
+describe('shared data invalidation', () => {
+  it('localizes the empty-import response in English',async()=>{
+    setLocale('en');
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({success:false,error:{code:'NO_TRANSACTIONS',message:'No se encontraron transacciones'}}),{status:400})));
+    try{await expect(apiRequest('/imports/1/preview')).rejects.toThrow('No transactions to import.');}finally{vi.unstubAllGlobals();}
+  });
+  it('notifies compositions after a successful mutation, without notifying on reads or failed saves', async () => {
+    const listener = vi.fn();
+    window.addEventListener('homeledger:data-changed', listener);
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({success:true,data:{id:1}})))
+      .mockResolvedValueOnce(new Response(JSON.stringify({success:true,data:[]})))
+      .mockResolvedValueOnce(new Response(JSON.stringify({success:false,error:{message:'Invalid'}}),{status:400})));
+    try {
+      await apiRequest('/categories',{method:'POST',body:{name:'Example'}});
+      await apiRequest('/categories');
+      await expect(apiRequest('/categories',{method:'POST',body:{}})).rejects.toBeInstanceOf(ApiError);
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('homeledger:data-changed',listener);
+      vi.unstubAllGlobals();
+    }
+  });
+});
 describe('client token management', () => {
   beforeEach(() => {
     localStorage.clear();

@@ -27,7 +27,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 async def validate_connection(api_url: str, api_key: str) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     async with aiohttp.ClientSession() as session:
-        headers = {"Authorization": f"Bearer {api_key}"}
+        headers = {"X-API-Key": api_key}
         async with session.get(
             f"{api_url}/api/v1/ha/status", headers=headers, timeout=aiohttp.ClientTimeout(total=10)
         ) as response:

@@ -70,7 +70,7 @@ screen for fast expense entry.
 
 ### Currency & Language
 
-HomeLedger uses a **single currency per install** (e.g. MXN, USD, EUR). The
+HomeLedger uses a **base currency per install** (e.g. MXN, USD, EUR). The
 admin sets it during setup or in Settings. Individual accounts can optionally
 carry a different currency with an exchange rate (see [Accounts](#3-accounts)),
 and cross-account aggregations convert to the base currency.
@@ -622,7 +622,8 @@ Open **Settings** from the sidebar (gear icon).
 
 - Edit your **name**. Email and role are read-only.
 - **Language**: switch between English and Spanish (takes effect immediately).
-- **Theme**: Dark or Light.
+- **Interface design**: Normal or Cyberpunk 2077, applied instantly and saved in this browser.
+- **Theme**: Dark or Light for the Normal design. Cyberpunk uses its own dark palette and preserves your previous preference.
 
 ### Data Tab
 
@@ -822,8 +823,9 @@ On supported browsers (Chrome, Edge, Safari), use the browser's "Install" or
 
 When you lose internet connectivity:
 - A small **"You are offline"** banner appears at the top.
-- Cached pages and data continue to work (the service worker uses a
-  network-first strategy with cache fallback).
+- Cached pages and app assets remain available. Financial data from the API
+  requires a connection and is never stored in the service worker cache. Data
+  already visible on the current screen can remain until you navigate or reload.
 - If a page hasn't been cached yet, a dedicated **offline page** is shown with a
   Retry button.
 - When connectivity returns, the banner disappears automatically.

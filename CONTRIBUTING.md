@@ -82,6 +82,13 @@ The full structure is documented in the
 - Keep the app **local-first**: no outbound network calls or cloud dependencies
   by default.
 
+## Adding a UI theme
+
+Themes are self-contained folders with a typed manifest and scoped CSS. Settings,
+previews and the pre-paint script discover them automatically. See
+[Creating and contributing UI themes](docs/THEMES.md) for the two-file example,
+token contract, chart palettes and validation steps.
+
 ## Adding a language
 
 The i18n system is built so the compiler forces a new language to be complete.

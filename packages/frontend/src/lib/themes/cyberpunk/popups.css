@@ -1,0 +1,73 @@
+/* One popup language for route workflows, dashboard, settings and theme editors. */
+:root[data-ui='cyberpunk'][data-ui] :is(.overlay,.modal-backdrop,.modal-overlay) { padding:24px; background:#08070cce; backdrop-filter:blur(6px); }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) {
+  box-sizing:border-box; width:min(760px,calc(100vw - 48px)); max-width:calc(100vw - 48px); max-height:calc(100dvh - 48px);
+  padding:0; overflow:auto; overscroll-behavior:contain; border:1px solid #a89d35; border-radius:0;
+  background:linear-gradient(125deg,#25101c66,transparent 55%),#100c10; color:#eee6e9; box-shadow:0 24px 90px #0009;
+  font-family:'HL Rajdhani',sans-serif;
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal-sm,.modal-small,.confirm-modal) { width:min(440px,calc(100vw - 48px)); }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal-detail,.detail-panel) { width:min(980px,calc(100vw - 48px)); }
+:root[data-ui='cyberpunk'][data-ui] .hl-quick-popup { width:min(1180px,calc(100vw - 48px)); }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(.modal-header,.modal-head,.detail-head,.cp-dialog-head,.hl-popup-head) {
+  display:flex; align-items:center; justify-content:space-between; gap:20px; padding:0 18px 0 0; margin:0 0 24px; min-height:58px; border-bottom:1px solid #46303c;
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(.modal-header,.modal-head,.detail-head,.cp-dialog-head,.hl-popup-head) :is(h2,h3) {
+  margin:0; padding:10px 32px 10px 18px; max-width:calc(100% - 64px); background:#fcee0a; color:#100b10;
+  font:700 18px/1.25 'HL Rajdhani',sans-serif; text-transform:uppercase; letter-spacing:1.1px;
+  clip-path:polygon(0 0,100% 0,calc(100% - 18px) 100%,0 100%);
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) > :not(header):not(.modal-header):not(.modal-head):not(.detail-head):not(.cp-dialog-head) { margin-left:24px; margin-right:24px; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) > :last-child { margin-bottom:24px; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) form { padding:0; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(label,.field-label-row) {
+  text-align:left; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; flex-wrap:wrap; gap:7px; margin:0 0 7px;
+  color:#d4bdc7; font:600 12px/1.4 'HL Rajdhani',sans-serif; letter-spacing:.75px;
+}
+/* Wrapped controls stay below their label; help icons remain on the label line. */
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) label > :is(input:not([type='checkbox']):not([type='radio']),select,textarea,.datepicker) { flex:0 0 100%; width:100%; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(input,select,textarea):not([type='checkbox']):not([type='radio']) {
+  min-height:42px; width:100%; box-sizing:border-box; border:1px solid #71525f; background:#0c0b10; border-radius:0; color:#f0e7eb; padding:10px 12px; font:400 15px/1.35 'HL Rajdhani',sans-serif;
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(input,select,textarea):focus-visible { outline:2px solid #48ddd3; outline-offset:2px; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.field,.form-group,.fld) { min-width:0; margin-bottom:18px; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.form-buttons,.modal-actions,.modal-footer,.form-actions,.actions) {
+  display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:12px; padding-top:20px; margin-top:8px; border-top:1px solid #46303c;
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.btn-submit,.btn-primary,.btn-save,.btn-modal-submit,.cp-button) {
+  min-height:42px; padding:10px 22px; border:1px solid #fcee0a; border-radius:0; background:#fcee0a; color:#100b10; font:700 13px 'HL Rajdhani',sans-serif; letter-spacing:.8px; text-transform:uppercase;
+}
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.btn-cancel,.btn-secondary,.btn-modal-cancel,.cp-button.ghost) { min-height:42px; padding:10px 18px; background:transparent; border:1px solid #71525f; color:#e6d8df; border-radius:0; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) :is(.close,.close-btn,.modal-close,.close-button,.hl-popup-head>button) { flex-shrink:0; width:34px; height:34px; padding:0; border:1px solid #71525f; color:#d4bdc7; background:transparent; font-size:22px; }
+:root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) form { display:grid; grid-template-columns:1fr 1fr; column-gap:24px; }
+:root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) form>.field:first-child,
+:root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) .form-buttons { grid-column:1/-1; }
+:root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) .field-row-2 { display:contents; }
+:root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) form > :is(.field-row,.allocations-section,.form-alert) { grid-column:1/-1; }
+:root[data-ui='cyberpunk'][data-ui] .cp-popup-content { display:block; border:0; margin:0; padding:0; width:100%; min-height:0; max-width:none; background:none; box-shadow:none; }
+:root[data-ui='cyberpunk'][data-ui] .hl-popup-head { margin-bottom:0!important; }
+:root[data-ui='cyberpunk'][data-ui] .hl-popup .cp-tabs { margin-bottom:20px; }
+:root[data-ui='cyberpunk'][data-ui] .hl-popup .cp-quick-entry { grid-template-columns:1.15fr 1fr .9fr; gap:18px; align-items:stretch; }
+:root[data-ui='cyberpunk'][data-ui] .hl-popup .cp-category-picker { max-height:390px; overflow:auto; }
+:root[data-ui='cyberpunk'][data-ui] .cp-popup-content::before,
+:root[data-ui='cyberpunk'][data-ui] .cp-popup-content::after { display:none; }
+:root[data-ui='cyberpunk'][data-ui] .modal .detail-head>div { flex:1; min-width:0; }
+:root[data-ui='cyberpunk'][data-ui] .modal .detail-head>div h2 { display:inline-block; max-width:100%; }
+:root[data-ui='cyberpunk'][data-ui] .modal .detail-head .eyebrow { display:none; }
+:root[data-ui='cyberpunk'][data-ui] .modal :is(.upload-actions,.modal-actions-split) { display:flex; justify-content:flex-end; gap:12px; padding-top:20px; border-top:1px solid #46303c; }
+:root[data-ui='cyberpunk'][data-ui] .modal :is(.upload-actions,.actions-right) button { min-height:42px; padding:10px 18px; }
+:root[data-ui='cyberpunk'][data-ui] .modal .upload-btn { background:#fcee0a; color:#100b10; border:1px solid #fcee0a; border-radius:0; font:700 13px 'HL Rajdhani',sans-serif; }
+:root[data-ui='cyberpunk'][data-ui] .modal button.ghost { background:transparent; color:#e6d8df; border:1px solid #71525f; border-radius:0; }
+:root[data-ui='cyberpunk'][data-ui] .modal .mode-toggle button { min-height:38px; border-radius:0; }
+:root[data-ui='cyberpunk'][data-ui] .modal .mode-toggle button.active { background:#fcee0a; color:#100b10; border-color:#fcee0a; }
+:root[data-ui='cyberpunk'][data-ui] .modal :is(.builder-title,.alloc-label) { display:inline-block; background:#fcee0a; color:#100b10; padding:4px 16px 4px 7px; font:700 12px 'HL Rajdhani',sans-serif; text-transform:uppercase; clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%); }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) .dp-trigger { min-height:42px; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.form-buttons,.modal-actions,.modal-footer,.modal-footer-actions,.form-actions,.modal-actions-split,.actions) button { min-height:42px; padding:10px 18px; font:600 13px 'HL Rajdhani',sans-serif; }
+:root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog) :is(.form-buttons,.modal-actions,.modal-footer-actions,.form-actions,.modal-actions-split) { position:sticky; bottom:0; z-index:2; background:#100c10; padding-bottom:12px; }
+@media(max-width:700px) {
+  :root[data-ui='cyberpunk'][data-ui] :is(.overlay,.modal-backdrop,.modal-overlay) { padding:8px; }
+  :root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog,.hl-popup) { width:calc(100vw - 16px); max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }
+  :root[data-ui='cyberpunk'][data-ui] .modal:has(#f-name) form { grid-template-columns:1fr; }
+  :root[data-ui='cyberpunk'][data-ui] .hl-popup .cp-quick-entry { grid-template-columns:1fr; }
+  :root[data-ui='cyberpunk'][data-ui] :is(.modal,.modal-content,.modal-panel,.detail-panel,.cp-dialog)>:not(header):not(.modal-header):not(.modal-head):not(.detail-head):not(.cp-dialog-head) { margin-left:16px; margin-right:16px; }
+}

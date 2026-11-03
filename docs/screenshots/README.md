@@ -1,27 +1,22 @@
-# Screenshots
+# Product screenshots
 
-These images are referenced by the main [`README.md`](../../README.md) gallery.
+Current Docker UI with synthetic English demo data. All images are linked from
+the root README. The original theme workflows are grouped in an expandable gallery.
 
-> **All screenshots use generated demo/test data**, not real financial
-> information. The dataset can be reproduced by importing
-> [`homeledger-demo-backup.json`](../../homeledger-demo-backup.json) (Settings →
-> Data & Backup → Import) or regenerated with
-> `node scripts/generate-demo-backup.mjs`.
+- dashboard.jpg: Normal dashboard overview
+- *-normal.jpg: focused workflows with a content-sized frame (1440 px wide)
+- dashboard-cyberpunk.jpg: Cyberpunk dashboard overview
+- reports-cyberpunk.jpg: complete Cyberpunk report overview
+- calendar-mobile.jpg: one complete day of the mobile agenda
 
-## Expected files
+Capture guidelines:
 
-Drop the PNGs here using exactly these names so the README renders them:
-
-| File | Screen |
-|------|--------|
-| `dashboard.png` | Dashboard — net worth, income/expense chart, accounts, goals, budgets |
-| `transactions.png` | Transactions — split expense/income cards grouped by month |
-| `transfers.png` | Transfers — movements between accounts |
-| `subscriptions.png` | Subscriptions — recurring payments list |
-| `goals.png` | Savings goals — progress bars, fund/withdraw |
-| `budgets.png` | Budgets — allocation vs. spent with per-category bars |
-| `categories.png` | Categories — expense analysis + category grid |
-| `receipts.png` | Receipts — OCR analysis with linked transaction |
-| `import.png` | Data management — backup import/export wizard |
-
-Recommended: capture at ~1024px wide (or wider) for crisp rendering on GitHub.
+- Use real browser screenshots; do not generate or invent product UI.
+- Keep all relevant panels, labels, controls and amounts inside the frame.
+- Fit the frame to content for detail views instead of including a large empty
+  desktop. Keep overview context for dashboards and reports.
+- Show a useful workflow state: a transaction table, receipt and OCR review,
+  or backup export, rather than a sparse intermediate screen.
+- Retain native JPEG files, do not upscale or recompress them, and inspect every
+  replacement at its actual size before adding it to the README.
+- Preserve fonts, source assets and licenses; discard temporary QA captures.

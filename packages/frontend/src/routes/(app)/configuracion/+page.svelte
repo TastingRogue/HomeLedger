@@ -2,11 +2,12 @@
   import { onMount } from 'svelte';
   import { apiGet, apiPut, apiPost } from '$lib/api/client';
   import Icon from '$lib/components/Icon.svelte';
+  import AppearancePicker from '$lib/components/AppearancePicker.svelte';
   import Dropdown from '$lib/components/Dropdown.svelte';
   import { get } from 'svelte/store';
   import { preferences, setLocale, setCurrency as applyLocalCurrency, currencyConfig, type SupportedLocale, type SupportedCurrency } from '$lib/stores/preferences';
   import { localeOptions as registryLocaleOptions } from '$lib/i18n/registry';
-  import { theme, setTheme, type Theme } from '$lib/stores/theme';
+  import { theme, setTheme, activeTheme, type Theme } from '$lib/stores/theme';
   import { t } from '$lib/i18n';
   import { modalPanel, scrim } from '$lib/motion';
   import { ApiError } from '$lib/api/client';
@@ -797,6 +798,8 @@
               </div>
               <span class="pref-value">America/Mexico_City</span>
             </div>
+            <AppearancePicker />
+            {#if $activeTheme.colorScheme === 'preference'}
             <div class="pref-row">
               <div class="pref-info">
                 <span class="pref-label">{$t('settings.theme')}</span>
@@ -804,6 +807,7 @@
               </div>
               <Dropdown bind:value={selectedTheme} options={themeOptions} />
             </div>
+            {/if}
           </div>
         {/if}
 

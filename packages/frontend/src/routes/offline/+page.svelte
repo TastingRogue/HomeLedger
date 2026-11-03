@@ -1,17 +1,16 @@
 <script lang="ts">
+  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '$lib/stores/theme';
+  const ThemeFrame = $derived($activeTheme.authFrame);
   import { t } from '$lib/i18n';
 
-  function retry() {
-    // Simplest reliable recovery: reload the current document. If the network is
-    // back the app shell loads normally; if not, the SW serves this page again.
-    if (typeof location !== 'undefined') location.reload();
-  }
 </script>
 
 <svelte:head>
   <title>{$t('offline.title')} | HomeLedger</title>
 </svelte:head>
 
+{#snippet content()}
 <div class="offline-wrap">
   <div class="offline-card">
     <div class="offline-icon" aria-hidden="true">
@@ -27,9 +26,11 @@
     </div>
     <h1 class="offline-title">{$t('offline.title')}</h1>
     <p class="offline-desc">{$t('offline.desc')}</p>
-    <button class="offline-retry" onclick={retry}>{$t('offline.retry')}</button>
+    <a class="offline-retry" href="/dashboard" data-sveltekit-reload>{$t('offline.retry')}</a>
   </div>
 </div>
+{/snippet}
+{#if ThemeFrame}<ThemeComposition load={ThemeFrame} props={{ kind: 'offline', children: content }}/>{:else}{@render content()}{/if}
 
 <style>
   .offline-wrap {

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { getViewCharts } from '$lib/themes/view-actions';
+  import Icon from '$lib/components/Icon.svelte';
+  const viewCharts = getViewCharts();
   import { onMount } from 'svelte';
   import { apiGet } from '$lib/api/client';
   import { formatCurrency } from '$lib/utils/format';
@@ -32,7 +35,8 @@
   let credit = $state<CreditReport | null>(null);
   let merchants = $state<MerchantReport | null>(null);
 
-  const catColors = ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
+  const catColors = viewCharts?.categoryColors ?? ['#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
+  const merchantMax = $derived(Math.max(0, ...(merchants?.merchants.map(row => row.total) ?? [])));
 
   let income = $derived(dashboard?.monthlySummary?.totalIncome ?? 0);
   let expenses = $derived(dashboard?.monthlySummary?.totalExpenses ?? 0);
@@ -122,9 +126,13 @@
     <!-- Charts Grid -->
     <div class="charts-grid">
       <!-- Trends chart (6 months) -->
-      <div class="chart-card chart-wide">
-        <h3 class="card-title">{$t('reports.cashflow_title')}</h3>
-        <p class="card-desc">{$t('reports.cashflow_desc')}</p>
+      <div class="chart-card chart-wide report-trends">
+        <h3 class="card-title"><Icon name="trending-up" size={14}/> {$t('reports.trends_title')}</h3>
+        <p class="card-desc">{$t('reports.trends_desc')}</p>
+        <div class="report-legend">
+          <span class="green"><i aria-hidden="true"></i>{$t('reports.income')}</span>
+          <span class="red"><i aria-hidden="true"></i>{$t('reports.expenses')}</span>
+        </div>
         {#if trends.length > 0}
           <LineChart
             labels={trendLabels}
@@ -140,8 +148,8 @@
       </div>
 
       <!-- Category donut -->
-      <div class="chart-card">
-        <h3 class="card-title">{$t('reports.categories_title')}</h3>
+      <div class="chart-card report-categories">
+        <h3 class="card-title"><Icon name="tag" size={14}/> {$t('reports.categories_title')}</h3>
         <p class="card-desc">{$t('reports.categories_desc')}</p>
         {#if dashboard?.categoryBreakdown && dashboard.categoryBreakdown.length > 0}
           <div class="donut-area">
@@ -169,19 +177,19 @@
       </div>
 
       <!-- Monthly bar comparison -->
-      <div class="chart-card">
-        <h3 class="card-title">{$t('reports.cashflow')}</h3>
+      <div class="chart-card report-monthly">
+        <h3 class="card-title"><Icon name="bar-chart" size={14}/> {$t('reports.cashflow')}</h3>
         <p class="card-desc">{$t('common.this_month')}</p>
         <BarChart
           labels={[$t('reports.income'), $t('reports.expenses'), $t('reports.net_savings')]}
-          datasets={[{ label: $t('reports.chart_amount'), data: [income, expenses, savings], backgroundColor: ['#22c55e', '#ef4444', savings >= 0 ? '#3b82f6' : '#f59e0b'] }]}
+          datasets={[{ label: $t('reports.chart_amount'), data: [income, expenses, savings], backgroundColor: ['#22c55e', '#ef4444', savings >= 0 ? '#3b82f6' : '#f59e0b'], borderRadius: viewCharts ? 0 : 4 }]}
           height={200}
         />
       </div>
 
       <!-- Savings rate visual -->
       <div class="chart-card savings-card">
-        <h3 class="card-title">{$t('reports.savings_title')}</h3>
+        <h3 class="card-title"><Icon name="target" size={14}/> {$t('reports.savings_title')}</h3>
         <p class="card-desc">{$t('reports.savings_desc')}</p>
         <div class="savings-ring">
           <svg viewBox="0 0 36 36">
@@ -201,13 +209,13 @@
       </div>
 
       <!-- P4.10: Top merchants (last 12 months) -->
-      <div class="chart-card">
-        <h3 class="card-title">{$t('reports.merchant_title')}</h3>
+      <div class="chart-card report-merchants">
+        <h3 class="card-title"><Icon name="building" size={14}/> {$t('reports.merchant_title')}</h3>
         <p class="card-desc">{$t('reports.merchant_desc')}</p>
         {#if merchants && merchants.merchants.length > 0}
           <div class="rank-list">
             {#each merchants.merchants as m}
-              <div class="rank-row">
+              <div class="rank-row merchant-row" style={`--merchant-width:${merchantMax > 0 ? m.total / merchantMax * 100 : 0}%`}>
                 <span class="rank-name">{m.merchant}</span>
                 <span class="rank-count">{m.count}×</span>
                 <span class="rank-amount">{formatCurrency(m.total)}</span>
@@ -220,8 +228,8 @@
       </div>
 
       <!-- P4.10: Debt overview -->
-      <div class="chart-card">
-        <h3 class="card-title">{$t('reports.debt_title')}</h3>
+      <div class="chart-card report-debt">
+        <h3 class="card-title"><Icon name="credit-card" size={14}/> {$t('reports.debt_title')}</h3>
         <p class="card-desc">{$t('reports.debt_desc')}</p>
         {#if debt && debt.items.length > 0}
           <div class="report-total"><span>{$t('reports.debt_total')}</span><strong class="red">{formatCurrency(debt.totalDebt)}</strong></div>
@@ -240,8 +248,8 @@
       </div>
 
       <!-- P4.10: Credit utilization -->
-      <div class="chart-card">
-        <h3 class="card-title">{$t('reports.credit_title')}</h3>
+      <div class="chart-card report-credit">
+        <h3 class="card-title"><Icon name="wallet" size={14}/> {$t('reports.credit_title')}</h3>
         <p class="card-desc">{$t('reports.credit_desc')}</p>
         {#if credit && credit.cards.length > 0}
           <div class="report-total"><span>{$t('reports.credit_overall')}</span><strong class:red={credit.overallUtilization >= 30}>{credit.overallUtilization.toFixed(1)}%</strong></div>
@@ -281,6 +289,11 @@
   .sc-value.red { color: var(--accent-red); }
 
   /* Charts Grid */
+  .report-legend { display:flex; gap:16px; margin-bottom:12px; font-size:12px; }
+  .report-legend span { display:inline-flex; align-items:center; gap:6px; }
+  .report-legend .green { color:var(--accent-green); }
+  .report-legend .red { color:var(--accent-red); }
+  .report-legend i { width:8px; height:8px; background:currentColor; border-radius:50%; }
   .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .chart-card { background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 1.25rem; }
   .chart-wide { grid-column: span 2; }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
     getNetWorth, createAsset, updateAsset, deleteAsset,
@@ -119,6 +120,8 @@
     try { await deleteLiability(l.id); await load(); }
     catch (e) { error = e instanceof ApiError ? e.message : $t('networth.error_deleting'); }
   }
+
+  exposeViewActions({'view.refresh':()=>load(),'assets.create':()=>openCreate('asset'), 'assets.edit':async r=>{let row=data?.assets.find(x=>x.id===r?.id);if(!row){await load();row=data?.assets.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditAsset(row);}, 'liabilities.create':()=>openCreate('liability'), 'liabilities.edit':async r=>{let row=data?.liabilities.find(x=>x.id===r?.id);if(!row){await load();row=data?.liabilities.find(x=>x.id===r?.id);}if(!row)throw new Error('Unable to load this record. Refresh and try again.');openEditLiability(row);}});
 </script>
 
 <svelte:head><title>{$t('networth.title')} · HomeLedger</title></svelte:head>

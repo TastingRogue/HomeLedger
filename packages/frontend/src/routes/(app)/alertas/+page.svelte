@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getAlertTitle as localizedAlertTitle, getAlertMessage as localizedAlertMessage } from '$lib/utils/alert-copy';
   import { onMount } from 'svelte';
   import {
     listAlerts,
@@ -130,37 +131,8 @@
     return 'var(--accent-blue)';
   }
 
-  // Generate localized alert title/message from type + data
-  function getAlertData(alert: AlertData): Record<string, any> {
-    let d = alert.data;
-    // Handle double-stringified data from older alerts
-    if (typeof d === 'string') { try { d = JSON.parse(d); } catch { d = {}; } }
-    return (d as Record<string, any>) ?? {};
-  }
-
-  function getAlertTitle(alert: AlertData): string {
-    const d = getAlertData(alert);
-    switch (alert.type) {
-      case 'balance_low': return $t('alerts.msg.balance_low_title', { account: d.accountName ?? '?' });
-      case 'credit_high': return $t('alerts.msg.credit_high_title', { account: d.accountName ?? '?' });
-      case 'payment_due': return $t('alerts.msg.payment_due_title', { name: d.subscriptionName ?? '?' });
-      case 'payment_overdue': return $t('alerts.msg.payment_overdue_title', { name: d.subscriptionName ?? '?' });
-      case 'goal_completed': return $t('alerts.msg.goal_completed_title', { name: d.goalName ?? '?' });
-      default: return alert.title;
-    }
-  }
-
-  function getAlertMessage(alert: AlertData): string {
-    const d = getAlertData(alert);
-    switch (alert.type) {
-      case 'balance_low': return $t('alerts.msg.balance_low_desc', { account: d.accountName ?? '?', balance: formatCurrency(d.currentBalance ?? 0), limit: formatCurrency(d.balanceLimit ?? 0) });
-      case 'credit_high': return $t('alerts.msg.credit_high_desc', { account: d.accountName ?? '?', pct: (d.utilization ?? 0).toFixed(1) });
-      case 'payment_due': return $t('alerts.msg.payment_due_desc', { name: d.subscriptionName ?? '?', days: d.daysRemaining ?? 0, amount: formatCurrency(d.amount ?? 0) });
-      case 'payment_overdue': return $t('alerts.msg.payment_overdue_desc', { name: d.subscriptionName ?? '?', amount: formatCurrency(d.amount ?? 0) });
-      case 'goal_completed': return $t('alerts.msg.goal_completed_desc', { name: d.goalName ?? '?' });
-      default: return alert.message;
-    }
-  }
+  const getAlertTitle = (alert: AlertData) => localizedAlertTitle(alert, $t);
+  const getAlertMessage = (alert: AlertData) => localizedAlertMessage(alert, $t);
 
   // ─── Data Loading ───
   async function loadAlerts() {

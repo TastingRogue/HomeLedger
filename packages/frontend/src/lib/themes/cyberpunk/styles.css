@@ -1,0 +1,237 @@
+/* Cyberpunk video edition. Keep all rules scoped to this theme. */
+:root[data-ui='cyberpunk'] {
+  color-scheme: dark;
+  --bg-deep: #100b10;
+  --bg-default: #140d13;
+  --bg-surface: #130d12;
+  --bg-elevated: #27151e;
+  --bg-hover: #35202a;
+  --bg-card: #110c10;
+  --text-primary: #f5eee8;
+  --text-secondary: #c8b8c1;
+  --text-muted: #ad99a7;
+  --text-link: #6ff4ed;
+  --accent-blue: #6ff4ed;
+  --accent-purple: #fcee0a;
+  --accent-green: #6ff4d2;
+  --accent-orange: #ffbb70;
+  --accent-red: #ff6b76;
+  --accent-yellow: #fcee0a;
+  --accent-pink: #f88ac2;
+  --accent-gray: #ad99a7;
+  --accent-cyan: #6ff4ed;
+  --tag-blue-bg: #143334;
+  --tag-green-bg: #143029;
+  --tag-red-bg: #3a1b27;
+  --tag-orange-bg: #382a1d;
+  --tag-purple-bg: #3a1b27;
+  --tag-yellow-bg: #35311b;
+  --color-primary: #6ff4ed;
+  --color-primary-hover: #a2fff8;
+  --color-primary-glow: rgb(111 244 237 / 10%);
+  --color-success: #74efb4;
+  --color-success-subtle: #143029;
+  --color-warning: #fcee0a;
+  --color-warning-subtle: #35311b;
+  --color-danger: #ff6b76;
+  --color-danger-subtle: #3a1b27;
+  --color-income: #74efb4;
+  --color-expense: #ff6b76;
+  --border-default: #756a38;
+  --border-subtle: #3d2c2d;
+  --sidebar-bg: #100b10;
+  --sidebar-border: #4d3832;
+  --sidebar-active-bg: #fcee0a;
+  --sidebar-active-text: #080b12;
+  --sidebar-bg-glass: #100b10;
+  --surface-glass: #110c10;
+  --material-blur: none;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --font-family: 'Bahnschrift', 'Arial Narrow', 'Segoe UI', sans-serif;
+  --font-mono: 'Cascadia Code', 'Consolas', monospace;
+  --tracking-display: 0.01em;
+  --tracking-heading: 0.015em;
+  --shadow-sm: 0 1px 0 rgb(255 107 118 / 12%);
+  --shadow-md: 0 8px 28px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 20px 60px rgb(0 0 0 / 60%);
+  --shadow-card: 0 1px 0 rgb(255 107 118 / 12%);
+  --chart-income: #6ff4ed;
+  --chart-expense: #ff6b76;
+  --chart-series-1: #6ff4ed;
+  --chart-series-2: #ff6b76;
+  --chart-series-3: #fcee0a;
+  --chart-series-4: #ffbb70;
+  --chart-series-5: #f88ac2;
+  --chart-series-6: #70aaff;
+  --chart-series-7: #74efb4;
+  --chart-series-8: #c8b8c1;
+}
+
+:root[data-ui='cyberpunk'] body {
+  background-image: radial-gradient(ellipse at 35% 0%, rgb(111 19 43 / 58%), transparent 65%),
+    radial-gradient(ellipse at 0% 100%, rgb(20 97 86 / 14%), transparent 55%);
+  background-repeat: no-repeat;
+  background-size: 100% max(100vh, 900px);
+}
+
+/* The reference video's terminal frame is decoration, never an input overlay. */
+:root[data-ui='cyberpunk'] body::before {
+  content: '';
+  position: fixed;
+  inset: 6px;
+  z-index: 1100;
+  pointer-events: none;
+  border: 1px solid rgb(111 244 237 / 19%);
+  background: linear-gradient(var(--accent-cyan), var(--accent-cyan)) left top / 14px 2px no-repeat,
+    linear-gradient(var(--accent-cyan), var(--accent-cyan)) right bottom / 14px 2px no-repeat;
+}
+
+:root[data-ui='cyberpunk'] :is(h1, h2, .page-title, .greeting, .brand-name) {
+  color: var(--accent-yellow);
+  font-family: 'Bahnschrift SemiCondensed', 'Arial Narrow', var(--font-family);
+  letter-spacing: 0.025em;
+}
+
+:root[data-ui='cyberpunk'] :is(.card, .sf-card, .sf-summary-card, .summary-card,
+  .account-card, .goal-card, .budget-card, .subscription-card, .stat-card, .login-card,
+  .register-card, .auth-card, .offline-card) {
+  background: var(--bg-card);
+  border-color: var(--border-default);
+  border-radius: 1px 1px 12px 1px;
+  box-shadow: inset 0 1px 0 rgb(252 238 10 / 12%), var(--shadow-card);
+}
+
+:root[data-ui='cyberpunk'] :is(.page-header, .panel-header, .sf-page-header) {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-default);
+}
+
+:root[data-ui='cyberpunk'] .sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+}
+:root[data-ui='cyberpunk'] .section-header { color: var(--accent-red) !important; }
+:root[data-ui='cyberpunk'] .nav-link.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  box-shadow: none;
+  border-radius: 1px 8px 1px 1px;
+}
+:root[data-ui='cyberpunk'] .nav-link.active :is(svg, span) { color: inherit; }
+
+/* Dark text on neon action fills is essential for readable button labels. */
+:root[data-ui='cyberpunk'] :is(.btn-primary, .sf-btn-primary, .btn-submit,
+  .btn-add, .btn-new, .btn-save, .btn-blue, .btn-search, .btn-filter, .btn-modal-submit,
+  .btn-login, .btn-register, .btn-create-account, .btn-next, .lock-btn, .file-btn, .rs-create, .submit-btn, .retry-btn, .offline-retry, .fab, .fab-quick-add, .quick-fab) {
+  color: #080b12;
+  background: #fcee0a;
+  border: 1px solid #fcee0a;
+  border-radius: 2px 10px 2px 2px;
+  box-shadow: none;
+  font-weight: 700;
+}
+:root[data-ui='cyberpunk'] :is(.btn-success, .sf-btn-success, .btn-green) {
+  color: #080b12;
+  background: var(--accent-green);
+}
+:root[data-ui='cyberpunk'] :is(.btn-danger, .sf-btn-danger) {
+  color: #080b12;
+  background: var(--accent-red);
+}
+
+:root[data-ui='cyberpunk'] :is(input:not([type='checkbox']):not([type='radio']), textarea) {
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  border-color: #8c6b7a;
+  caret-color: var(--accent-cyan);
+}
+/* Keep appearance:none and restore the SVG arrow so native rendering (which
+   ignores translated <option> text and shows raw value attributes) never kicks in. */
+:root[data-ui='cyberpunk'] select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg-deep);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%236ff4ed' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  color: var(--text-primary);
+  border-color: #8c6b7a;
+  caret-color: var(--accent-cyan);
+}
+/* <option> elements render in an OS popup that ignores most CSS. Setting an
+   explicit background + color here makes Chromium on Windows paint the popup
+   with the theme colours instead of falling back to system defaults, which
+   would display the raw value attribute rather than the translated inner text. */
+:root[data-ui='cyberpunk'] select option {
+  background-color: #1c101a;
+  color: #f5eee8;
+}
+/* Chromium on Windows uses the raw `value` attribute (instead of inner text)
+   when rendering native select popups under color-scheme:dark. Resetting
+   color-scheme on the select itself forces Chromium to use its own styled
+   renderer (not the OS popup), which correctly shows translated inner text. */
+:root[data-ui='cyberpunk'] select {
+  color-scheme: light;
+}
+:root[data-ui='cyberpunk'] :is(input, textarea)::placeholder { color: var(--text-muted); }
+:root[data-ui='cyberpunk'] :is(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+:root[data-ui='cyberpunk'] :is(.amount, .balance, .summary-value, .sf-summary-value,
+  .sc-value, .stat-value, .pi-amount, .tx-amount, .transaction-amount) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-ui='cyberpunk'] th { color: var(--text-secondary); font-family: var(--font-mono); }
+:root[data-ui='cyberpunk'] :is(.card-title, .sf-card-title) {
+  display: inline-flex;
+  max-width: 100%;
+  color: #100b10;
+  background: var(--accent-yellow);
+  padding: 0.25rem 1.15rem 0.25rem 0.5rem;
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  font-family: 'Bahnschrift SemiCondensed', 'Arial Narrow', var(--font-family);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+}
+:root[data-ui='cyberpunk'] .sc-value:not(.sc-green):not(.sc-red),
+:root[data-ui='cyberpunk'] .sf-summary-value:not(.green):not(.red):not(.blue) {
+  color: var(--accent-yellow);
+}
+:root[data-ui='cyberpunk'] :is(.tab-item.active, .filter-btn.active, .view-btn.active) {
+  color: var(--accent-yellow);
+  border-color: var(--accent-yellow);
+}
+:root[data-ui='cyberpunk'] :is(.modal-content, .modal-panel, .dropdown-menu, .dropdown-panel) {
+  background: var(--bg-surface);
+  border-color: var(--accent-red);
+  overscroll-behavior: contain;
+}
+:root[data-ui='cyberpunk'] :is(input[type='checkbox'], input[type='radio']) { accent-color: var(--accent-yellow); }
+:root[data-ui='cyberpunk'] :is(.sf-progress-fill, .progress-fill, .gi-bar-fill, .bp-bar-fill) {
+  background-image: repeating-linear-gradient(90deg, transparent 0 6px, var(--bg-card) 6px 8px);
+  border-radius: 0;
+}
+
+@media (hover: hover) {
+  :root[data-ui='cyberpunk'] :is(.btn-primary, .sf-btn-primary, .btn-submit, .submit-btn):hover:not(:disabled) {
+    background: #fff86b;
+    color: #080b12;
+  }
+  :root[data-ui='cyberpunk'] .nav-link:not(.active):hover { background: #281b27; color: var(--accent-cyan); }
+}
+@media (forced-colors: active) {
+  :root[data-ui='cyberpunk'] :is(.card, .sf-card, .choice) { border: 1px solid CanvasText; }
+  :root[data-ui='cyberpunk'] .nav-link.active { border: 2px solid Highlight; }
+}
+
+:root[data-ui='cyberpunk'] :is(.dp-day.selected, .unread-badge, .notification-badge, .user-avatar, .step-dot.active, .cal-cell.today .cal-day-num) { color: #080b12; }
+
+@media (max-width: 720px) {
+  :root[data-ui='cyberpunk'] body::before { inset: 2px; border-color: rgb(111 244 237 / 10%); }
+}
