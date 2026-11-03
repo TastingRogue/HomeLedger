@@ -287,6 +287,7 @@ export const en: Record<TranslationKey, string> = {
   'transactions.view_table': 'Table View',
   'transactions.view_gallery': 'Gallery View',
   'transactions.filter_account': 'Account',
+  'transactions.filters': 'Filters',
   'transactions.filter_category': 'Category',
   'transactions.filter_from': 'From',
   'transactions.filter_to': 'To',

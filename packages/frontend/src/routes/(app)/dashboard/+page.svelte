@@ -595,7 +595,7 @@
 {#if loading}
   <div class="loading"><div class="spinner"></div><p>{$t('common.loading')}</p></div>
 {:else}
-<div class="panel">
+<div class="panel dashboard-layout">
   <!-- HEADER -->
   <header class="panel-header">
     <div class="header-left">

@@ -286,6 +286,7 @@ export const es = {
   'transactions.view_table': 'Vista Tabla',
   'transactions.view_gallery': 'Vista Galería',
   'transactions.filter_account': 'Cuenta',
+  'transactions.filters': 'Filtros',
   'transactions.filter_category': 'Categoría',
   'transactions.filter_from': 'Desde',
   'transactions.filter_to': 'Hasta',

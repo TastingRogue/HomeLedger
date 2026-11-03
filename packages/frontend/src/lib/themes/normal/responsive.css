@@ -1,0 +1,259 @@
+/* Responsive behavior belongs to Normal; shared routes also power other themes. */
+:root[data-ui='normal'] .dashboard-layout {
+  container: normal-dashboard / inline-size;
+}
+
+:root[data-ui='normal'] .dashboard-layout .main-grid {
+  grid-template-columns: minmax(260px, 280px) minmax(0, 1fr);
+  align-items: start;
+}
+
+:root[data-ui='normal'] .dashboard-layout .col-main {
+  container: normal-dashboard-main / inline-size;
+}
+
+:root[data-ui='normal'] .dashboard-layout .chart-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr));
+}
+
+:root[data-ui='normal'] .dashboard-layout .summary-row {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+:root[data-ui='normal'] .dashboard-layout :is(.summary-card, .card-header, .chart-totals) {
+  min-width: 0;
+}
+
+:root[data-ui='normal'] .dashboard-layout .sc-value {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Decorative icons must not take width away from monetary values. */
+:root[data-ui='normal'] .dashboard-layout .summary-card {
+  position: relative;
+  display: block;
+}
+:root[data-ui='normal'] .dashboard-layout .sc-label {
+  padding-right: 32px;
+}
+:root[data-ui='normal'] .dashboard-layout :is(.sc-icon, .pct-ring-circle) {
+  position: absolute;
+  right: 0.65rem;
+  top: 0.65rem;
+  width: 28px;
+  height: 28px;
+}
+
+:root[data-ui='normal'] .dashboard-layout .card-header {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+:root[data-ui='normal'] .dashboard-layout .chart-totals {
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+}
+
+:root[data-ui='normal'] .dashboard-layout .donut-card {
+  container: normal-donut / inline-size;
+}
+
+:root[data-ui='normal'] .dashboard-layout .cat-row {
+  grid-template-columns: 12px minmax(0, 1fr) auto auto;
+}
+
+:root[data-ui='normal'] .dashboard-layout .col-left {
+  display: flex;
+}
+
+:root[data-ui='normal'] .dashboard-layout .quick-actions {
+  margin-top: 0.65rem;
+}
+
+:root[data-ui='normal'] .dashboard-layout .qa-btn {
+  min-height: 40px;
+}
+
+:root[data-ui='normal'] .dashboard-layout .alert-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@container normal-dashboard-main (max-width: 900px) {
+  :root[data-ui='normal'] .dashboard-layout .bottom-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container normal-donut (max-width: 460px) {
+  :root[data-ui='normal'] .dashboard-layout .donut-layout {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  :root[data-ui='normal'] .dashboard-layout .donut-chart-area {
+    width: min(100%, 180px);
+  }
+  :root[data-ui='normal'] .dashboard-layout .cat-breakdown {
+    width: 100%;
+  }
+}
+
+@container normal-dashboard (max-width: 980px) {
+  :root[data-ui='normal'] .dashboard-layout .main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :root[data-ui='normal'] .dashboard-layout .col-left {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  :root[data-ui='normal'] .dashboard-layout .col-left > :first-child {
+    grid-column: 1 / -1;
+  }
+  :root[data-ui='normal'] .dashboard-layout .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+@container normal-dashboard (max-width: 620px) {
+  :root[data-ui='normal'] .dashboard-layout .summary-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card {
+    padding: 0.8rem;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card:first-child {
+    grid-column: 1 / -1;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card:not(:first-child) .sc-icon {
+    display: none;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card:not(:first-child) .sc-label {
+    padding-right: 0;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card:last-child .sc-label {
+    padding-right: 32px;
+  }
+  :root[data-ui='normal'] .dashboard-layout .summary-card:not(:first-child) .sc-value {
+    font-size: clamp(0.95rem, 4.5cqi, 1.2rem);
+  }
+  :root[data-ui='normal'] .dashboard-layout .pct-ring-circle {
+    width: 32px;
+    height: 32px;
+  }
+  :root[data-ui='normal'] .dashboard-layout .col-left {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :root[data-ui='normal'] .dashboard-layout .quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  :root[data-ui='normal'] .dashboard-layout .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  :root[data-ui='normal'] .dashboard-layout .header-right {
+    flex-wrap: wrap;
+  }
+}
+
+@container normal-dashboard-main (max-width: 540px) {
+  :root[data-ui='normal'] .dashboard-layout .bottom-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Scroll stays inside the overlay rather than propagating to the page. */
+:root[data-ui='normal'] :is(.modal, .modal-content, .dropdown-menu) {
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 768px) {
+  :root[data-ui='normal'] .transactions-page .filters-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.65rem;
+    width: 100%;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+  }
+  :root[data-ui='normal'] .transactions-page .filters-toggle.has-filters {
+    border-color: var(--accent-purple);
+  }
+  :root[data-ui='normal'] .transactions-page .filter-chevron { margin-left: auto; }
+  :root[data-ui='normal'] .transactions-page .filter-count {
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--radius-full);
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+    font-weight: 600;
+  }
+  :root[data-ui='normal'] .transactions-page .filters-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    padding: 0.75rem;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+  }
+  :root[data-ui='normal'] .transactions-page .filters-bar.filters-collapsed { display: none; }
+  :root[data-ui='normal'] .transactions-page .filters-bar .filter-item { width: 100%; }
+  :root[data-ui='normal'] .transactions-page .filters-bar :is(.dropdown-trigger, .dp-trigger) {
+    min-height: 44px;
+  }
+  :root[data-ui='normal'] .transactions-page .filters-bar :is(.btn-filter, .btn-clear, .btn-export) {
+    width: 100%;
+    min-height: 44px;
+  }
+  :root[data-ui='normal'] .transactions-page .filters-bar .btn-export { grid-column: 1 / -1; }
+
+  :root[data-ui='normal'] :is(.modal, .modal-content) {
+    max-height: calc(100dvh - 2rem);
+  }
+  :root[data-ui='normal'] :is(.modal, .modal-content) :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+    min-height: 44px;
+    font-size: 16px;
+    min-width: 0;
+  }
+  :root[data-ui='normal'] :is(.modal, .modal-content) :is(.form-buttons, .modal-actions, .modal-footer, .form-actions) {
+    position: sticky;
+    bottom: 0;
+    padding-block: 0.75rem;
+    background: var(--bg-surface);
+    z-index: 2;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  :root[data-ui='normal'] :is(.modal, .modal-content) :is(.form-buttons, .modal-actions, .modal-footer, .form-actions) button {
+    min-height: 44px;
+    padding-inline: 1rem;
+    flex: 1 1 auto;
+  }
+  :root[data-ui='normal'] :is(.modal, .modal-content) :is(.close-btn, .modal-close) {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+  }
+  :root[data-ui='normal'] .dashboard-layout :is(.qa-btn, .payment-item, .alert-item) {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 359px) {
+  :root[data-ui='normal'] .transactions-page .filters-bar { grid-template-columns: minmax(0, 1fr); }
+}
