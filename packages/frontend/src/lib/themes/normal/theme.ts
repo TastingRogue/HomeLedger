@@ -1,5 +1,6 @@
 import type { ThemeDefinition } from '../types';
 import './styles.css';
+import './responsive.css';
 
 export default {
   id: 'normal',

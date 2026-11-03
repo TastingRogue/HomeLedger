@@ -43,6 +43,7 @@
   let filterStartDate = $state('');
   let filterEndDate = $state('');
   let filtersExpanded = $state(false);
+  let selectedFilterCount = $derived([filterAccountId, filterCategoryId, filterStartDate, filterEndDate].filter(Boolean).length);
 
   // Dropdown options
   let accountOptions = $derived([{ value: '', label: $t('common.all') }, ...accounts.map(a => ({ value: String(a.id), label: a.name }))]);
@@ -552,7 +553,7 @@
 <svelte:head><title>{$t('transactions.title')} | HomeLedger</title></svelte:head>
 <svelte:window onkeydown={handleSplitKeydown} />
 
-<div class="page">
+<div class="page transactions-page">
   <header class="page-header">
     <div>
       <h1>{$t('transactions.title')}</h1>
@@ -588,8 +589,15 @@
     </div>
   {/if}
 
-  <!-- Filters - Always Visible -->
-  <div class="filters-bar">
+  {#if !composedView}
+    <button class="filters-toggle" class:has-filters={selectedFilterCount > 0} aria-expanded={filtersExpanded} aria-controls="transaction-filters" onclick={() => (filtersExpanded = !filtersExpanded)}>
+      <Icon name="filter" size={16} />
+      {$t('transactions.filters')}
+      {#if selectedFilterCount > 0}<span class="filter-count">{selectedFilterCount}</span>{/if}
+      <span class="filter-chevron" aria-hidden="true">{filtersExpanded ? '−' : '+'}</span>
+    </button>
+  {/if}
+  <div id="transaction-filters" class="filters-bar" class:filters-collapsed={!filtersExpanded && !composedView}>
     <div class="filter-item">
       <span class="filter-label">{$t('transactions.filter_account')}</span>
       <Dropdown bind:value={filterAccountId} options={accountOptions} />
@@ -1113,6 +1121,7 @@
 {/if}
 
 <style>
+  .filters-toggle { display: none; }
   /* --- No Accounts Modal --- */
   .no-accounts-body { padding: 0.25rem 0 0.75rem; }
   .no-accounts-msg { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 0.75rem; }

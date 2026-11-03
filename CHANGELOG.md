@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-03
+
+### Added
+
+- **Cyberpunk 2077 theme**, selectable from Settings > Profile > Interface design,
+  with dedicated navigation, dashboards, charts, forms, dialogs and authentication
+  screens. Switching back to Normal preserves the light/dark preference.
+- **Extensible theme registry** with isolated styles, lazy workspace compositions,
+  shared application workflows, bundled fonts and a contributor guide.
+- **Quick Entry dialog** accessible throughout the app, with keyboard dismissal
+  and focus restoration.
+
+### Improved
+
+- **Normal theme responsiveness:** dashboard sections adapt to available content
+  width; mobile keeps quick actions, upcoming payments and alerts visible. Summary
+  cards are more compact and chart legends remain readable.
+- Mobile transaction filters can be collapsed without losing their selections.
+  Dialogs have larger touch controls, contained scrolling and accessible actions
+  in long forms.
+- Refreshed reports, account and transaction cards, receipt details, settings,
+  English/Spanish labels, documentation and screenshots of both themes.
+
+### Fixed
+
+- Account/card creation now accepts empty optional credit and alert fields while
+  retaining credit limits, statement dates, APR and minimum-payment controls.
+- Generic CSV imports recognize English/Spanish headers and correctly retain
+  row selection, including the first row.
+- Dashboard and calendar calculations traverse all transaction pages, use account
+  exchange rates and group by stored calendar dates at month boundaries.
+- Budget summaries include tags and rollover balances; dashboard alerts use real
+  unread alerts. Calendar links open the complete transaction/subscription forms.
+- Rapid calendar/receipt selection ignores stale responses; receipt previews
+  release their temporary resources.
+- Home Assistant API-key authentication and transaction date handling.
+
+### Security and deployment
+
+- Private API responses are excluded from service-worker caches and use
+  `Cache-Control: no-store`.
+- Docker installs use the lockfile and no longer embed fallback credentials.
+  **Set a strong `JWT_SECRET` at runtime** before starting the updated image;
+  Compose requires this variable. Existing volumes should be preserved on upgrade.
+- Added regression coverage and production-theme verification in CI.
+
 ## [1.1.3] - 2026-10-29
 
 ### Fixed
@@ -282,5 +328,6 @@ HACS integration.
 - ESLint reports pre-existing style issues in some backend source files. Linting
   is not yet enforced in CI and is planned to be cleaned up in a follow-up.
 
+[1.2.0]: https://github.com/TastingRogue/HomeLedger/releases/tag/v1.2.0
 [1.0.0]: https://github.com/TastingRogue/HomeLedger/releases/tag/v1.0.0
 [0.1.0]: https://github.com/TastingRogue/HomeLedger/releases/tag/v0.1.0
