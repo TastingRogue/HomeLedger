@@ -69,11 +69,16 @@ jobs:
           export ADMIN_EMAIL="audit@example.test"
           export ADMIN_PASSWORD="CI-only-disposable-2026!"
           export PORT=3099 HOST=127.0.0.1 NODE_ENV=production
+          cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations
           node packages/backend/dist/server.js > /tmp/homeledger-runtime.log 2>&1 &
           app_pid=$!
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3099/api/v1/health >/dev/null; then break; fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              cat /tmp/homeledger-runtime.log
+              exit 1
+            fi
             sleep 1
           done
           AUDIT_DISPOSABLE=true AUDIT_BASE_URL=http://127.0.0.1:3099 \
