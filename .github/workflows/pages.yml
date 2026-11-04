@@ -8,6 +8,7 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
+      - 'scripts/check-pages.mjs'
   workflow_dispatch:
 
 # Grant the token the permissions Pages deployment needs.
@@ -34,6 +35,9 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
+
+      - name: Verify local links and images
+        run: node scripts/check-pages.mjs
 
       - name: Upload docs/ as the Pages artifact
         uses: actions/upload-pages-artifact@v5

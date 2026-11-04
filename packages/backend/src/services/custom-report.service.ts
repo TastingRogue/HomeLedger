@@ -55,7 +55,7 @@ function ensureTable(): void {
 }
 
 function hydrate(row: Record<string, unknown>): CustomReport {
-  let config: Record<string, unknown> = {};
+  let config: Record<string, unknown>;
   try { config = JSON.parse(String(row.config ?? '{}')); } catch { config = {}; }
   return {
     id: Number(row.id),

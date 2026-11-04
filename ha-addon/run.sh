@@ -18,6 +18,7 @@ if [ -f "$CONFIG_PATH" ]; then
   export BACKUP_ENABLED=$(jq -r '.BACKUP_ENABLED // true' "$CONFIG_PATH")
   export BACKUP_RETENTION=$(jq -r '.BACKUP_RETENTION // 7' "$CONFIG_PATH")
   export REGISTRATION_MODE=$(jq -r '.REGISTRATION_MODE // "first_user_only"' "$CONFIG_PATH")
+  export WEBHOOK_ALLOWED_HOSTS=$(jq -r '.WEBHOOK_ALLOWED_HOSTS // ""' "$CONFIG_PATH")
   export JWT_SECRET=$(jq -r '.JWT_SECRET // ""' "$CONFIG_PATH")
   export ADMIN_EMAIL=$(jq -r '.ADMIN_EMAIL // "admin@homeledger.local"' "$CONFIG_PATH")
   export ADMIN_PASSWORD=$(jq -r '.ADMIN_PASSWORD // ""' "$CONFIG_PATH")
@@ -58,4 +59,5 @@ echo "Directorio de datos: $DATA_DIR"
 
 # Start the Node.js application
 echo "Iniciando servidor HomeLedger..."
-exec node /app/packages/backend/dist/server.js
+chown -R node:node /data
+exec su-exec node node /app/packages/backend/dist/server.js

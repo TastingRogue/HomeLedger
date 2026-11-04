@@ -19,7 +19,10 @@ try {
   assert.equal(response.status, 200);
   const html = await response.text();
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(match => match[1]);
-  const script = scripts.find(value => value.includes('sf_ui_skin'));
+  const externalBootstrap = await fetch(`${base}/appearance.js`);
+  assert.equal(externalBootstrap.status, 200);
+  const script = scripts.find(value => value.includes('sf_ui_skin')) ?? await externalBootstrap.text();
+  assert.match(response.headers.get('content-security-policy') ?? '', /script-src/);
   assert.ok(script, 'Missing production appearance bootstrap');
 
   for (const [id, mode, expectedId, expectedScheme, expectedColor] of [

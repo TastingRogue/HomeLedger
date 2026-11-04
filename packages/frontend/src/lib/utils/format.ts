@@ -13,13 +13,12 @@ import { daysRemainingLabel, type Translate } from '../i18n/labels';
  */
 export function formatCurrency(amount: number): string {
   // Dynamic currency from preferences (reads synchronously from localStorage)
-  let currency = 'MXN';
   let symbol = 'MX$';
   if (typeof window !== 'undefined') {
     try {
       const prefs = JSON.parse(localStorage.getItem('sf_preferences') ?? '{}');
       if (prefs.currency) {
-        currency = prefs.currency;
+        const currency = prefs.currency;
         const symbols: Record<string, string> = { MXN: 'MX$', USD: '$', EUR: '€', GBP: '£', COP: 'COL$', ARS: 'AR$', CLP: 'CL$', PEN: 'S/', BRL: 'R$' };
         symbol = symbols[currency] ?? '$';
       }

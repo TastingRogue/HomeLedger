@@ -109,7 +109,7 @@
     /* ── Hero screenshot ── */
     .hero-shot { max-width: 1000px; margin: 2.25rem auto 0; padding: 0 1.25rem; }
     .hero-shot img {
-      width: 100%; border-radius: 14px; border: 1px solid var(--border);
+      width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--border);
       box-shadow: 0 24px 60px rgba(0,0,0,0.5); display: block;
     }
 
@@ -135,7 +135,7 @@
     figure { margin: 0; }
     figure a { display: block; }
     figure img {
-      width: 100%; border-radius: 14px; border: 1px solid var(--border); display: block;
+      width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--border); display: block;
       box-shadow: 0 16px 44px rgba(0,0,0,0.45);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
@@ -254,7 +254,7 @@
     </div>
 
     <div class="hero-shot">
-      <img src="screenshots/dashboard.png" alt="HomeLedger self-hosted personal finance dashboard showing net worth, income vs expenses, accounts, budgets and savings goals" loading="lazy" />
+      <img src="screenshots/dashboard.jpg" alt="HomeLedger self-hosted personal finance dashboard showing net worth, income vs expenses, accounts, budgets and savings goals" loading="lazy" width="1920" height="1250">
     </div>
   </header>
 
@@ -298,33 +298,34 @@
       <h2>See it in action</h2>
       <p class="section-sub">All screenshots use generated demo data — no real financial information is shown.</p>
       <div class="gallery">
+        <figure><a href="screenshots/dashboard-cyberpunk.jpg" target="_blank" rel="noopener"><img src="screenshots/dashboard-cyberpunk.jpg" alt="Cyberpunk 2077 theme dashboard" loading="lazy" width="1920" height="1250"></a><figcaption>Cyberpunk 2077 — switch themes in Settings; keep your light/dark preference in Normal</figcaption></figure>
         <figure>
-          <a href="screenshots/transactions.png" target="_blank" rel="noopener" aria-label="Open transactions screenshot full size">
-            <img src="screenshots/transactions.png" alt="HomeLedger expense tracker transactions view grouped by month" loading="lazy" />
+          <a href="screenshots/transactions-normal.jpg" target="_blank" rel="noopener" aria-label="Open transactions screenshot full size">
+            <img src="screenshots/transactions-normal.jpg" alt="HomeLedger expense tracker transactions view grouped by month" loading="lazy" width="1440" height="874">
           </a>
           <figcaption>Transactions — income and expenses grouped by month</figcaption>
         </figure>
         <figure>
-          <a href="screenshots/budgets.png" target="_blank" rel="noopener" aria-label="Open budgets screenshot full size">
-            <img src="screenshots/budgets.png" alt="HomeLedger budgeting app with per-category budget progress bars" loading="lazy" />
+          <a href="screenshots/budgets-normal.jpg" target="_blank" rel="noopener" aria-label="Open budgets screenshot full size">
+            <img src="screenshots/budgets-normal.jpg" alt="HomeLedger budgeting app with per-category budget progress bars" loading="lazy" width="1440" height="525">
           </a>
           <figcaption>Budgets — allocation vs. spent, per category</figcaption>
         </figure>
         <figure>
-          <a href="screenshots/goals.png" target="_blank" rel="noopener" aria-label="Open goals screenshot full size">
-            <img src="screenshots/goals.png" alt="HomeLedger savings goals with progress bars and fund/withdraw" loading="lazy" />
+          <a href="screenshots/goals-normal.jpg" target="_blank" rel="noopener" aria-label="Open goals screenshot full size">
+            <img src="screenshots/goals-normal.jpg" alt="HomeLedger savings goals with progress bars and fund/withdraw" loading="lazy" width="1440" height="720">
           </a>
           <figcaption>Goals — turn objectives into visible progress</figcaption>
         </figure>
         <figure>
-          <a href="screenshots/receipts.png" target="_blank" rel="noopener" aria-label="Open receipts screenshot full size">
-            <img src="screenshots/receipts.png" alt="HomeLedger receipt OCR analysis linked to a transaction" loading="lazy" />
+          <a href="screenshots/receipts-normal.jpg" target="_blank" rel="noopener" aria-label="Open receipts screenshot full size">
+            <img src="screenshots/receipts-normal.jpg" alt="HomeLedger receipt OCR analysis linked to a transaction" loading="lazy" width="1440" height="900">
           </a>
           <figcaption>Receipts — OCR analysis linked to transactions</figcaption>
         </figure>
         <figure>
-          <a href="screenshots/subscriptions.png" target="_blank" rel="noopener" aria-label="Open subscriptions screenshot full size">
-            <img src="screenshots/subscriptions.png" alt="HomeLedger subscriptions with recurring payments and calendar" loading="lazy" />
+          <a href="screenshots/subscriptions-normal.jpg" target="_blank" rel="noopener" aria-label="Open subscriptions screenshot full size">
+            <img src="screenshots/subscriptions-normal.jpg" alt="HomeLedger subscriptions with recurring payments and calendar" loading="lazy" width="1440" height="587">
           </a>
           <figcaption>Subscriptions — recurring payments with a calendar</figcaption>
         </figure>
@@ -415,7 +416,7 @@ docker compose up -d</code></pre>
           <!-- From source -->
           <div class="tab-panel" id="panel-source">
             <h3>Run from source (Node)</h3>
-            <p class="note">For local development. Requires Node.js ≥ 20 and npm ≥ 9.</p>
+            <p class="note">For local development. Requires Node.js ≥ 22.13 and npm ≥ 9.</p>
             <pre><code>git clone https://github.com/TastingRogue/HomeLedger.git
 cd HomeLedger
 npm install

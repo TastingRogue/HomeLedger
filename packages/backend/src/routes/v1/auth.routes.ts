@@ -3,6 +3,7 @@ import { AuthService, AuthError } from '../../services/auth.service.js';
 import { registerSchema, loginSchema, refreshTokenSchema, totpCodeSchema } from '../../validators/auth.schema.js';
 import { authRateLimitPlugin } from '../../middleware/rate-limit.middleware.js';
 import type { TokenPayload } from '../../services/auth.service.js';
+import { sessionResponse, resolveRefreshToken, clearSessionCookie } from '../../utils/browser-session.js';
 
 /**
  * Auth API routes.
@@ -32,7 +33,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.status(201).send({
         success: true,
-        data: result,
+        data: sessionResponse(request, reply, result),
       });
     } catch (error) {
       if (error instanceof AuthError) {
@@ -66,7 +67,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       return reply.status(200).send({
         success: true,
-        data: result,
+        data: sessionResponse(request, reply, result),
       });
     } catch (error) {
       if (error instanceof AuthError) {
@@ -90,7 +91,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const parsed = refreshTokenSchema.parse(request.body);
 
     try {
-      const result = await AuthService.refresh(parsed.refreshToken);
+      const result = await AuthService.refresh(resolveRefreshToken(request, parsed.refreshToken));
 
       return reply.status(200).send({
         success: true,
@@ -119,9 +120,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const refreshToken = body?.refreshToken as string | undefined;
 
     if (refreshToken) {
-      await AuthService.logout(refreshToken);
+      await AuthService.logout(resolveRefreshToken(request, refreshToken));
     }
 
+    clearSessionCookie(request, reply);
     return reply.status(200).send({
       success: true,
       data: { message: 'Sesión cerrada exitosamente' },

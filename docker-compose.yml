@@ -21,6 +21,8 @@ services:
       HOST: 0.0.0.0
       DATA_DIR: /data
       JWT_SECRET: ${JWT_SECRET:?Set a strong JWT_SECRET in .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      WEBHOOK_ALLOWED_HOSTS: ${WEBHOOK_ALLOWED_HOSTS:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@homeledger.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       TZ: ${TZ:-America/Mexico_City}
@@ -57,6 +59,7 @@ services:
     environment:
       NODE_ENV: development
       VITE_API_PROXY_TARGET: http://backend:3000
+      VITE_CACHE_DIR: /tmp/homeledger-vite
     depends_on:
       backend:
         condition: service_healthy

@@ -23,8 +23,11 @@ function createAuthStore() {
 
 	// Hydrate from localStorage on client
 	if (browser) {
-		const token = localStorage.getItem('sf_access_token');
-		const refresh = localStorage.getItem('sf_refresh_token');
+    // Retire persistent credentials from installations predating session cookies.
+    localStorage.removeItem('sf_access_token');
+    localStorage.removeItem('sf_refresh_token');
+		const token = sessionStorage.getItem('sf_access_token');
+		const refresh = sessionStorage.getItem('sf_refresh_token');
 		const userJson = localStorage.getItem('sf_user');
 		if (token) initialState.accessToken = token;
 		if (refresh) initialState.refreshToken = refresh;
@@ -44,8 +47,8 @@ function createAuthStore() {
 
 		login(user: User, accessToken: string, refreshToken: string) {
 			if (browser) {
-				localStorage.setItem('sf_access_token', accessToken);
-				localStorage.setItem('sf_refresh_token', refreshToken);
+				sessionStorage.setItem('sf_access_token', accessToken);
+				sessionStorage.setItem('sf_refresh_token', refreshToken);
 				localStorage.setItem('sf_user', JSON.stringify(user));
 			}
 			set({ user, accessToken, refreshToken });
@@ -60,8 +63,8 @@ function createAuthStore() {
 
 		logout() {
 			if (browser) {
-				localStorage.removeItem('sf_access_token');
-				localStorage.removeItem('sf_refresh_token');
+				sessionStorage.removeItem('sf_access_token');
+				sessionStorage.removeItem('sf_refresh_token');
 				localStorage.removeItem('sf_user');
 			}
 			set({ user: null, accessToken: null, refreshToken: null });

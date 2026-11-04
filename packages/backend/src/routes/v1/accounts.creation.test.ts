@@ -47,4 +47,23 @@ describe('account creation with optional credit fields', () => {
       expect(createAccountSchema.safeParse({...base, ...detail}).success).toBe(false);
     }
   });
+
+  it('does not expose or update an account owned by another user', async () => {
+    const db = connection.getDb();
+    const now = new Date().toISOString();
+    db.insert(schema.users).values({ id: 2, email: 'other@example.test', passwordHash: 'test', name: 'Other', role: 'user', createdAt: now, updatedAt: now }).run();
+    const app = Fastify();
+    app.addHook('onRequest', async request => { Object.assign(request, { user: { userId: request.headers['x-test-user'] === '2' ? 2 : 1, role: 'user' } }); });
+    await app.register(accountRoutes, { prefix: '/accounts' });
+    try {
+      const created = await app.inject({ method: 'POST', url: '/accounts/', payload: { name: 'Private account', type: 'Débito', initialBalance: 100 } });
+      const id = created.json().data.id;
+      const list = await app.inject({ method: 'GET', url: '/accounts/', headers: { 'x-test-user': '2' } });
+      expect(list.json().data).toEqual([]);
+      const detail = await app.inject({ method: 'GET', url: `/accounts/${id}`, headers: { 'x-test-user': '2' } });
+      expect(detail.statusCode).toBe(404);
+      const update = await app.inject({ method: 'PUT', url: `/accounts/${id}`, headers: { 'x-test-user': '2' }, payload: { name: 'Changed' } });
+      expect(update.statusCode).toBe(404);
+    } finally { await app.close(); }
+  });
 });

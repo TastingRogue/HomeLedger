@@ -11,7 +11,7 @@ export const userProfile = writable<UserProfile | null>(null);
 
 export async function loadUserProfile() {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('sf_access_token') : null;
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('sf_access_token') : null;
     if (!token) return;
 
     const res = await fetch('/api/v1/auth/me', {

@@ -64,7 +64,7 @@ async function callApi(
     remoteAddress: ctx.ip,
     ...(payload ? { payload } : {}),
   });
-  let body: { success?: boolean; data?: unknown; error?: { code?: string; message?: string } } | null = null;
+  let body: { success?: boolean; data?: unknown; error?: { code?: string; message?: string } } | null;
   try {
     body = response.json();
   } catch {

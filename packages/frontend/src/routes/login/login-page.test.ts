@@ -26,7 +26,7 @@ vi.mock('$lib/api', async (importOriginal) => {
 
 describe('login page', () => {
   beforeEach(() => {
-    localStorage.clear();
+    localStorage.clear(); sessionStorage.clear();
     goto.mockReset();
     login.mockReset();
     getMe.mockReset();
@@ -70,8 +70,8 @@ describe('login page', () => {
 
     await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'ada@example.com', password: 'secret' }));
     await waitFor(() => expect(goto).toHaveBeenCalledWith('/dashboard'));
-    expect(localStorage.getItem('sf_access_token')).toBe('access-1');
-    expect(localStorage.getItem('sf_refresh_token')).toBe('refresh-1');
+    expect(sessionStorage.getItem('sf_access_token')).toBe('access-1');
+    expect(sessionStorage.getItem('sf_refresh_token')).toBe('refresh-1');
   });
 
   it('trims whitespace around the email before submitting', async () => {
@@ -97,7 +97,7 @@ describe('login page', () => {
     await waitFor(() => expect(login).toHaveBeenCalled());
     expect(goto).not.toHaveBeenCalled();
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(localStorage.getItem('sf_access_token')).toBeNull();
+    expect(sessionStorage.getItem('sf_access_token')).toBeNull();
   });
 
   it('shows a connection error when the API throws a non-ApiError', async () => {

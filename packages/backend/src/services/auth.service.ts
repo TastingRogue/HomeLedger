@@ -275,7 +275,7 @@ export class AuthService {
 
     // Fall back to one-time backup codes.
     if (backupCodesJson) {
-      let hashes: string[] = [];
+      let hashes: string[];
       try {
         hashes = JSON.parse(backupCodesJson) as string[];
       } catch {

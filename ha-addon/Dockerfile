@@ -3,6 +3,8 @@
 
 ARG BUILD_FROM=docker.io/irving1flores/homeledger:latest
 FROM ${BUILD_FROM}
+USER root
+RUN apk add --no-cache bash jq su-exec
 
 # Add labels for HA Add-on
 LABEL \
@@ -14,7 +16,7 @@ LABEL \
 
 # Copy startup script
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+RUN sed -i 's/\r$//' /run.sh && chmod +x /run.sh
 
 # Data directory for HA persistence
 ENV DATA_DIR=/data
