@@ -6,7 +6,7 @@
   const ThemeWorkspace = $derived($activeTheme.workspace);
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { hasToken, logout } from '$lib/api';
+  import { restoreSession, logout } from '$lib/api';
   import '$lib/styles/shared.css';
   import Icon from '$lib/components/Icon.svelte';
   import Logo from '$lib/components/Logo.svelte';
@@ -26,13 +26,17 @@
   let locked = $state(false);
 
   onMount(() => {
-    if (hasToken()) {
-      locked = isLockEnabled();
-      ready = true;
-      loadUserProfile();
-    } else {
-      window.location.href = '/login';
-    }
+    let active = true;
+    void (async () => {
+      const authenticated = await restoreSession();
+      if (!active) return;
+      if (authenticated) {
+        locked = isLockEnabled();
+        ready = true;
+        void loadUserProfile();
+      } else window.location.href = '/login';
+    })();
+    return () => { active = false; };
   });
 
   onMount(() => { const update = () => quickRevision++; window.addEventListener('homeledger:quick-entry-saved', update); return () => window.removeEventListener('homeledger:quick-entry-saved', update); });

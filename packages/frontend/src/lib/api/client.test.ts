@@ -13,6 +13,7 @@ import {
   clearTokens,
   hasToken,
   apiRequest,
+  restoreSession,
 } from './client';
 import { setLocale } from '../stores/preferences';
 
@@ -43,6 +44,17 @@ describe('shared data invalidation', () => {
 describe('client token management', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('restores a fresh tab through the cookie without storing a refresh secret', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, data: { accessToken: 'restored' } }))));
+    try {
+      expect(await restoreSession()).toBe(true);
+      expect(getAccessToken()).toBe('restored');
+      expect(getRefreshToken()).toBe('cookie');
+      expect(localStorage.getItem('sf_refresh_token')).toBeNull();
+    } finally { vi.unstubAllGlobals(); }
   });
 
   it('reports no token on a fresh store', () => {

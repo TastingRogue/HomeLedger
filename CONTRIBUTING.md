@@ -10,7 +10,7 @@ issue.
 
 ## Prerequisites
 
-- **Node.js ≥ 20** (Docker images build on Node 22)
+- **Node.js ≥ 22.13** (Docker images build on Node 22)
 - **npm ≥ 9**
 
 ## Setup

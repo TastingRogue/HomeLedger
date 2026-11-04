@@ -32,7 +32,7 @@ jobs:
         # is present. The version is pinned to match the lockfile's rollup.
         run: |
           npm ci
-          npm install --no-save @rollup/rollup-linux-x64-gnu@4.62.5
+          npm install --no-save @rollup/rollup-linux-x64-gnu@4.67.4
 
       - name: Build shared package
         run: npm run build -w packages/shared
@@ -54,3 +54,28 @@ jobs:
 
       - name: Verify production themes
         run: node scripts/check-theme-build.mjs
+
+      - name: Verify Pages resources
+        run: node scripts/check-pages.mjs
+
+      - name: Check production dependencies
+        run: npm audit --omit=dev
+
+      - name: Verify isolated runtime workflows
+        shell: bash
+        run: |
+          export DATA_DIR="$(mktemp -d)"
+          export JWT_SECRET="$(openssl rand -hex 32)"
+          export ADMIN_EMAIL="audit@example.test"
+          export ADMIN_PASSWORD="CI-only-disposable-2026!"
+          export PORT=3099 HOST=127.0.0.1 NODE_ENV=production
+          node packages/backend/dist/server.js > /tmp/homeledger-runtime.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3099/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          AUDIT_DISPOSABLE=true AUDIT_BASE_URL=http://127.0.0.1:3099 \
+            AUDIT_EMAIL="$ADMIN_EMAIL" AUDIT_PASSWORD="$ADMIN_PASSWORD" \
+            node scripts/check-runtime.mjs

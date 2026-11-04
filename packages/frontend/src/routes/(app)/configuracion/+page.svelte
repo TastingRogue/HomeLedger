@@ -350,7 +350,7 @@
     try {
       await apiPost('/auth/revoke-all-sessions', {});
       revokeMsg = $t('settings.sessions_closed');
-      setTimeout(() => { localStorage.removeItem('sf_access_token'); localStorage.removeItem('sf_refresh_token'); window.location.href = '/login'; }, 2000);
+      setTimeout(() => { sessionStorage.removeItem('sf_access_token'); sessionStorage.removeItem('sf_refresh_token'); window.location.href = '/login'; }, 2000);
     } catch { revokeMsg = $t('settings.sessions_error'); }
     finally { revokingAll = false; }
   }
@@ -428,8 +428,8 @@
     try {
       await revokeSession(id);
       if (current) {
-        localStorage.removeItem('sf_access_token');
-        localStorage.removeItem('sf_refresh_token');
+        sessionStorage.removeItem('sf_access_token');
+        sessionStorage.removeItem('sf_refresh_token');
         window.location.href = '/login';
         return;
       }

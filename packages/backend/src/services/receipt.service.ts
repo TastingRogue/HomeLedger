@@ -578,7 +578,9 @@ async function ocrImage(filePath: string): Promise<string> {
   // the stacked line layout of receipts/invoices. Fall back to the literal '4'.
   const psmSingleColumn = mod.default?.PSM?.SINGLE_COLUMN ?? mod.PSM?.SINGLE_COLUMN ?? '4';
 
-  const worker = await createWorker('spa+eng');
+  const cachePath = path.join(os.tmpdir(), 'homeledger-ocr');
+  fs.mkdirSync(cachePath, { recursive: true });
+  const worker = await createWorker('spa+eng', undefined, { cachePath });
   try {
     await worker.setParameters({ tessedit_pageseg_mode: psmSingleColumn as never });
     // Prefer the preprocessed buffer; fall back to the raw file path if sharp

@@ -509,7 +509,7 @@ utilization is high, using the binary sensors as automation triggers.
 
 ## Development
 
-Prefer to run from source (Node) instead of Docker? You'll need **Node.js ≥ 20**
+Prefer to run from source (Node) instead of Docker? You'll need **Node.js ≥ 22.13**
 (Docker images build on Node 22) and **npm ≥ 9**.
 
 ```bash

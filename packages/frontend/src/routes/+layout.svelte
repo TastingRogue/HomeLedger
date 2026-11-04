@@ -1,6 +1,5 @@
 <script lang="ts">
 	import '../app.css';
-	import { appearanceBootstrap } from '$lib/themes/bootstrap';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
 	import { theme } from '$lib/stores/theme';
@@ -23,7 +22,7 @@
 	<!-- The registered theme supplies the browser chrome color before first paint. -->
 	<!-- Apply persisted theme before paint to avoid a flash of the wrong palette -->
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-	{@html appearanceBootstrap}
+	<script src="/appearance.js"></script>
 </svelte:head>
 
 {@render children()}

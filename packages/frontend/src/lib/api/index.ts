@@ -9,6 +9,7 @@ export {
 	setTokens,
 	clearTokens,
 	hasToken,
+  restoreSession,
 	getAccessToken,
 	getRefreshToken,
 	ApiError

@@ -69,7 +69,13 @@ ENV REGISTRATION_MODE=first_user_only
 # registration, or by supplying ADMIN_EMAIL and ADMIN_PASSWORD explicitly.
 ENV ALLOW_INSECURE_DEFAULTS=false
 
-RUN mkdir -p /data
+RUN mkdir -p /data && chown node:node /data \
+  && chown -R node:node /app/packages/frontend/.svelte-kit
+
+USER node
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl --fail --silent http://127.0.0.1:${PORT}/api/v1/health || exit 1
 
 EXPOSE 3000
 

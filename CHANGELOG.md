@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Restore the six broken GitHub Pages screenshot references, showcase Cyberpunk,
+  and check local landing-page links and images before deployment.
+- Update vulnerable production dependencies and the test/lint toolchain.
+
+### Security
+
+- Browser refresh tokens use HttpOnly, SameSite cookies; access tokens are scoped
+  to the tab session. Old persistent browser credentials are removed on startup.
+  Existing non-browser token clients remain supported.
+- Cross-origin access is disabled unless CORS_ORIGIN lists allowed origins.
+  A Content Security Policy restricts scripts and embeds; the appearance bootstrap
+  is served as a same-origin script before paint.
+- Docker runs as an unprivileged user and includes a healthcheck. OCR and Vite
+  caches use writable directories. Existing volumes need ownership for UID 1000.
+- Webhooks block private/local destinations at connection-time DNS resolution,
+  reject embedded credentials and do not follow redirects.
+
 ## [1.2.0] - 2026-11-03
 
 ### Added

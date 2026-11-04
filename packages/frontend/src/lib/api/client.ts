@@ -32,24 +32,24 @@ export class ApiError extends Error {
 
 export function getAccessToken(): string | null {
   if (!browser) return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function getRefreshToken(): string | null {
   if (!browser) return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function setTokens(accessToken: string, refreshToken: string): void {
   if (!browser) return;
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  sessionStorage.setItem(TOKEN_KEY, accessToken);
+  sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 export function clearTokens(): void {
   if (!browser) return;
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem('sf_user');
 }
 
@@ -73,13 +73,13 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 async function tryRefreshToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+  if (!browser) return null;
+  const refreshToken = getRefreshToken() ?? 'cookie';
 
   try {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-HomeLedger-Session': 'browser' },
       body: JSON.stringify({ refreshToken }),
     });
 
@@ -91,13 +91,18 @@ async function tryRefreshToken(): Promise<string | null> {
     const body = await response.json();
     const newAccessToken = (body.data?.accessToken ?? body.accessToken) as string;
     if (newAccessToken && browser) {
-      localStorage.setItem(TOKEN_KEY, newAccessToken);
+      setTokens(newAccessToken, refreshToken);
     }
     return newAccessToken;
   } catch {
     clearTokens();
     return null;
   }
+}
+
+/** Restore a new tab from the HttpOnly cookie without exposing its secret. */
+export async function restoreSession(): Promise<boolean> {
+  return hasToken() || !!(await tryRefreshToken());
 }
 
 function redirectToLogin(): void {
@@ -140,6 +145,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const { method = 'GET', body, skipAuth = false } = options;
 
   const headers: Record<string, string> = {};
+  if (path.startsWith('/auth/')) headers['X-HomeLedger-Session'] = 'browser';
   if (!skipAuth) {
     const token = getAccessToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;

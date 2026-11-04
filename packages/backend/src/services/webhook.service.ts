@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { eq, and, desc } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { webhooks } from '../db/schema.js';
+import { isIP } from 'node:net';
+import { webhookDispatcher, isPublicAddress, isAllowedWebhookHost } from '../utils/webhook-dispatcher.js';
 
 /** Domain events a webhook can subscribe to (P4.13). */
 export const WEBHOOK_EVENTS = [
@@ -54,7 +56,10 @@ const DELIVERY_TIMEOUT_MS = 5000;
 function isValidHttpUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === 'http:' || u.protocol === 'https:';
+    const hostname = u.hostname.replace(/^\[|\]$/g, '');
+    return (u.protocol === 'http:' || u.protocol === 'https:') && !u.username && !u.password &&
+      (isAllowedWebhookHost(hostname) || (hostname !== 'localhost' && !hostname.endsWith('.localhost') &&
+      (!isIP(hostname) || isPublicAddress(hostname))));
   } catch {
     return false;
   }
@@ -257,12 +262,16 @@ export class WebhookService {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
     try {
-      const res = await fetch(row.url, {
+      if (!isValidHttpUrl(row.url)) throw new Error('Blocked webhook destination');
+      const options = {
         method: 'POST',
         headers,
         body,
         signal: controller.signal,
-      });
+        redirect: 'error' as const,
+        dispatcher: webhookDispatcher,
+      };
+      const res = await fetch(row.url, options as unknown as RequestInit);
       status = String(res.status);
     } catch (error) {
       status = error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'error';

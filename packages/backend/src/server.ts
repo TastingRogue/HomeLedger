@@ -56,12 +56,12 @@ export async function buildApp() {
   const app = Fastify(options);
   // CORS: restrict to configured origins in production. Set CORS_ORIGIN to a
   // comma-separated list of allowed origins (e.g. "https://app.example.com").
-  // When unset, reflect the request origin (convenient for local/self-hosted
-  // single-origin setups where the frontend is served from the same host).
+  // Same-origin requests need no CORS headers. Cross-origin deployments must
+  // configure their explicit allowlist, including development frontends.
   const corsEnv = process.env['CORS_ORIGIN']?.trim();
   const corsOrigin = corsEnv
     ? corsEnv.split(',').map((o) => o.trim()).filter(Boolean)
-    : true;
+    : false;
   await app.register(cors, { origin: corsOrigin, credentials: true });
   await registerRateLimitMiddleware(app);
   // OpenAPI/Swagger must be registered BEFORE the auth middleware + routes so it
