@@ -105,6 +105,15 @@ async function licenses(dir) {
 }
 await licenses(path.join(runtime, 'node_modules'));
 await fs.writeFile(path.join(runtime, 'THIRD-PARTY-NOTICES.txt'), notices.sort().join('\n\n--------------------\n\n'));
+if (key === 'win32-x64') {
+  const nativeMaterials = path.join(desktop, 'resources/licenses/windows-x64');
+  const manifest = JSON.parse(await fs.readFile(path.join(nativeMaterials, 'manifest.json'), 'utf8'));
+  for (const [name, expectedHash] of Object.entries(manifest.binaries)) {
+    const actual = createHash('sha256').update(await fs.readFile(path.join(runtime, name))).digest('hex');
+    if (actual !== expectedHash) throw new Error(`Update native source/license materials for changed binary: ${name}`);
+  }
+  await fs.cp(nativeMaterials, path.join(runtime, 'licenses/windows-x64'), { recursive: true });
+}
 await fs.mkdir(path.join(desktop, 'resources'), { recursive: true });
 await fs.copyFile(path.join(root, 'packages/frontend/static/icon-512.png'), path.join(desktop, 'resources/icon.png'));
 console.log(`Runtime ready: ${key}, Node ${nodeVersion}, ${runtime}`);

@@ -1,0 +1,12 @@
+[
+  {
+    "language": "eng",
+    "url": "https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0/eng.traineddata.gz",
+    "decompressedSha256": "daa0c97d651c19fba3b25e81317cd697e9908c8208090c94c3905381c23fc047"
+  },
+  {
+    "language": "spa",
+    "url": "https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0/spa.traineddata.gz",
+    "decompressedSha256": "0b0fcbb4665189e01ab8019e591f014dd7260460de072543edd4b2cb4ede7c96"
+  }
+]

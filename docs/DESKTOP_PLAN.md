@@ -367,6 +367,7 @@ Un artefacto sin firma o sin prueba real de una plataforma no se presenta como e
 | 2026-11-04 | Entrar por /dashboard y restaurar cookie HttpOnly | La página raíz existente solo consultaba sessionStorage; no eliminar autenticación ni guardar tokens en disco desde JS |
 | 2026-11-04 | Materializar enlaces de workspaces e incluir node_modules explícitamente | Las primeras pruebas de artefacto detectaron omisiones/referencias a la máquina de build; afterPack y smoke ahora las rechazan |
 | 2026-11-04 | Sin certificados desktop configurados en el repositorio | Solo existen secretos Docker; modo firmado manual con gates preparado, sin contratación ni publicación automática |
+| 2026-11-04 | Usuario autoriza preview pública Windows, separada de estable | Tag v1.2.0-desktop-preview.1; unsigned, datos ficticios, sin Linux/macOS. Materiales nativos Windows incorporados con fuentes verificadas; los criterios multiplataforma de estable siguen vigentes |
 
 Al cambiar alcance añadir: solicitud del usuario o motivo, impacto, alternativas, criterios afectados y estado. No borrar decisiones anteriores sin dejar su sustitución documentada.
 
@@ -381,7 +382,7 @@ Al cambiar alcance añadir: solicitud del usuario o motivo, impacto, alternativa
 | 3 | Implementado; pruebas de runtime | Snapshots previos a migración, rechazo downgrade/colisión, PDF texto/render/OCR; JSON con adjuntos y recuperación se comprueban con datos sintéticos |
 | 4 | Builds preview Windows/Linux; matriz CI preparada | .exe/.AppImage/.deb generados; afterPack verifica dependencias autocontenidas; .dmg y firma/notarización aún sin ejecutar |
 | 5 | En curso | 742 backend/shared + 145 frontend + 9 desktop, lint sin errores, typecheck limpio; Docker health y recursos de Pages/temas correctos; falta QA final por SO |
-| 6 | Guía/README preview preparados | Sin commit/push/release; faltan screenshots finales, revisión de licencias binarias y cierre de matriz antes de release estable |
+| 6 | Preview Windows preparada para distribución | Código integrado en main; guía/README y materiales nativos Windows completos para la preview; firma, demás plataformas y cierre de matriz siguen pendientes antes de estable |
 
 Las casillas originales de fase son el checklist de aceptación **completa de las plataformas objetivo**. Un estado «implementado» no marca automáticamente aceptadas las casillas de QA todavía pendientes. La evidencia y el siguiente punto exacto de continuación se mantienen en [DESKTOP_QA.md](DESKTOP_QA.md).
 

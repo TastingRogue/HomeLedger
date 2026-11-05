@@ -18,5 +18,10 @@ module.exports = async context => {
   for (const file of ['backend.cjs', 'pdf.mjs', 'pdf-worker.mjs', 'packages/frontend/build/handler.js', 'packages/backend/dist/db/migrations/meta/_journal.json', 'ocr/eng.traineddata.gz', 'ocr/spa.traineddata.gz', 'THIRD-PARTY-NOTICES.txt', 'NODE-LICENSE.txt']) {
     if (!fs.statSync(path.join(runtime, file)).isFile()) throw new Error(`Missing packaged resource: ${file}`);
   }
+  if (context.electronPlatformName === 'win32' && info.arch === 'x64') {
+    for (const name of ['manifest.json', 'THIRD-PARTY-NATIVE-NOTICES.txt', 'canvas-win32-x64.sbom.json', 'ocr-models.json']) {
+      if (!fs.statSync(path.join(runtime, 'licenses/windows-x64', name)).isFile()) throw new Error(`Missing Windows native license material: ${name}`);
+    }
+  }
   console.log('Packaged runtime dependency/resource boundary verified.');
 };

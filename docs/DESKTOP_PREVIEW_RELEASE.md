@@ -2,7 +2,7 @@
 
 Release tag: `v1.2.0-desktop-preview.1`
 
-**Draft prerelease. Public binary distribution is pending completion of native dependency notices and corresponding source materials.** See [the dependency inventory](DESKTOP_LICENSES.md).
+**Unsigned Windows prerelease for testing with synthetic data.** Native dependency notices and corresponding source materials accompany this installer. See [the dependency inventory](DESKTOP_LICENSES.md).
 
 ## What this preview contains
 
@@ -12,10 +12,11 @@ Release tag: `v1.2.0-desktop-preview.1`
 - Fixes found during desktop validation: transaction deletion refresh, overlapping budget income, localized budget dates, validated JSON restore review and generic CSV detection/signs.
 - Standard application menus; no crash-simulation or QA menu.
 
-## Downloads planned for this preview
+## Downloads
 
 - `HomeLedger-1.2.0-win-x64.exe`
 - `SHA256SUMS.txt`
+- `HomeLedger-1.2.0-windows-source-materials.zip` — native dependency sources, license texts, SBOM and hash manifest; optional for installing the app.
 
 The application/installer version remains `1.2.0`; the separate desktop preview tag identifies this experimental distribution. This is not a replacement for the stable web/server release `v1.2.0`.
 
@@ -35,8 +36,8 @@ After publication, compare the downloaded installer's SHA-256 with `SHA256SUMS.t
 
 When reporting a problem, include Windows version, application version, theme, reproduction steps and sanitized diagnostics. Do not attach your database, receipts, credentials or private financial details.
 
-## Before publishing this draft
+## Distribution checks
 
-- Complete the Windows native dependency notices/source materials recorded in `DESKTOP_LICENSES.md`, include them in the package and rebuild.
-- Regenerate hashes for that exact rebuilt installer; rerun the packaged runtime checks.
-- Keep the GitHub release marked **prerelease**, not latest, with Windows assets only.
+- Windows native source materials contain494hash-verified upstream archives, build recipes/patches and license texts. The package includes native notices and a binary/source manifest; staging rejects changes to the reviewed binary hashes.
+- Checksums identify the rebuilt installer and accompanying source-material ZIP.
+- This release is marked **prerelease**, not latest, with Windows assets only.

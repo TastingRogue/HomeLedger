@@ -2,7 +2,7 @@
 
 HomeLedger Desktop runs the existing HomeLedger interface and database on your own computer. It does not need a separate server, Docker or a Node.js installation. Both themes and English/Spanish are shared with the web application.
 
-**Status:** development on `codex/homeledger-desktop`. Installer artifacts are for testing until platform QA and signing are complete. This document does not announce an available stable desktop release. See [implementation status](DESKTOP_PLAN.md#17-registro-de-avances).
+**Status:** [Windows x64 preview](https://github.com/TastingRogue/HomeLedger/releases/tag/v1.2.0-desktop-preview.1), unsigned and intended for testing with synthetic data. Linux/macOS installer validation and stable-release signing remain pending. See [implementation status](DESKTOP_PLAN.md#17-registro-de-avances).
 
 ## Target downloads
 
@@ -12,7 +12,7 @@ HomeLedger Desktop runs the existing HomeLedger interface and database on your o
 | macOS | Apple Silicon / Intel | Separate `.dmg` files |
 | Linux | x64 | `.AppImage` or `.deb` |
 
-Test artifacts are built by the **Desktop builds (preview)** Actions workflow. No build is uploaded to a public release automatically. Do not use real financial data in an unverified preview. Minimum supported OS versions and signed downloads will be listed once validated; compiling on a runner alone is not installer certification.
+Download the Windows installer from the prerelease linked above. The native source-material ZIP and checksum file are provided on the same release; the source ZIP is optional for installation. Other test artifacts are built by the **Desktop builds (preview)** Actions workflow. No build is uploaded to a public release automatically. Do not use real financial data in an unverified preview. Minimum supported OS versions and signed downloads will be listed once validated; compiling on a runner alone is not installer certification.
 
 The current toolchain targets Windows10/11 x64, macOS13+ (Ventura) on Intel/Apple Silicon, and Linux x64 with a compatible glibc desktop. Windows11 and a Debian12 Linux runtime are the local test environments; older/minimum versions and Linux graphical installation remain QA tasks. See [Electron's supported platforms](https://github.com/electron/electron#platform-support).
 

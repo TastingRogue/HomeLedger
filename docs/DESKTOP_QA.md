@@ -125,6 +125,8 @@ Esta tabla no sustituye los pendientes generales de plataformas ni marca aprobad
 
 ## Dónde están los resultados locales
 
+La preview pública Windows incluye ahora avisos nativos, manifiesto de binarios/fuentes, SBOM y procedencia de modelos dentro del runtime. El ZIP de materiales contiene494archivos de fuentes verificados; CRC del ZIP y número de entradas aprobados. El smoke del runtime Windows reconstruido y9pruebas desktop pasan. Staging valida los hashes de los binarios revisados y afterPack exige los materiales Windows. Las fuentes comprimidas permanecen fuera de Git; el generador reproduce el ZIP desde el manifiesto versionado. Esto no certifica las variantes Linux/macOS ni elimina los pendientes de firma/QA estable.
+
 La prueba de actualización usa una copia del perfil ficticio. Las rutas absolutas de los adjuntos se rebasan a esa copia antes de repetir el arranque1.1.99→1.2.0 y abrir el PDF desde el instalador actual; no se certifica la conservación leyendo adjuntos de otro perfil. El snapshot comprobado contiene1cuenta,3transacciones y2adjuntos. El rechazo de downgrade se probó antes de restablecer el fixture de QA para esa repetición.
 
 Todos los outputs son ignorados por Git:
@@ -156,5 +158,5 @@ Para repetir, usar exclusivamente un perfil sintético aislado, obtener el árbo
 
 1. Leer este registro y el estado de los procesos/builds antes de reconstruir.
 2. Terminar las pruebas Windows pendientes con perfil QA temporal y datos sintéticos. Instalación/reinstalación, sesión, visor PDF y descarga JSON ya están aprobados; no repetirlos sin cambios que lo justifiquen.
-3. Completar Linux offline/GUI y ejecutar matriz macOS cuando la rama esté disponible en CI. No se ha hecho push ni se ha creado una release en esta implementación.
+3. Completar Linux offline/GUI y ejecutar matriz macOS en CI. La implementación ya está integrada en main; la distribución de esta preview se limita a Windows, con fuentes/avisos adjuntos y sin marcarla como Latest.
 4. Mantener los gates de firma y los límites de alcance; documentar gaps concretos en lugar de declararlos aprobados.

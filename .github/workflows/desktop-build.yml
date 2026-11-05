@@ -103,6 +103,9 @@ jobs:
             export DESKTOP_RUNTIME_PATH="$GITHUB_WORKSPACE/packages/desktop/dist/linux-unpacked/resources/runtime"
           fi
           node packages/desktop/scripts/smoke.mjs
+      - name: Windows native source materials
+        if: matrix.os == 'windows'
+        run: node packages/desktop/scripts/source-materials.mjs
       - name: Artifact checksums
         run: node packages/desktop/scripts/checksums.mjs
       - uses: actions/upload-artifact@v7
@@ -113,6 +116,7 @@ jobs:
             packages/desktop/dist/*.dmg
             packages/desktop/dist/*.AppImage
             packages/desktop/dist/*.deb
+            packages/desktop/dist/*-windows-source-materials.zip
             packages/desktop/dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14

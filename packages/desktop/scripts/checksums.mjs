@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const dist = fileURLToPath(new URL('../dist', import.meta.url));
-const files = (await fs.readdir(dist)).filter(name => /\.(exe|dmg|AppImage|deb)$/.test(name)).sort();
+const files = (await fs.readdir(dist)).filter(name => /\.(exe|dmg|AppImage|deb)$/.test(name) || /^HomeLedger-[\w.-]+-windows-source-materials\.zip$/.test(name)).sort();
 if (!files.length) throw new Error('No installers found');
 const lines = [];
 for (const name of files) lines.push(`${createHash('sha256').update(await fs.readFile(path.join(dist, name))).digest('hex')}  ${name}`);
