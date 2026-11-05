@@ -39,21 +39,23 @@ import { networthRoutes } from './routes/v1/networth.routes.js';
 import { tagRoutes } from './routes/v1/tags.routes.js';
 import { searchRoutes } from './routes/v1/search.routes.js';
 import { parseTrustProxy } from './config/trust-proxy.js';
+import { registerDesktopBoundary } from './middleware/desktop.middleware.js';
 
 const { version: appVersion } = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ) as { version: string };
 
-export async function buildApp() {
+export async function buildApp(runtime: { desktopToken?: string; requireFrontend?: boolean } = {}) {
   const options: FastifyServerOptions = {
     logger: {
       level: process.env['LOG_LEVEL'] || 'info',
       // Never write credentials to the logs.
-      redact: ['req.headers["x-api-key"]', 'req.headers.authorization'],
+      redact: ['req.headers["x-api-key"]', 'req.headers.authorization', 'req.headers["x-homeledger-desktop"]', 'req.headers.cookie'],
     },
     trustProxy: parseTrustProxy(process.env['TRUST_PROXY']),
   };
   const app = Fastify(options);
+  if (runtime.desktopToken !== undefined) registerDesktopBoundary(app, runtime.desktopToken);
   // CORS: restrict to configured origins in production. Set CORS_ORIGIN to a
   // comma-separated list of allowed origins (e.g. "https://app.example.com").
   // Same-origin requests need no CORS headers. Cross-origin deployments must
@@ -143,9 +145,41 @@ export async function buildApp() {
     });
     app.log.info('SvelteKit frontend mounted');
   } catch (error) {
+    if (runtime.requireFrontend) throw new Error('Packaged frontend is missing', { cause: error });
     app.log.warn({ error }, 'Frontend handler not available (expected in development)');
   }
   return app;
+}
+
+/** Lifecycle for a trusted embedded host; no process.exit or signal handlers. */
+export async function startEmbeddedServer(desktopToken: string, port = 0) {
+  assertSecureStartup();
+  const app = await buildApp({ desktopToken, requireFrontend: true });
+  try {
+    initializeDatabase();
+    await seed();
+    seedRegistrationSettingsFromEnv();
+    seedCurrencySettingFromEnv();
+    await app.listen({ port, host: '127.0.0.1' });
+    startScheduler();
+    let closed = false;
+    return {
+      app,
+      address: app.server.address(),
+      async close() {
+        if (closed) return;
+        closed = true;
+        stopScheduler();
+        await app.close();
+        closeDatabase();
+      },
+    };
+  } catch (error) {
+    stopScheduler();
+    await app.close();
+    closeDatabase();
+    throw error;
+  }
 }
 
 async function start(): Promise<void> {

@@ -1,0 +1,121 @@
+name: Desktop builds (preview)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'package*.json'
+      - '.github/workflows/desktop-build.yml'
+  workflow_dispatch:
+    inputs:
+      signed_preview:
+        description: 'Sign and verify artifacts (requires signing secrets; main/version tags only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Desktop ${{ matrix.os }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, arch: x64, runner: windows-2022 }
+          - { os: macos, arch: arm64, runner: macos-15 }
+          - { os: macos, arch: x64, runner: macos-15-intel }
+          - { os: linux, arch: x64, runner: ubuntu-22.04 }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.23.4'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/desktop/package-lock.json
+            packages/desktop/runtime-lock.json
+      - name: Install application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install desktop tooling (isolated)
+        run: npm ci --prefix packages/desktop --no-audit --no-fund
+      - name: Build application
+        run: npm run build
+      - name: Desktop unit tests
+        run: npm test --prefix packages/desktop
+      - name: Desktop security regression
+        run: npx vitest run packages/backend/src/middleware/desktop.middleware.test.ts packages/backend/src/services/receipt.pdf.test.ts
+      - name: Stage verified Node and application runtime
+        run: npm run prepare:runtime --prefix packages/desktop
+      - name: Runtime smoke test
+        run: npm run smoke --prefix packages/desktop
+      - name: Check signing prerequisites
+        env:
+          DESKTOP_SIGNED: ${{ github.event_name == 'workflow_dispatch' && inputs.signed_preview }}
+          CSC_LINK: ${{ inputs.signed_preview && (matrix.os == 'windows' && secrets.DESKTOP_WINDOWS_CSC_LINK || matrix.os == 'macos' && secrets.DESKTOP_MAC_CSC_LINK) || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.signed_preview && (matrix.os == 'windows' && secrets.DESKTOP_WINDOWS_CSC_PASSWORD || matrix.os == 'macos' && secrets.DESKTOP_MAC_CSC_PASSWORD) || '' }}
+          APPLE_ID: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
+        run: node packages/desktop/scripts/signing-gate.mjs
+      - name: Build preview installers
+        # No signing credentials or release write token on PRs. These are QA artifacts,
+        # not signed stable releases. Publication/signing is a separate release gate.
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ inputs.signed_preview && 'true' || 'false' }}
+          CSC_LINK: ${{ inputs.signed_preview && (matrix.os == 'windows' && secrets.DESKTOP_WINDOWS_CSC_LINK || matrix.os == 'macos' && secrets.DESKTOP_MAC_CSC_LINK) || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.signed_preview && (matrix.os == 'windows' && secrets.DESKTOP_WINDOWS_CSC_PASSWORD || matrix.os == 'macos' && secrets.DESKTOP_MAC_CSC_PASSWORD) || '' }}
+          APPLE_ID: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ inputs.signed_preview && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
+        run: npm run dist --prefix packages/desktop -- --${{ matrix.arch }} -c.forceCodeSigning=${{ inputs.signed_preview && matrix.os != 'linux' || false }}
+      - name: Verify Windows signatures
+        if: inputs.signed_preview && matrix.os == 'windows'
+        shell: pwsh
+        run: ./packages/desktop/scripts/verify-signatures.ps1 -Directory ./packages/desktop/dist
+      - name: Verify macOS signature and notarization
+        if: inputs.signed_preview && matrix.os == 'macos'
+        shell: bash
+        run: |
+          if [ '${{ matrix.arch }}' = arm64 ]; then folder=mac-arm64; else folder=mac; fi
+          app="packages/desktop/dist/$folder/HomeLedger.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app"
+          xcrun stapler validate "$app"
+      - name: Verify runtime inside the packaged app
+        shell: bash
+        run: |
+          if [ '${{ matrix.os }}' = windows ]; then
+            export DESKTOP_RUNTIME_PATH="$GITHUB_WORKSPACE/packages/desktop/dist/win-unpacked/resources/runtime"
+          elif [ '${{ matrix.os }}' = macos ]; then
+            if [ '${{ matrix.arch }}' = arm64 ]; then folder=mac-arm64; else folder=mac; fi
+            export DESKTOP_RUNTIME_PATH="$GITHUB_WORKSPACE/packages/desktop/dist/$folder/HomeLedger.app/Contents/Resources/runtime"
+          else
+            export DESKTOP_RUNTIME_PATH="$GITHUB_WORKSPACE/packages/desktop/dist/linux-unpacked/resources/runtime"
+          fi
+          node packages/desktop/scripts/smoke.mjs
+      - name: Artifact checksums
+        run: node packages/desktop/scripts/checksums.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-preview-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+# Intentionally no release upload, push or tagging. Signing secrets are only used
+# on explicit trusted manual builds. Stable publication still requires real QA.

@@ -492,7 +492,7 @@ async function ocrPdf(filePath: string): Promise<string> {
 
 /** The two ways to read a PDF, injectable so the decision logic is testable. */
 export interface PdfReaders {
-  extractText: (filePath: string) => string | null;
+  extractText: (filePath: string) => string | null | Promise<string | null>;
   ocr: (filePath: string) => Promise<string>;
 }
 
@@ -506,7 +506,7 @@ export async function analyzePdf(
   filePath: string,
   readers: PdfReaders = { extractText: extractPdfText, ocr: ocrPdf },
 ): Promise<ParsedReceipt> {
-  const embeddedText = (readers.extractText(filePath) ?? '').trim();
+  const embeddedText = ((await readers.extractText(filePath)) ?? '').trim();
   const embedded = embeddedText ? parsePlainText(embeddedText, 'pdf_text') : null;
   if (embedded && embedded.total !== null) return embedded;
 
@@ -578,9 +578,10 @@ async function ocrImage(filePath: string): Promise<string> {
   // the stacked line layout of receipts/invoices. Fall back to the literal '4'.
   const psmSingleColumn = mod.default?.PSM?.SINGLE_COLUMN ?? mod.PSM?.SINGLE_COLUMN ?? '4';
 
-  const cachePath = path.join(os.tmpdir(), 'homeledger-ocr');
+  const cachePath = process.env['HOMELEDGER_OCR_CACHE'] || path.join(os.tmpdir(), 'homeledger-ocr');
   fs.mkdirSync(cachePath, { recursive: true });
-  const worker = await createWorker('spa+eng', undefined, { cachePath });
+  const langPath = process.env['HOMELEDGER_OCR_LANG'];
+  const worker = await createWorker('spa+eng', undefined, { cachePath, ...(langPath ? { langPath } : {}) });
   try {
     await worker.setParameters({ tessedit_pageseg_mode: psmSingleColumn as never });
     // Prefer the preprocessed buffer; fall back to the raw file path if sharp
@@ -724,6 +725,11 @@ export class ReceiptService {
 
     // PDF: prefer embedded text (pdftotext); scanned PDFs are rasterized and OCR'd.
     if (attachment.mimeType === 'application/pdf' || ext === '.pdf') {
+      const desktopPdf = process.env['HOMELEDGER_PDF_MODULE'];
+      if (desktopPdf) {
+        const { createReaders } = await import(desktopPdf);
+        return analyzePdf(filePath, createReaders(ocrImage));
+      }
       return analyzePdf(filePath);
     }
 

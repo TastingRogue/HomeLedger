@@ -18,6 +18,7 @@ A free, open-source, self-hosted personal finance manager.
 [**Screenshots**](#screenshots) ·
 [**User Manual**](docs/USER_MANUAL.md) ·
 [**Docker**](#docker-recommended-for-production) ·
+[**Desktop preview**](docs/desktop.md) ·
 [**Home Assistant**](#home-assistant) ·
 [**API**](#api-endpoints)
 
@@ -47,6 +48,8 @@ If it helps you keep your finances in order, here are a few ways to give back:
 ---
 
 ## About
+
+**Desktop is in development:** Windows, macOS and Linux installers are being prepared for local use without Docker. See the [desktop preview guide and current limitations](docs/desktop.md). The existing server installation remains the stable deployment option.
 
 > **HomeLedger** is a free, open-source, self-hosted personal finance manager: an expense tracker and budgeting app you run on your own server. Track bank accounts, income and expenses, budgets, savings goals, subscriptions and net worth, with a Home Assistant add-on and one-command Docker deployment.
 

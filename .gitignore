@@ -31,3 +31,7 @@ coverage/
 
 # Logs
 *.log
+
+# Desktop dependencies and reproducible runtime staging are isolated from Docker.
+packages/desktop/runtime/
+packages/desktop/.staging/

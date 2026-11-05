@@ -23,9 +23,6 @@ import { parseCSV } from './base-importer.js';
 /** Known header patterns for Nu México files */
 const NU_HEADERS = [
   ['date', 'title', 'amount'],
-  ['fecha', 'descripción', 'monto'],
-  ['fecha', 'descripcion', 'monto'],
-  ['date', 'description', 'amount'],
   ['fecha', 'título', 'monto'],
   ['fecha', 'titulo', 'monto'],
 ];
@@ -39,7 +36,7 @@ export class NuParser implements BankParser {
     const lowerFilename = filename.toLowerCase();
 
     // Check filename patterns
-    if (lowerFilename.includes('nu') || lowerFilename.includes('nubank')) {
+    if (/(?:^|[^a-z0-9])(?:nu|nubank)(?=$|[^a-z0-9])/.test(lowerFilename)) {
       return true;
     }
 
@@ -50,11 +47,13 @@ export class NuParser implements BankParser {
       return true;
     }
 
-    // Check if headers match known Nu patterns (Nu tends to use English headers)
-    const firstLines = text.split('\n').slice(0, 3).map(l => l.trim().toLowerCase());
-    for (const line of firstLines) {
+    // Generic date/description/amount headers do not identify a bank. Nu uses
+    // opposite amount signs, so ambiguous files must retain the generic parser.
+    const firstRows = parseCSV(text).slice(0, 3);
+    for (const row of firstRows) {
+      const headers = row.map(cell => cell.trim());
       for (const pattern of NU_HEADERS) {
-        if (pattern.every(col => line.includes(col))) {
+        if (pattern.every(col => headers.includes(col))) {
           return true;
         }
       }

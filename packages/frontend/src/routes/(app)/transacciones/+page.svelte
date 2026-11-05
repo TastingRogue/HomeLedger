@@ -432,12 +432,16 @@
   function closeDeleteModal() { showDeleteModal = false; deletingTransaction = null; }
   async function confirmDelete() {
     if (!deletingTransaction) return;
+    const deletedId = deletingTransaction.id;
     try {
-      await apiDelete(`/transactions/${deletingTransaction.id}`);
+      await apiDelete(`/transactions/${deletedId}`);
       closeDeleteModal();
-      if (selectedTransaction?.id === deletingTransaction.id) closePanel();
+      if (selectedTransaction?.id === deletedId) closePanel();
       await loadTransactions();
-    } catch (e) { if (e instanceof ApiError) error = e.message; closeDeleteModal(); }
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : $t('common.error_deleting');
+      closeDeleteModal();
+    }
   }
 
   // --- Helpers ---

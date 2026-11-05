@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, or, gte, lte, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories, accounts } from '../db/schema.js';
 import type { CreateBudgetSchema, UpdateBudgetSchema } from '../validators/budget.schema.js';
@@ -416,8 +416,11 @@ export class BudgetService {
         totalSpent += BudgetService.spentByTag(userId, bt.tagId, budget.startDate, budget.endDate);
       }
 
-      // P4.3 Phase B ("available to spend", light): income earned within the
-      // budget's period, so the UI can show income − allocated = unassigned.
+    }
+
+    // Count each income transaction once across the union of the selected
+    // periods. Summing one income total per budget duplicates overlapping income.
+    if (targetBudgets.length > 0) {
       const incomeResult = db
         .select({ total: spentInBase })
         .from(transactions)
@@ -426,12 +429,14 @@ export class BudgetService {
           and(
             eq(transactions.userId, userId),
             eq(transactions.type, 'Ingreso'),
-            gte(transactions.date, budget.startDate),
-            lte(transactions.date, budget.endDate)
+            or(...targetBudgets.map(budget => and(
+              gte(transactions.date, budget.startDate),
+              lte(transactions.date, budget.endDate)
+            )))
           )
         )
         .get();
-      totalIncome += Number(incomeResult?.total ?? 0);
+      totalIncome = Number(incomeResult?.total ?? 0);
     }
 
     totalAllocated = roundMoney(totalAllocated);

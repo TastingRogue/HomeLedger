@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { BudgetService, BudgetError } from './budget.service.js';
+import { BudgetPeriod } from '@homeledger/shared';
 import { getDb, getSqlite, closeDatabase } from '../db/connection.js';
 import { users, categories, accounts, budgets, budgetCategories, transactions, alerts } from '../db/schema.js';
 import fs from 'node:fs';
@@ -350,6 +351,40 @@ describe('BudgetService', () => {
   });
 
   describe('getSummary()', () => {
+    it('counts income once across overlapping budgets, retaining distinct payments and currency conversion', () => {
+      const db = getDb();
+      const now = new Date().toISOString();
+      const today = now.slice(0, 10);
+      const account = db.insert(accounts).values({
+        userId, name: 'Converted income', type: 'Efectivo', currency: 'USD',
+        exchangeRate: 2, createdAt: now, updatedAt: now,
+      }).returning().get();
+      const payment = {
+        userId, accountId: account.id, categoryId: categoryId1,
+        name: 'Income payment', amount: 50, type: 'Ingreso', date: today,
+        createdAt: now, updatedAt: now,
+      };
+      db.insert(transactions).values([
+        payment, { ...payment, name: 'Separate payment of the same amount' },
+        { ...payment, amount: 1000, date: '2000-01-01' },
+        { ...payment, amount: 20, type: 'Gasto' },
+      ]).run();
+      expect(BudgetService.getSummary(userId).totalIncome).toBe(0);
+      const first = BudgetService.create(userId, {
+        name: 'First overlapping budget', period: BudgetPeriod.Mensual,
+        startDate: today, categories: [{ categoryId: categoryId1, allocated: 100 }],
+        rolloverEnabled: false, alertThreshold: 80,
+      });
+      BudgetService.create(userId, {
+        name: 'Second overlapping budget', period: BudgetPeriod.Mensual,
+        startDate: today, categories: [{ categoryId: categoryId2, allocated: 200 }],
+        rolloverEnabled: false, alertThreshold: 80,
+      });
+      expect(BudgetService.getSummary(userId).totalIncome).toBe(200);
+      expect(BudgetService.getSummary(userId).unassigned).toBe(-100);
+      expect(BudgetService.getSummary(userId, first.id).totalIncome).toBe(200);
+    });
+
     it('should return total allocated vs total spent for a specific budget', () => {
       const db = getDb();
       const now = new Date().toISOString();

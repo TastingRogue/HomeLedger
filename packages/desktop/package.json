@@ -1,0 +1,85 @@
+{
+  "name": "homeledger-desktop",
+  "version": "1.2.0",
+  "private": true,
+  "description": "HomeLedger Desktop — private personal finance on your computer",
+  "author": "TastingRogue",
+  "license": "MIT",
+  "homepage": "https://github.com/TastingRogue/HomeLedger",
+  "desktopName": "homeledger.desktop",
+  "type": "module",
+  "main": "src/main.cjs",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "prepare:runtime": "node scripts/stage.mjs",
+    "start": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.2",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "io.github.tastingrogue.homeledger",
+    "productName": "HomeLedger",
+    "executableName": "homeledger",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "runtime/node_modules",
+        "to": "runtime/node_modules",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "afterPack": "scripts/after-pack.cjs",
+    "artifactName": "HomeLedger-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.finance",
+      "minimumSystemVersion": "13.0",
+      "icon": "resources/icon.png",
+      "hardenedRuntime": true
+    },
+    "linux": {
+      "syncDesktopName": true,
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Finance",
+      "icon": "resources/icon.png",
+      "maintainer": "TastingRogue",
+      "synopsis": "Local personal finance manager"
+    }
+  }
+}

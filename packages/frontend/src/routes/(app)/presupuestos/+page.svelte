@@ -19,6 +19,8 @@
   import { formatCurrency } from '$lib/utils/format';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '$lib/stores/preferences';
   import { enumLabel } from '$lib/i18n/labels';
   import { modalPanel, scrim } from '$lib/motion';
 
@@ -90,7 +92,8 @@
     const s = new Date(start + 'T00:00:00');
     const e = new Date(end + 'T00:00:00');
     const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    return `${s.toLocaleDateString('es-MX', opts)} - ${e.toLocaleDateString('es-MX', opts)}, ${e.getFullYear()}`;
+    const locale = getIntlTag($preferences.locale);
+    return `${s.toLocaleDateString(locale, opts)} - ${e.toLocaleDateString(locale, opts)}, ${e.getFullYear()}`;
   }
 
   // ─── Data Loading ───

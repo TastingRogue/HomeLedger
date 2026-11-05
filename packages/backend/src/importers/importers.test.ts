@@ -284,6 +284,20 @@ describe('GenericCSVParser', () => {
 });
 
 describe('detectParser', () => {
+  it.each(['qa-normal-import.csv', 'annual.csv', 'export.csv'])('keeps generic signed amounts for ambiguous headers in %s', filename => {
+    const content = Buffer.from('date,description,amount,reference\n2026-11-04,Purchase,-5,a\n2026-11-04,Income,15,b');
+    const parser = detectParser(content, filename);
+    expect(parser.bankId).toBe('generic');
+    const rows = parser.parse(content);
+    expect(rows.map(row => [row.type, row.amount])).toEqual([['expense', 5], ['income', 15]]);
+  });
+
+  it('requires bank evidence for ambiguous Spanish headers', () => {
+    const content = Buffer.from('Fecha,Descripción,Monto\n2026-11-04,Compra,-5');
+    expect(detectParser(content, 'export.csv').bankId).toBe('generic');
+    expect(detectParser(content, 'nu_export.csv').bankId).toBe('nu_mx');
+  });
+
   it('detects BBVA parser', () => {
     const content = Buffer.from('Fecha,Descripción,Cargo,Abono,Saldo\n01/01/2024,Test,100,,900');
     const parser = detectParser(content, 'bbva_export.csv');

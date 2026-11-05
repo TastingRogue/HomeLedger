@@ -2,6 +2,9 @@
   import { apiPost } from '$lib/api/client';
   import { onMount } from 'svelte';
   import { t } from '$lib/i18n';
+  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '$lib/stores/preferences';
+  import { previewImport as previewBackup, type ImportPreview as BackupPreview } from '$lib/api/backup';
   import { listAccounts, type AccountData } from '$lib/api/accounts';
   import {
     uploadImport,
@@ -29,6 +32,8 @@
   let sessionId = $state<number | null>(null);
   let skipDuplicates = $state(true);
   let bankResult = $state<ImportResult | null>(null);
+  let backupPreview = $state<BackupPreview | null>(null);
+  let reviewedBackup = $state<unknown>(null);
 
   // Import history + undo
   let history = $state<ImportSession[]>([]);
@@ -98,10 +103,13 @@
       return;
     }
     file = f;
+    importing = false;
     importError = null;
     bankPreview = null;
     bankResult = null;
     sessionId = null;
+    backupPreview = null;
+    reviewedBackup = null;
     step = 2;
     // Bank files use the real upload→preview pipeline; JSON stays client-side.
     if (isBankFile) void runBankPreview();
@@ -109,6 +117,7 @@
 
   function reset() {
     step = 1;
+    importing = false;
     file = null;
     importResult = null;
     importError = null;
@@ -116,6 +125,8 @@
     bankResult = null;
     sessionId = null;
     selectedAccountId = null;
+    backupPreview = null;
+    reviewedBackup = null;
   }
 
   /**
@@ -124,52 +135,62 @@
    */
   async function runBankPreview() {
     if (!file) return;
+    const selectedFile = file;
     importing = true;
     importError = null;
     try {
-      const session = await uploadImport(file);
-      sessionId = session.id;
+      const session = await uploadImport(selectedFile);
+      if (file !== selectedFile) return;
       const preview = await previewImport(session.id);
+      if (file !== selectedFile) return;
+      sessionId = session.id;
       bankPreview = preview;
       // Preselect the detected account, else the first account.
       selectedAccountId = preview.detectedAccountId ?? accounts[0]?.id ?? null;
     } catch (e: unknown) {
-      importError = e instanceof Error ? e.message : $t('import.analyze_error');
+      if (file === selectedFile) importError = e instanceof Error ? e.message : $t('import.analyze_error');
     } finally {
-      importing = false;
+      if (file === selectedFile) importing = false;
     }
   }
 
   async function previewFile(): Promise<{ stats: { label: string; value: string | number }[]; columns: string[]; sample: Record<string, any>[]; warnings: string[] } | null> {
     if (!file) return null;
-    const text = await file.text();
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    const selectedFile = file;
+    const text = await selectedFile.text();
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
 
     if (ext === 'json') {
       try {
         const data = JSON.parse(text);
+        const validated = await previewBackup(data);
+        if (file !== selectedFile) return null;
+        backupPreview = validated;
+        reviewedBackup = data;
         const stats: { label: string; value: string | number }[] = [];
-        const warnings: string[] = [];
+        const warnings: string[] = validated.warnings;
 
         // The backup structure is { version, exportedAt, data: { accounts, transactions, ... } }
         const inner = data.data ?? data;
 
-        if (data.version) stats.push({ label: 'Versión', value: data.version });
-        if (data.exportedAt) stats.push({ label: 'Fecha de export', value: new Date(data.exportedAt).toLocaleDateString('es-MX') });
-        if (inner.accounts) stats.push({ label: 'Cuentas', value: inner.accounts.length });
-        if (inner.transactions) stats.push({ label: 'Transacciones', value: inner.transactions.length });
-        if (inner.transfers) stats.push({ label: 'Transferencias', value: inner.transfers.length });
-        if (inner.subscriptions) stats.push({ label: 'Suscripciones', value: inner.subscriptions.length });
-        if (inner.goals) stats.push({ label: 'Metas', value: inner.goals.length });
-        if (inner.categories) stats.push({ label: 'Categorías', value: inner.categories.length });
-        if (inner.budgets) stats.push({ label: 'Presupuestos', value: inner.budgets.length });
-
-        if (!data.version) warnings.push('El archivo no tiene campo "version".');
-        if (!inner.accounts && !inner.transactions) warnings.push('No se encontraron cuentas ni transacciones.');
+        if (data.version) stats.push({ label: $t('import.version'), value: data.version });
+        if (data.exportedAt) stats.push({ label: $t('import.export_date'), value: new Date(data.exportedAt).toLocaleDateString(getIntlTag($preferences.locale)) });
+        if (inner.accounts) stats.push({ label: $t('import.accounts_count'), value: inner.accounts.length });
+        if (inner.transactions) stats.push({ label: $t('import.transactions_count'), value: inner.transactions.length });
+        if (inner.transfers) stats.push({ label: $t('import.transfers_count'), value: inner.transfers.length });
+        if (inner.subscriptions) stats.push({ label: $t('import.subscriptions_count'), value: inner.subscriptions.length });
+        if (inner.goals) stats.push({ label: $t('import.goals_count'), value: inner.goals.length });
+        if (inner.categories) stats.push({ label: $t('import.categories_count'), value: inner.categories.length });
+        if (inner.budgets) stats.push({ label: $t('import.budgets_count'), value: inner.budgets.length });
 
         return { stats, columns: [], sample: [], warnings };
-      } catch {
-        return { stats: [{ label: 'Tipo', value: 'JSON inválido' }], columns: [], sample: [], warnings: ['El archivo no es un JSON válido.'] };
+      } catch (e) {
+        if (file === selectedFile) {
+          backupPreview = null;
+          reviewedBackup = null;
+          importError = e instanceof SyntaxError ? $t('backup.invalid_json') : e instanceof Error ? e.message : $t('import.analyze_error');
+        }
+        return null;
       }
     }
 
@@ -204,15 +225,14 @@
 
   async function startImport() {
     if (!file) return;
+    if (!isBankFile && (!backupPreview || !reviewedBackup)) return;
     importing = true;
     importError = null;
 
     try {
       if (file.name.toLowerCase().endsWith('.json')) {
-        // JSON backup restore (client parses, backend imports).
-        const text = await file.text();
-        const parsed = JSON.parse(text);
-        await apiPost('/backup/import', { backup: parsed, confirmed: true });
+        // Restore only the exact payload accepted by the non-destructive preview.
+        await apiPost('/backup/import', { backup: reviewedBackup, confirmed: true });
         importResult = { imported: 1, skipped: 0, errors: 0 };
       } else {
         // Bank file: confirm the previewed session.
@@ -453,7 +473,7 @@
       {:then preview}
         {#if preview}
           <div class="preview-section">
-            <h4>📊 Resumen del contenido</h4>
+            <h4>{$t('import.content_summary')}</h4>
             <div class="preview-stats">
               {#each preview.stats as stat}
                 <div class="preview-stat">
@@ -463,7 +483,7 @@
               {/each}
             </div>
             {#if preview.sample.length > 0}
-              <h4 style="margin-top: 1rem">👁️ Vista previa (primeras filas)</h4>
+              <h4 style="margin-top: 1rem">{$t('import.preview_title')}</h4>
               <div class="preview-table-wrap">
                 <table class="preview-table">
                   <thead>
@@ -487,7 +507,7 @@
             {/if}
             {#if preview.warnings.length > 0}
               <div class="preview-warnings">
-                <h4>⚠️ Advertencias</h4>
+                <h4>{$t('import.warnings_title')}</h4>
                 {#each preview.warnings as warn}
                   <span class="pw-item">{warn}</span>
                 {/each}
@@ -500,9 +520,9 @@
       {/await}
       {/if}
 
-      <div class="review-notice">
-        <span class="notice-icon">🔒</span>
-        <span>{$t('import.review_notice')}</span>
+      <div class="review-notice" class:review-destructive={!isBankFile} role={isBankFile ? 'status' : 'alert'}>
+        <span class="notice-icon">{isBankFile ? '🔒' : '⚠️'}</span>
+        <span>{$t(isBankFile ? 'import.review_notice' : 'backup.confirm_warning')}</span>
       </div>
 
       {#if importError}
@@ -514,9 +534,9 @@
         <button
           class="btn-primary"
           onclick={startImport}
-          disabled={importing || (isBankFile && (!bankPreview || selectedAccountId == null))}
+          disabled={importing || (isBankFile ? (!bankPreview || selectedAccountId == null) : (!backupPreview || !reviewedBackup))}
         >
-          {importing ? $t('import.importing') : $t('import.confirm_btn')}
+          {importing ? $t('import.importing') : $t(isBankFile ? 'import.confirm_btn' : 'backup.import_btn')}
         </button>
       </div>
     </div>
@@ -646,6 +666,7 @@
   .btn-change { padding: 0.25rem 0.5rem; background: none; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 0.68rem; color: var(--text-secondary); cursor: pointer; }
 
   .review-notice { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; background: rgba(139, 92, 246, 0.08); border-radius: var(--radius-md); font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1.25rem; }
+  .review-notice.review-destructive { background: var(--tag-red-bg); border: 1px solid var(--accent-red); color: var(--text-primary); }
   .notice-icon { font-size: 1rem; }
 
   /* Preview */

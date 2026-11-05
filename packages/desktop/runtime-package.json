@@ -1,0 +1,14 @@
+{
+  "name": "homeledger-local-runtime",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/backend", "packages/shared"],
+  "dependencies": {
+    "pdfjs-dist": "6.5.438",
+    "@napi-rs/canvas": "1.1.0",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/spa": "1.0.0"
+  },
+  "overrides": { "cookie": "^0.7.0", "esbuild": "^0.25.0", "glob": "^14.0.2", "minimatch": "^11.0.4" }
+}
