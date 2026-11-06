@@ -2,7 +2,7 @@
 
 HomeLedger Desktop runs the existing HomeLedger interface and database on your own computer. It does not need a separate server, Docker or a Node.js installation. Both themes and English/Spanish are shared with the web application.
 
-**Status:** [Windows x64 preview](https://github.com/TastingRogue/HomeLedger/releases/tag/v1.2.0-desktop-preview.1), unsigned and intended for testing with synthetic data. Linux/macOS installer validation and stable-release signing remain pending. See [implementation status](DESKTOP_PLAN.md#17-registro-de-avances).
+**Status:** [Windows x64 preview](https://github.com/TastingRogue/HomeLedger/releases/tag/v1.2.0), unsigned and intended for testing with synthetic data. Linux/macOS installer validation and stable-release signing remain pending. See [implementation status](DESKTOP_PLAN.md#17-registro-de-avances).
 
 ## Target downloads
 
