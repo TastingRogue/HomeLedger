@@ -10,8 +10,8 @@ if (!base) throw new Error('Missing fallback theme');
 const contributorTheme: ThemeDefinition = {
   ...base,
   id: 'community-paper',
-  name: { es: 'Papel', en: 'Paper' },
-  description: { es: 'Tema comunitario de prueba.', en: 'Community test theme.' },
+  name: { es: 'Papel', en: 'Paper', 'pt-BR': 'Papel' },
+  description: { es: 'Tema comunitario de prueba.', en: 'Community test theme.', 'pt-BR': 'Tema comunitário de teste.' },
   colorScheme: 'light',
   browserThemeColor: '#fff8ee',
 };

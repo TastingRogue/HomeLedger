@@ -8,12 +8,14 @@ export default {
   workspace: () => import('./workspace/Workspace.svelte'),
   quickEntry: () => import('./workspace/QuickEntry.svelte'),
   authFrame: () => import('./workspace/AuthFrame.svelte'),
-  name: { es: 'Cyberpunk 2077', en: 'Cyberpunk 2077' },
+  name: { es: 'Cyberpunk 2077', en: 'Cyberpunk 2077', 'pt-BR': 'Cyberpunk 2077' },
   description: {
+    'pt-BR': 'Painéis de terminal, fundo bordô e destaques em amarelo elétrico e ciano.',
     es: 'Paneles de terminal, fondo burdeos y acentos amarillo eléctrico y cian.',
     en: 'Terminal panels, a burgundy background, and electric yellow and cyan accents.',
   },
   notice: {
+    'pt-BR': 'Este design usa sua própria paleta escura. Sua preferência de modo claro ou escuro é preservada ao voltar para Normal.',
     es: 'Este diseño usa su propia paleta oscura. Tu preferencia de modo claro u oscuro se conserva al volver a Normal.',
     en: 'This design uses its own dark palette. Your light or dark preference is preserved when you return to Normal.',
   },

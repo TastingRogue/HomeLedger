@@ -4,8 +4,9 @@ import './responsive.css';
 
 export default {
   id: 'normal',
-  name: { es: 'Normal', en: 'Normal' },
+  name: { es: 'Normal', en: 'Normal', 'pt-BR': 'Normal' },
   description: {
+    'pt-BR': 'O design original, em modo claro ou escuro.',
     es: 'El diseño original, en modo claro u oscuro.',
     en: 'The original design, in light or dark mode.',
   },

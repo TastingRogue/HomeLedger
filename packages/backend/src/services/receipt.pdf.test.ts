@@ -98,11 +98,14 @@ describe('receipt error messages follow DEFAULT_LOCALE', () => {
     else process.env['DEFAULT_LOCALE'] = original;
   });
 
-  it('is English by default and Spanish when the host chooses es', () => {
+  it('uses English by default and the language chosen by the host', () => {
     delete process.env['DEFAULT_LOCALE'];
     expect(receiptMessage('pdfUnreadable')).toMatch(/Could not read this PDF/);
     process.env['DEFAULT_LOCALE'] = 'es';
     expect(receiptMessage('pdfUnreadable')).toMatch(/No se pudo leer el PDF/);
     expect(receiptMessage('fileNotFound')).toBe('Archivo no encontrado');
+    process.env['DEFAULT_LOCALE'] = 'pt-BR';
+    expect(receiptMessage('fileNotFound')).toBe('Arquivo não encontrado');
+    expect(receiptMessage('pdfUnreadable')).toMatch(/Não foi possível ler este PDF/);
   });
 });
