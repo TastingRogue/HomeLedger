@@ -51,8 +51,9 @@ function saveToStorage(prefs: UserPreferences) {
 
 export const preferences = writable<UserPreferences>(loadFromStorage());
 
-// Auto-save to localStorage on change
+// Keep the document language and stored preferences in sync.
 preferences.subscribe((value) => {
+  if (browser) document.documentElement.lang = value.locale;
   saveToStorage(value);
 });
 
