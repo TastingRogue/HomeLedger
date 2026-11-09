@@ -9,7 +9,7 @@ configuration:
     name: Idioma principal
     description: >-
       Idioma principal de la instalación: nombres de las categorías del sistema
-      e idioma por defecto de la interfaz (es o en). Cada usuario puede cambiar
+      e idioma por defecto de la interfaz (es, en o pt-BR). Cada usuario puede cambiar
       su propio idioma después.
   DISPLAY_CURRENCY:
     name: Moneda de la instalación

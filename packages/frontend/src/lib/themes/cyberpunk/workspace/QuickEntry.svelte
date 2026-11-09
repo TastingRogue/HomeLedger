@@ -16,6 +16,6 @@
 </script>
 <div class="cp-workspace cp-popup-content">
   {#if notice}<p class="cp-notice" role="status">✓ {notice}</p>{/if}
-  {#if error}<p class="cp-error" role="alert">{error}<button class="cp-button" onclick={refresh}>{m.l('Retry','Reintentar')}</button></p>{/if}
-  {#if loading}<p role="status">{m.l('Loading your finances…','Cargando tus finanzas…')}</p>{:else}<Daily {m} {a}/>{/if}
+  {#if error}<p class="cp-error" role="alert">{error}<button class="cp-button" onclick={refresh}>{m.t('offline.retry')}</button></p>{/if}
+  {#if loading}<p role="status">{m.t('cyberpunk.loading_your_finances')}</p>{:else}<Daily {m} {a}/>{/if}
 </div>

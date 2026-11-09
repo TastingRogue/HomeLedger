@@ -1,6 +1,7 @@
+import type { TranslationKey } from '$lib/i18n/es';
 import type { Attachment } from '$lib/api/attachments';
 import { apiGet } from '$lib/api/client';
-import { getIntlTag, type SupportedLocale } from '$lib/i18n/registry';
+import { dictionaries, getIntlTag, type SupportedLocale } from '$lib/i18n/registry';
 
 export type Row = Record<string, unknown> & { id: number };
 export const number = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -12,26 +13,26 @@ export function rows(value: unknown): Row[] {
 }
 
 export const routes = [
-  ['dashboard', 'Dashboard', 'Tablero', 'layout-dashboard', 'Your financial overview', 'Tu panorama financiero'],
-  ['cuentas', 'Accounts', 'Cuentas', 'building', 'Your accounts and credit cards', 'Tus cuentas y tarjetas'],
-  ['transacciones', 'Transactions', 'Transacciones', 'coins', 'Every movement, in one place', 'Todos tus movimientos en un lugar'],
-  ['transferencias', 'Transfers', 'Transferencias', 'arrow-left-right', 'Move money between your accounts', 'Mueve dinero entre tus cuentas'],
-  ['suscripciones', 'Subscriptions', 'Suscripciones', 'repeat', 'Recurring payments and upcoming renewals', 'Pagos recurrentes y próximos vencimientos'],
-  ['calendario', 'Calendar', 'Calendario', 'calendar', 'Your payment calendar', 'Tu calendario de pagos'],
-  ['presupuestos', 'Budgets', 'Presupuestos', 'clipboard', 'Allocate your money with intention', 'Asigna tu dinero con intención'],
-  ['metas', 'Goals', 'Metas', 'target', 'Small steps. Real progress.', 'Pequeños pasos. Progreso real.'],
-  ['prestamos', 'Loans', 'Préstamos', 'credit-card', 'Balances, payments and amortization', 'Saldos, pagos y amortización'],
-  ['patrimonio', 'Net worth', 'Patrimonio', 'trending-up', 'The complete picture of your finances', 'La visión completa de tus finanzas'],
-  ['categorias', 'Categories', 'Categorías', 'tag', 'Organize your income and expenses', 'Organiza tus ingresos y gastos'],
-  ['reglas', 'Rules', 'Reglas', 'zap', 'Automate transaction categorization', 'Automatiza la clasificación de movimientos'],
-  ['reportes', 'Reports', 'Reportes', 'bar-chart', 'Understand your history and trends', 'Entiende tu historial y tendencias'],
-  ['alertas', 'Alerts', 'Alertas', 'bell', 'Stay ahead of your finances', 'Mantén el control de tus finanzas'],
-  ['recibos', 'Receipts', 'Recibos', 'file-text', 'Your receipts and extracted details', 'Tus comprobantes y datos extraídos'],
-  ['importar', 'Import', 'Importar', 'upload', 'Import a bank statement', 'Importa un estado de cuenta'],
-  ['respaldo', 'Backup', 'Respaldo', 'save', 'Export and restore your data', 'Exporta y restaura tus datos'],
-  ['buscar', 'Search', 'Buscar', 'search', 'Find transactions, receipts and subscriptions', 'Busca movimientos, recibos y suscripciones'],
-  ['registro-rapido', 'Quick entry', 'Registro rápido', 'plus', 'Add income or an expense in seconds', 'Registra ingresos o gastos en segundos'],
-  ['configuracion', 'Settings', 'Configuración', 'settings', 'Make HomeLedger yours', 'Personaliza tu experiencia'],
+  ['dashboard', 'nav.dashboard', 'layout-dashboard', 'cyberpunk.route_dashboard_description'],
+  ['cuentas', 'nav.accounts', 'building', 'cyberpunk.route_cuentas_description'],
+  ['transacciones', 'nav.transactions', 'coins', 'cyberpunk.route_transacciones_description'],
+  ['transferencias', 'nav.transfers', 'arrow-left-right', 'cyberpunk.route_transferencias_description'],
+  ['suscripciones', 'nav.subscriptions', 'repeat', 'cyberpunk.route_suscripciones_description'],
+  ['calendario', 'subscriptions.view_calendar', 'calendar', 'cyberpunk.route_calendario_description'],
+  ['presupuestos', 'nav.budgets', 'clipboard', 'cyberpunk.route_presupuestos_description'],
+  ['metas', 'nav.goals', 'target', 'cyberpunk.route_metas_description'],
+  ['prestamos', 'nav.loans', 'credit-card', 'cyberpunk.route_prestamos_description'],
+  ['patrimonio', 'nav.networth', 'trending-up', 'cyberpunk.route_patrimonio_description'],
+  ['categorias', 'nav.categories', 'tag', 'cyberpunk.route_categorias_description'],
+  ['reglas', 'nav.rules', 'zap', 'cyberpunk.route_reglas_description'],
+  ['reportes', 'nav.reports', 'bar-chart', 'cyberpunk.route_reportes_description'],
+  ['alertas', 'nav.alerts', 'bell', 'cyberpunk.route_alertas_description'],
+  ['recibos', 'search.entity_receipts', 'file-text', 'cyberpunk.route_recibos_description'],
+  ['importar', 'backup.type_import', 'upload', 'cyberpunk.route_importar_description'],
+  ['respaldo', 'page_title.backup', 'save', 'cyberpunk.route_respaldo_description'],
+  ['buscar', 'nav.search', 'search', 'cyberpunk.route_buscar_description'],
+  ['registro-rapido', 'cyberpunk.quick_entry', 'plus', 'cyberpunk.route_registro-rapido_description'],
+  ['configuracion', 'nav.settings', 'settings', 'cyberpunk.route_configuracion_description'],
 ] as const;
 
 export interface WorkspaceData {
@@ -49,14 +50,14 @@ export const emptyData = (): WorkspaceData => ({
 
 export interface Model extends WorkspaceData {
   locale: SupportedLocale; currency: string; route: string;
-  l: (en: string, es: string) => string;
+  t: (key: TranslationKey) => string;
   money: (value: unknown, currency?: string) => string;
   date: (value: unknown) => string;
   account: (id: unknown) => string; category: (id: unknown) => string;
 }
 export function buildModel(data: WorkspaceData, route: string, locale: SupportedLocale, currency: string): Model {
   return {
-    ...data, locale, currency, route, l: (en, es) => locale === 'es' ? es : en,
+    ...data, locale, currency, route, t: key => dictionaries[locale][key],
     money: (value, unit = currency) => new Intl.NumberFormat(getIntlTag(locale), { style: 'currency', currency: unit, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(number(value)),
     date: value => value && !isNaN(Date.parse(text(value))) ? new Intl.DateTimeFormat(getIntlTag(locale), { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(text(value).length === 10 ? `${text(value)}T12:00:00` : text(value))) : '—',
     account: id => text(data.accounts.find(row => row.id === number(id))?.name) || '—',

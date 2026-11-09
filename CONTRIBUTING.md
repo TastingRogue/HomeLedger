@@ -47,7 +47,7 @@ npm run build                            # build shared + backend + frontend
 npm run lint                             # ESLint
 ```
 
-If you touched translations, the test suite includes an **es ↔ en key-parity**
+If you touched translations, the test suite includes an **all-locale key-parity**
 check that will fail on any missing or mismatched key (see below).
 
 If you changed backend or frontend code and run via Docker, remember the images
@@ -92,7 +92,7 @@ token contract, chart palettes and validation steps.
 ## Adding a language
 
 The i18n system is built so the compiler forces a new language to be complete.
-There are exactly **two** steps:
+Start with these **two** steps:
 
 1. **Create the dictionary.** Add `packages/frontend/src/lib/i18n/<code>.ts`
    (e.g. `fr.ts`) and type it as `Record<TranslationKey, string>`:
@@ -121,10 +121,19 @@ There are exactly **two** steps:
    } satisfies Record<string, LocaleConfig>;
    ```
 
-That's it — the supported-locale type, the settings language picker, the
+The supported-locale type, the settings language picker, the
 translation fallback, and `Intl` date/number formatting all derive from that
-map. Run `npm run typecheck -w packages/frontend` and `npm run test` to confirm
+map. Theme manifests also provide a name, description, and optional notice for
+every supported locale (`packages/frontend/src/lib/themes/*/theme.ts`).
+Run `npm run typecheck -w packages/frontend` and `npm run test` to confirm
 full coverage.
+
+To support the language as an installation default, also register its canonical
+code and normalization in `packages/backend/src/config/locale.ts`, add default
+category names in `packages/backend/src/db/seed.ts` and receipt error messages
+in `packages/backend/src/services/receipt.service.ts`, and update the
+`DEFAULT_LOCALE` options in `ha-addon/config.yaml`, `.env.example`, and README.
+The Cyberpunk workspace uses the same dictionaries as the original UI.
 
 ## Reporting bugs & requesting features
 

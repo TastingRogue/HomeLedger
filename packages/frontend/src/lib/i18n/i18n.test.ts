@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { es } from './es';
-import { en } from './en';
 import {
   supportedLocales,
   isSupportedLocale,
@@ -11,43 +10,32 @@ import {
 } from './registry';
 
 describe('i18n dictionary parity', () => {
-  const esKeys = Object.keys(es).sort();
-  const enKeys = Object.keys(en).sort();
+  const canonicalKeys = Object.keys(es).sort();
+  const tokens = (value: string): string[] => (value.match(/\{[^}]+\}/g) ?? []).sort();
 
-  it('es and en have exactly the same keys', () => {
-    const missingInEn = esKeys.filter((k) => !(k in en));
-    const missingInEs = enKeys.filter((k) => !(k in es));
-    expect(missingInEn, 'keys present in es but missing in en').toEqual([]);
-    expect(missingInEs, 'keys present in en but missing in es').toEqual([]);
-    expect(enKeys.length).toBe(esKeys.length);
-  });
-
-  it('has no empty translation values', () => {
-    for (const [k, v] of Object.entries(es)) expect(v, `es.${k}`).not.toBe('');
-    for (const [k, v] of Object.entries(en)) expect(v, `en.${k}`).not.toBe('');
-  });
-
-  it('keeps interpolation placeholders consistent across locales', () => {
-    // Any `{param}` token in the Spanish string must also exist in the English
-    // one (and vice-versa), or a runtime interpolation would silently break.
-    const tokens = (s: string): string[] => (s.match(/\{[^}]+\}/g) ?? []).sort();
-    for (const key of esKeys) {
-      expect(tokens(en[key as keyof typeof en]), `placeholders for "${key}"`).toEqual(
-        tokens(es[key as keyof typeof es]),
-      );
-    }
-  });
+  for (const locale of supportedLocales) {
+    const dictionary = dictionaries[locale];
+    it(`${locale} has every canonical key, nonempty values, and matching placeholders`, () => {
+      expect(Object.keys(dictionary).sort()).toEqual(canonicalKeys);
+      for (const key of canonicalKeys as (keyof typeof es)[]) {
+        expect(dictionary[key].trim(), `${locale}.${key}`).not.toBe('');
+        expect(tokens(dictionary[key]), `${locale}.${key} placeholders`).toEqual(tokens(es[key]));
+      }
+    });
+  }
 });
 
 describe('i18n registry', () => {
   it('exposes es and en as supported locales', () => {
     expect(supportedLocales).toContain('es');
     expect(supportedLocales).toContain('en');
+    expect(supportedLocales).toContain('pt-BR');
   });
 
   it('recognizes supported locales and rejects others', () => {
     expect(isSupportedLocale('es')).toBe(true);
     expect(isSupportedLocale('en')).toBe(true);
+    expect(isSupportedLocale('pt-BR')).toBe(true);
     expect(isSupportedLocale('fr')).toBe(false);
     expect(isSupportedLocale(null)).toBe(false);
     expect(isSupportedLocale(42)).toBe(false);
@@ -56,6 +44,7 @@ describe('i18n registry', () => {
   it('maps locales to BCP-47 Intl tags, falling back to the default', () => {
     expect(getIntlTag('es')).toBe('es-MX');
     expect(getIntlTag('en')).toBe('en-US');
+    expect(getIntlTag('pt-BR')).toBe('pt-BR');
     // Unknown locale → default locale's tag.
     expect(getIntlTag('fr' as never)).toBe(getIntlTag(DEFAULT_LOCALE));
   });

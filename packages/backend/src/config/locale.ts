@@ -8,7 +8,7 @@
  *
  * Falls back to English when unset or invalid.
  */
-export const SUPPORTED_LOCALES = ['es', 'en'] as const;
+export const SUPPORTED_LOCALES = ['es', 'en', 'pt-BR'] as const;
 export type BackendLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const FALLBACK_LOCALE: BackendLocale = 'en';
@@ -19,12 +19,14 @@ export function isSupportedLocale(value: unknown): value is BackendLocale {
 
 /**
  * Resolves the host's primary locale from `DEFAULT_LOCALE`.
- * Normalizes values like `en-US` / `ES` to the base language code, and falls
+ * Normalizes values like `en-US` / `ES` to the base language code and
+ * `pt`, `pt-BR`, or `pt_BR` to `pt-BR`. Falls
  * back to English for anything unknown.
  */
 export function getDefaultLocale(): BackendLocale {
   const raw = process.env['DEFAULT_LOCALE']?.trim().toLowerCase();
   if (!raw) return FALLBACK_LOCALE;
+  if (raw === 'pt' || /^pt[-_]br$/.test(raw)) return 'pt-BR';
   const base = raw.split(/[-_]/)[0]; // 'en-us' -> 'en'
   return isSupportedLocale(base) ? base : FALLBACK_LOCALE;
 }

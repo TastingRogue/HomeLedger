@@ -1,5 +1,6 @@
 import { es, type TranslationKey } from './es';
 import { en } from './en';
+import { ptBR } from './pt-BR';
 
 /**
  * Language registry — the single source of truth for supported languages.
@@ -13,11 +14,13 @@ import { en } from './en';
  *
  * Everything else (the SupportedLocale type, the settings dropdown, the
  * translation fallback, and date formatting) derives from this map, so no
- * other file needs to change.
+ * other UI selection logic needs to change. Theme metadata also needs
+ * localized text; see CONTRIBUTING.md for installation-default support.
  */
 export const locales = {
   es: { dictionary: es, label: 'Español', intlTag: 'es-MX' },
   en: { dictionary: en, label: 'English (US)', intlTag: 'en-US' },
+  'pt-BR': { dictionary: ptBR, label: 'Português (Brasil)', intlTag: 'pt-BR' },
 } satisfies Record<string, LocaleConfig>;
 
 interface LocaleConfig {

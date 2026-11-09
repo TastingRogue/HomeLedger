@@ -40,7 +40,7 @@ options:
 # Schema validation for options
 schema:
   TZ: str
-  DEFAULT_LOCALE: "list(es|en)"
+  DEFAULT_LOCALE: "list(es|en|pt-BR)"
   DISPLAY_CURRENCY: "list(MXN|USD|EUR|GBP|COP|ARS|CLP|PEN|BRL)"
   BACKUP_ENABLED: bool
   BACKUP_RETENTION: "int(1,)"
