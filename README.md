@@ -422,8 +422,19 @@ All four report into an in-memory status registry, visible to admins at
   individual accounts remain in their native currency. Cross-currency transfers
   require a destination amount. Rates are not fetched automatically and default
   to 1 when omitted, so set them explicitly for foreign-currency accounts.
-- **Language:** Spanish / English / Brazilian Portuguese, switchable per user in Settings.
 - **Timezone:** America/Mexico_City by default, configurable in the environment.
+
+### Supported languages and translation credits
+
+Choose your interface language in **Settings → Profile**.
+
+| Language | Locale | Credit |
+| --- | --- | --- |
+| English | `en` | Original project language |
+| Spanish (Español) | `es` | Original project language |
+| Brazilian Portuguese (Português do Brasil) | `pt-BR` | Thiago Alves ([@ThiaAlves](https://github.com/ThiaAlves)) added the translation in [PR #20](https://github.com/TastingRogue/HomeLedger/pull/20). |
+
+To contribute a translation, see the [language contribution guide](CONTRIBUTING.md#adding-a-language).
 
 ## Home Assistant
 
