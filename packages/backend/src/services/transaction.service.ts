@@ -272,6 +272,12 @@ export class TransactionService {
 
     const result = sqlite.transaction(() => {
       // Update the transaction record
+      if (input.amount !== undefined && input.amount !== existing.amount) {
+        const splits = db.select().from(transactionSplits).where(eq(transactionSplits.transactionId, id)).all();
+        if (splits.length > 0 && Math.round(splits.reduce((sum, split) => sum + split.amount, 0) * 100) !== Math.round(input.amount * 100)) {
+          throw new TransactionError('Elimina o ajusta las divisiones antes de cambiar el monto', 'SPLIT_AMOUNT_MISMATCH');
+        }
+      }
       const updated = db
         .update(transactions)
         .set({

@@ -48,6 +48,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install desktop tooling (isolated)
         run: npm ci --prefix packages/desktop --no-audit --no-fund
+      - name: Audit desktop tooling dependencies
+        run: npm audit --prefix packages/desktop
       - name: Build application
         run: npm run build
       - name: Desktop unit tests

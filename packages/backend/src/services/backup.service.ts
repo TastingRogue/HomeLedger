@@ -350,9 +350,11 @@ export class BackupService {
 
     const db = getDb();
     const sqlite = getSqlite();
+    const promotedFiles: string[] = [];
+    let stagingDir: string | undefined;
 
     // Perform atomic replacement using a database transaction
-    sqlite.transaction(() => {
+    const restore = sqlite.transaction(() => {
       // Delete all existing user data in dependency order (children first)
       // Credit subscriptions (depends on accounts and subscriptions)
       const userAccounts = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.userId, userId)).all();
@@ -779,9 +781,6 @@ export class BackupService {
       // transfer links, and write the inlined base64 back to disk under a fresh
       // stored filename (mirrors AttachmentService.save). Build attMap so
       // receipt analyses can point at the new attachment ids.
-      if (!fs.existsSync(UPLOAD_DIR)) {
-        try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch { /* created on write */ }
-      }
       for (const att of backupData.attachments ?? []) {
         const rec = att as Record<string, unknown>;
         // Remap links. Both are optional; an attachment may link to neither,
@@ -798,7 +797,12 @@ export class BackupService {
         const filePath = path.join(UPLOAD_DIR, storedName);
         const fileBase64 = typeof rec['fileBase64'] === 'string' ? (rec['fileBase64'] as string) : null;
         if (fileBase64 != null) {
-          try { fs.writeFileSync(filePath, Buffer.from(fileBase64, 'base64')); } catch { /* best effort */ }
+          fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+          stagingDir ??= fs.mkdtempSync(path.join(UPLOAD_DIR, '.import-'));
+          const stagedPath = path.join(stagingDir, storedName);
+          fs.writeFileSync(stagedPath, Buffer.from(fileBase64, 'base64'), { flag: 'wx' });
+          fs.renameSync(stagedPath, filePath);
+          promotedFiles.push(filePath);
         }
 
         const now = typeof rec['createdAt'] === 'string' ? (rec['createdAt'] as string) : new Date().toISOString();
@@ -855,7 +859,20 @@ export class BackupService {
           sqlite.prepare(`INSERT INTO receipt_items (${cols.join(', ')}) VALUES (${placeholders})`).run(...values);
         }
       }
-    })();
+    });
+    try {
+      restore();
+    } catch (error) {
+      // Fresh random filenames only: never remove the previous user's files.
+      for (const file of promotedFiles) {
+        try { fs.unlinkSync(file); } catch { /* an orphan is safer than hiding the original error */ }
+      }
+      throw error;
+    } finally {
+      if (stagingDir) {
+        try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch { /* cleanup only */ }
+      }
+    }
 
     BackupService.recordHistory(userId, 'import');
   }
@@ -1070,6 +1087,9 @@ export class BackupService {
     if (txMissingCategory > 0) warnings.push(`${txMissingCategory} transacción(es) referencian una categoría ausente del respaldo y se omitirán.`);
     const subsMissingCategory = countOrphans(data.subscriptions, 'categoryId', categoryIds);
     if (subsMissingCategory > 0) warnings.push(`${subsMissingCategory} suscripción(es) referencian una categoría ausente del respaldo y se omitirán.`);
+    const missingAttachmentFiles = (validated.data.attachments ?? []).filter((attachment) =>
+      typeof (attachment as Record<string, unknown>)['fileBase64'] !== 'string').length;
+    if (missingAttachmentFiles > 0) warnings.push(`${missingAttachmentFiles} adjunto(s) no contienen el archivo original; solo se restaurarán sus metadatos.`);
 
     return {
       version: validated.version,

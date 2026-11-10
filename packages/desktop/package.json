@@ -22,6 +22,9 @@
     "electron": "45.2.2",
     "electron-builder": "26.18.0"
   },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.4"
+  },
   "build": {
     "appId": "io.github.tastingrogue.homeledger",
     "productName": "HomeLedger",

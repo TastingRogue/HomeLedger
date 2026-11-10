@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TransferService, TransferError } from '../../services/transfer.service.js';
-import { createTransferSchema } from '../../validators/transfer.schema.js';
+import { createTransferSchema, updateTransferSchema } from '../../validators/transfer.schema.js';
 import { AccountService } from '../../services/account.service.js';
 
 /**
@@ -106,14 +106,11 @@ export async function transferRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const input: Record<string, unknown> = {};
-      if (body.name) input.name = String(body.name);
-      if (body.amount) input.amount = Number(body.amount);
-      if (body.date) input.date = String(body.date);
-      if (body.sourceAccountId) input.sourceAccountId = Number(body.sourceAccountId);
-      if (body.destinationAccountId) input.destinationAccountId = Number(body.destinationAccountId);
-
-      const transfer = TransferService.update(id, user.userId, input as any);
+      const parsed = updateTransferSchema.safeParse(body);
+      if (!parsed.success) {
+        return reply.status(422).send({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Error de validación', details: formatZodErrors(parsed.error) } });
+      }
+      const transfer = TransferService.update(id, user.userId, parsed.data);
       return reply.status(200).send({ success: true, data: transfer });
     } catch (error) {
       if (error instanceof TransferError) {

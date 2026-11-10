@@ -1,3 +1,4 @@
+import { categorySpent } from './category-spending.js';
 import { eq, and, or, gte, lte, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { budgets, budgetCategories, budgetTags, transactions, transactionTags, tags, alerts, categories, accounts } from '../db/schema.js';
@@ -273,20 +274,7 @@ export class BudgetService {
       // For each budget category, calculate spent from transactions
       const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
         // Sum of Gasto transactions for this category within the budget period (base currency)
-        const spentResult = db
-          .select({ total: spentInBase })
-          .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-          .where(
-            and(
-              eq(transactions.userId, userId),
-              eq(transactions.categoryId, bc.categoryId),
-              eq(transactions.type, 'Gasto'),
-              gte(transactions.date, budget.startDate),
-              lte(transactions.date, budget.endDate)
-            )
-          )
-          .get();
+        const spentResult = { total: categorySpent(userId, bc.categoryId, budget.startDate, budget.endDate) };
 
         const spent = roundMoney(Number(spentResult?.total ?? 0));
         const remaining = roundMoney((bc.allocated + bc.rollover) - spent);
@@ -387,20 +375,7 @@ export class BudgetService {
       for (const bc of budgetCats) {
         totalAllocated += bc.allocated;
 
-        const spentResult = db
-          .select({ total: spentInBase })
-          .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-          .where(
-            and(
-              eq(transactions.userId, userId),
-              eq(transactions.categoryId, bc.categoryId),
-              eq(transactions.type, 'Gasto'),
-              gte(transactions.date, budget.startDate),
-              lte(transactions.date, budget.endDate)
-            )
-          )
-          .get();
+        const spentResult = { total: categorySpent(userId, bc.categoryId, budget.startDate, budget.endDate) };
 
         totalSpent += Number(spentResult?.total ?? 0);
       }
@@ -508,20 +483,7 @@ export class BudgetService {
     sqlite.transaction(() => {
       for (const bc of budgetCats) {
         // Calculate spent for this category in the current period (base currency)
-        const spentResult = db
-          .select({ total: spentInBase })
-          .from(transactions)
-          .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-          .where(
-            and(
-              eq(transactions.userId, budget.userId),
-              eq(transactions.categoryId, bc.categoryId),
-              eq(transactions.type, 'Gasto'),
-              gte(transactions.date, budget.startDate),
-              lte(transactions.date, budget.endDate)
-            )
-          )
-          .get();
+        const spentResult = { total: categorySpent(budget.userId, bc.categoryId, budget.startDate, budget.endDate) };
 
         const spent = roundMoney(Number(spentResult?.total ?? 0));
         const unused = roundMoney((bc.allocated + bc.rollover) - spent);
@@ -627,20 +589,7 @@ export class BudgetService {
           const categoryName = category?.name ?? `Categoría ${bc.categoryId}`;
 
           // Calculate spent (base currency)
-          const spentResult = db
-            .select({ total: spentInBase })
-            .from(transactions)
-            .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-            .where(
-              and(
-                eq(transactions.userId, userId),
-                eq(transactions.categoryId, bc.categoryId),
-                eq(transactions.type, 'Gasto'),
-                gte(transactions.date, budget.startDate),
-                lte(transactions.date, budget.endDate)
-              )
-            )
-            .get();
+          const spentResult = { total: categorySpent(userId, bc.categoryId, budget.startDate, budget.endDate) };
 
           const spent = Number(spentResult?.total ?? 0);
           const totalBudget = bc.allocated + bc.rollover;
@@ -771,20 +720,7 @@ export class BudgetService {
       .all();
 
     const categoriesWithSpent: BudgetCategoryType[] = budgetCats.map((bc) => {
-      const spentResult = db
-        .select({ total: spentInBase })
-        .from(transactions)
-        .innerJoin(accounts, eq(transactions.accountId, accounts.id))
-        .where(
-          and(
-            eq(transactions.userId, userId),
-            eq(transactions.categoryId, bc.categoryId),
-            eq(transactions.type, 'Gasto'),
-            gte(transactions.date, budget.startDate),
-            lte(transactions.date, budget.endDate)
-          )
-        )
-        .get();
+      const spentResult = { total: categorySpent(userId, bc.categoryId, budget.startDate, budget.endDate) };
 
       const spent = Number(spentResult?.total ?? 0);
       const remaining = (bc.allocated + bc.rollover) - spent;

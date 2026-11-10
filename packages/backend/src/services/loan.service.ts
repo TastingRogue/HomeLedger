@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { getDb } from '../db/connection.js';
+import { getDb, getSqlite } from '../db/connection.js';
 import { loans, loanPayments } from '../db/schema.js';
 import type { CreateLoanSchema, UpdateLoanSchema, RecordPaymentSchema } from '../validators/loan.schema.js';
 
@@ -132,74 +132,76 @@ export class LoanService {
    */
   static recordPayment(id: number, userId: number, input: RecordPaymentSchema) {
     const db = getDb();
+    return getSqlite().transaction(() => {
 
-    const loan = db
-      .select()
-      .from(loans)
-      .where(and(eq(loans.id, id), eq(loans.userId, userId)))
-      .get();
+      const loan = db
+        .select()
+        .from(loans)
+        .where(and(eq(loans.id, id), eq(loans.userId, userId)))
+        .get();
 
-    if (!loan) {
-      throw new LoanError('Préstamo no encontrado', 'LOAN_NOT_FOUND');
-    }
+      if (!loan) {
+        throw new LoanError('Préstamo no encontrado', 'LOAN_NOT_FOUND');
+      }
 
-    if (loan.status === 'paid') {
-      throw new LoanError(
-        'No se pueden registrar pagos en un préstamo ya liquidado',
-        'LOAN_ALREADY_PAID'
-      );
-    }
+      if (loan.status === 'paid') {
+        throw new LoanError(
+          'No se pueden registrar pagos en un préstamo ya liquidado',
+          'LOAN_ALREADY_PAID'
+        );
+      }
 
-    // Validar que la suma de principal + interest sea coherente con el monto total
-    const sumParts = Math.round((input.principal + input.interest) * 100) / 100;
-    const totalAmount = Math.round(input.amount * 100) / 100;
-    if (Math.abs(sumParts - totalAmount) > 0.01) {
-      throw new LoanError(
-        'La suma de capital e interés debe ser igual al monto total del pago',
-        'PAYMENT_AMOUNT_MISMATCH'
-      );
-    }
+      // Validar que la suma de principal + interest sea coherente con el monto total
+      const sumParts = Math.round((input.principal + input.interest) * 100) / 100;
+      const totalAmount = Math.round(input.amount * 100) / 100;
+      if (Math.abs(sumParts - totalAmount) > 0.01) {
+        throw new LoanError(
+          'La suma de capital e interés debe ser igual al monto total del pago',
+          'PAYMENT_AMOUNT_MISMATCH'
+        );
+      }
 
-    const now = new Date().toISOString();
+      const now = new Date().toISOString();
 
-    // Insertar el registro de pago
-    const payment = db
-      .insert(loanPayments)
-      .values({
-        loanId: id,
-        amount: input.amount,
-        principal: input.principal,
-        interest: input.interest,
-        date: input.date,
-        createdAt: now,
-      })
-      .returning()
-      .get();
+      // Insertar el registro de pago
+      const payment = db
+        .insert(loanPayments)
+        .values({
+          loanId: id,
+          amount: input.amount,
+          principal: input.principal,
+          interest: input.interest,
+          date: input.date,
+          createdAt: now,
+        })
+        .returning()
+        .get();
 
-    // Reducir el monto restante por la porción de capital
-    const newRemaining = Math.round((loan.remainingAmount - input.principal) * 100) / 100;
-    const newStatus = newRemaining <= 0 ? 'paid' : 'active';
+      // Reducir el monto restante por la porción de capital
+      const newRemaining = Math.round((loan.remainingAmount - input.principal) * 100) / 100;
+      const newStatus = newRemaining <= 0 ? 'paid' : 'active';
 
-    db.update(loans)
-      .set({
-        remainingAmount: Math.max(newRemaining, 0),
-        status: newStatus,
-        updatedAt: now,
-      })
-      .where(eq(loans.id, id))
-      .run();
+      db.update(loans)
+        .set({
+          remainingAmount: Math.max(newRemaining, 0),
+          status: newStatus,
+          updatedAt: now,
+        })
+        .where(eq(loans.id, id))
+        .run();
 
-    // Obtener el préstamo actualizado
-    const updatedLoan = db
-      .select()
-      .from(loans)
-      .where(eq(loans.id, id))
-      .get();
+      // Obtener el préstamo actualizado
+      const updatedLoan = db
+        .select()
+        .from(loans)
+        .where(eq(loans.id, id))
+        .get();
 
-    return {
-      payment,
-      loan: updatedLoan,
-    };
+      return {
+        payment,
+        loan: updatedLoan,
+      };
+    })();
   }
 
   /**

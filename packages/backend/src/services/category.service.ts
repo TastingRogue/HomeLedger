@@ -1,4 +1,5 @@
-import { eq, and, sql, gte, lte } from 'drizzle-orm';
+import { categorySpending } from './category-spending.js';
+import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
 import { categories, subcategories, transactions } from '../db/schema.js';
 
@@ -272,8 +273,6 @@ export class CategoryService {
     userId: number,
     dateRange?: { startDate: string; endDate: string }
   ): Promise<CategoryAnalysisItem[]> {
-    const db = getDb();
-
     // Determinar rango de fechas (por defecto: mes actual)
     let startDate: string;
     let endDate: string;
@@ -290,24 +289,7 @@ export class CategoryService {
     }
 
     // Consultar totales por categoría para gastos en el rango de fechas
-    const results = db
-      .select({
-        categoryId: transactions.categoryId,
-        categoryName: categories.name,
-        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-      })
-      .from(transactions)
-      .innerJoin(categories, eq(transactions.categoryId, categories.id))
-      .where(
-        and(
-          eq(transactions.userId, userId),
-          eq(transactions.type, 'Gasto'),
-          gte(transactions.date, startDate),
-          lte(transactions.date, endDate + 'T23:59:59.999Z')
-        )
-      )
-      .groupBy(transactions.categoryId, categories.name)
-      .all();
+    const results = categorySpending(userId, startDate, endDate);
 
     // Filtrar categorías con total > 0
     const nonZero = results.filter((r) => r.total > 0);

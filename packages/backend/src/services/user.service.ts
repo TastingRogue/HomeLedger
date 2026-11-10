@@ -1,7 +1,7 @@
 import { and, eq, count } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { getDb } from '../db/connection.js';
-import { users } from '../db/schema.js';
+import { getDb, getSqlite } from '../db/connection.js';
+import { users, refreshTokens } from '../db/schema.js';
 
 const SALT_ROUNDS = 12;
 
@@ -81,10 +81,13 @@ export class UserService {
       }
     }
 
-    db.update(users)
-      .set({ disabled, updatedAt: new Date().toISOString() })
-      .where(eq(users.id, targetUserId))
-      .run();
+    getSqlite().transaction(() => {
+      db.update(users)
+        .set({ disabled, updatedAt: new Date().toISOString() })
+        .where(eq(users.id, targetUserId))
+        .run();
+      if (disabled) db.delete(refreshTokens).where(eq(refreshTokens.userId, targetUserId)).run();
+    })();
     return UserService.toSummary(targetUserId);
   }
 
@@ -110,11 +113,14 @@ export class UserService {
       throw new UserError('La contraseña debe tener al menos 8 caracteres', 'PASSWORD_TOO_SHORT');
     }
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    getDb()
-      .update(users)
-      .set({ passwordHash, updatedAt: new Date().toISOString() })
-      .where(eq(users.id, targetUserId))
-      .run();
+    getSqlite().transaction(() => {
+      getDb()
+        .update(users)
+        .set({ passwordHash, updatedAt: new Date().toISOString() })
+        .where(eq(users.id, targetUserId))
+        .run();
+      getDb().delete(refreshTokens).where(eq(refreshTokens.userId, targetUserId)).run();
+    })();
   }
 
   private static toSummary(userId: number): UserSummary {

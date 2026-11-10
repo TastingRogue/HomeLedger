@@ -94,6 +94,14 @@ describe('BudgetService', () => {
       CREATE INDEX IF NOT EXISTS transactions_user_id_date_idx ON transactions(user_id, date);
       CREATE INDEX IF NOT EXISTS transactions_user_id_type_idx ON transactions(user_id, type);
 
+      CREATE TABLE IF NOT EXISTS transaction_splits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+        category_id INTEGER NOT NULL REFERENCES categories(id),
+        amount REAL NOT NULL,
+        note TEXT
+      );
+
       CREATE TABLE IF NOT EXISTS budgets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

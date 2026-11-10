@@ -54,3 +54,5 @@ export const createTransferSchema = z
   );
 
 export type CreateTransferSchema = z.infer<typeof createTransferSchema>;
+
+export const updateTransferSchema = z.object(createTransferSchema.shape).partial();

@@ -1,8 +1,10 @@
+import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { promisify } from 'node:util';
-import { getSqlite, getDatabaseFilePath, closeDatabase, getDb } from '../db/connection.js';
+import { getSqlite, getDatabaseFilePath, closeDatabase, initializeDatabase } from '../db/connection.js';
 import { getBackupDir, getBackupRetention, SNAPSHOT_PREFIX, SNAPSHOT_EXT } from '../config/backup.js';
 
 const gzip = promisify(zlib.gzip);
@@ -129,29 +131,60 @@ export class SnapshotService {
     }
 
     const dbPath = getDatabaseFilePath();
-
-    // Close the live connection so the file handle is released before swapping.
-    closeDatabase();
-
-    // Safety copy of the current DB (overwrites any previous pre-restore file).
+    const stagedPath = `${dbPath}.restore-${randomUUID()}.tmp`;
+    const safetyPath = `${dbPath}.pre-restore`;
+    let replaced = false;
+    let liveClosed = false;
     try {
-      if (fs.existsSync(dbPath)) {
-        fs.copyFileSync(dbPath, `${dbPath}.pre-restore`);
+      fs.writeFileSync(stagedPath, decompressed, { flag: 'wx' });
+      const candidate = new Database(stagedPath, { readonly: true, fileMustExist: true });
+      try {
+        if (candidate.pragma('integrity_check', { simple: true }) !== 'ok' || (candidate.pragma('foreign_key_check') as unknown[]).length !== 0) {
+          throw new SnapshotError('El respaldo está dañado.', 'INVALID_SNAPSHOT_CONTENT');
+        }
+        // Require an application database, not just a file with a SQLite header.
+        candidate.prepare('SELECT id, password_hash FROM users LIMIT 1').get();
+        candidate.prepare('SELECT id, user_id FROM accounts LIMIT 1').get();
+        const version = candidate.prepare('SELECT MAX(created_at) AS version FROM __drizzle_migrations').get() as { version: number | null };
+        const current = getSqlite().prepare('SELECT MAX(created_at) AS version FROM __drizzle_migrations').get() as { version: number | null };
+        if ((version.version ?? 0) > (current.version ?? 0)) {
+          throw new SnapshotError('El respaldo requiere una versión más reciente.', 'INCOMPATIBLE_SNAPSHOT');
+        }
+      } finally {
+        candidate.close();
       }
-    } catch { /* non-fatal: proceed with restore even if the safety copy fails */ }
 
-    // Remove WAL/SHM sidecars so the restored file isn't shadowed by stale WAL.
-    for (const suffix of ['-wal', '-shm']) {
-      const sidecar = `${dbPath}${suffix}`;
-      if (fs.existsSync(sidecar)) {
-        try { fs.unlinkSync(sidecar); } catch { /* best-effort */ }
+      // No awaits from checkpoint through reopen: no request can write in the gap.
+      const checkpoint = getSqlite().pragma('wal_checkpoint(TRUNCATE)') as { busy: number }[];
+      if (checkpoint.some(row => row.busy !== 0)) throw new SnapshotError('La base de datos está ocupada.', 'DATABASE_BUSY');
+      closeDatabase();
+      liveClosed = true;
+      // A failed safety copy aborts before touching the live database.
+      fs.copyFileSync(dbPath, safetyPath);
+      for (const suffix of ['-wal', '-shm']) {
+        const sidecar = `${dbPath}${suffix}`;
+        if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
       }
+      fs.renameSync(stagedPath, dbPath);
+      replaced = true;
+      initializeDatabase();
+    } catch (error) {
+      if (liveClosed) {
+        closeDatabase();
+        if (replaced) {
+          // Preserve the safety copy even after rollback for manual recovery.
+          fs.copyFileSync(safetyPath, stagedPath);
+          for (const suffix of ['-wal', '-shm']) {
+            const sidecar = `${dbPath}${suffix}`;
+            if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
+          }
+          fs.renameSync(stagedPath, dbPath);
+        }
+        initializeDatabase();
+      }
+      throw error;
+    } finally {
+      if (fs.existsSync(stagedPath)) fs.unlinkSync(stagedPath);
     }
-
-    // Write the restored database into place.
-    fs.writeFileSync(dbPath, decompressed);
-
-    // Reopen the connection (getDb lazily recreates it).
-    getDb();
   }
 }

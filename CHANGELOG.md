@@ -9,12 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Validate transfer edits, available funds and cross-currency destination amounts.
+- Attribute split transactions to their actual categories in reports and budgets,
+  convert category totals to the base currency, and prevent inconsistent split edits.
+- Recalculate goal completion when its target changes, without discarding savings.
+- Commit loan payments and balances atomically; roll back failed attachment restores.
+- Validate snapshot integrity before replacement and require a recoverable safety copy.
+- Remove tracked Python bytecode and exclude local caches and temporary files.
+- Update desktop packaging dependencies and audit them in the desktop workflow.
 - Restore the six broken GitHub Pages screenshot references, showcase Cyberpunk,
   and check local landing-page links and images before deployment.
 - Update vulnerable production dependencies and the test/lint toolchain.
 
 ### Security
 
+- Reject disabled/deleted users across authentication methods, use current roles,
+  and invalidate access and refresh sessions after an administrative password reset.
+  Integration keys remain configured but cannot be used while their owner is disabled.
+- Serialize first-user registration so concurrent requests cannot create multiple
+  bootstrap administrators. Existing access tokens refresh once after this update.
 - Browser refresh tokens use HttpOnly, SameSite cookies; access tokens are scoped
   to the tab session. Old persistent browser credentials are removed on startup.
   Existing non-browser token clients remain supported.

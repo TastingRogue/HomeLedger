@@ -129,6 +129,8 @@ export class GoalService {
 
     if (input.targetAmount !== undefined) {
       updateData['targetAmount'] = input.targetAmount;
+      // Keep surplus savings; lowering a target must never destroy money.
+      updateData['status'] = existing.savedAmount >= input.targetAmount ? 'Completada' : 'Activa';
     }
 
     if (input.type !== undefined) {
@@ -187,7 +189,7 @@ export class GoalService {
     }
 
     // Calcular monto efectivo: min(requestedAmount, targetAmount - savedAmount)
-    const remaining = roundMoney(existing.targetAmount - existing.savedAmount);
+    const remaining = Math.max(0, roundMoney(existing.targetAmount - existing.savedAmount));
     const effectiveAmount = roundMoney(Math.min(input.amount, remaining));
 
     const newSavedAmount = roundMoney(existing.savedAmount + effectiveAmount);

@@ -1,7 +1,7 @@
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { getDb, getSqlite } from '../db/connection.js';
 import { transfers, accounts, transactions } from '../db/schema.js';
-import type { CreateTransferSchema } from '../validators/transfer.schema.js';
+import { createTransferSchema, type CreateTransferSchema } from '../validators/transfer.schema.js';
 
 export interface TransferRecord {
   id: number;
@@ -261,6 +261,26 @@ export class TransferService {
       const sourceId = input.sourceAccountId ?? existing.sourceAccountId;
       const destId = input.destinationAccountId ?? existing.destinationAccountId;
 
+      const effective = createTransferSchema.safeParse({ ...existing, ...input, destinationAmount: input.destinationAmount ?? existing.destinationAmount ?? undefined });
+      if (!effective.success) throw new TransferError('Datos de transferencia inválidos', 'VALIDATION_ERROR');
+      const source = db.select().from(accounts).where(and(eq(accounts.id, sourceId), eq(accounts.userId, userId))).get();
+      const destination = db.select().from(accounts).where(and(eq(accounts.id, destId), eq(accounts.userId, userId))).get();
+      if (!source) throw new TransferError('Cuenta origen no encontrada', 'SOURCE_NOT_FOUND');
+      if (!destination) throw new TransferError('Cuenta destino no encontrada', 'DESTINATION_NOT_FOUND');
+      if (source.status !== 'Activo') throw new TransferError('Cuenta origen inactiva', 'SOURCE_INACTIVE');
+      if (destination.status !== 'Activo') throw new TransferError('Cuenta destino inactiva', 'DESTINATION_INACTIVE');
+      // Undo the existing movement only for calculating the available source.
+      const available = calculateAccountBalance(sourceId)
+        + (sourceId === existing.sourceAccountId ? existing.amount : 0)
+        - (sourceId === existing.destinationAccountId ? existing.destinationAmount ?? existing.amount : 0);
+      if (available < effective.data.amount) throw new TransferError('Fondos insuficientes en la cuenta origen', 'INSUFFICIENT_FUNDS');
+      let destinationAmount: number | null = null;
+      if (source.currency !== destination.currency) {
+        const accountsChanged = sourceId !== existing.sourceAccountId || destId !== existing.destinationAccountId;
+        destinationAmount = input.destinationAmount ?? (accountsChanged || (input.amount !== undefined && input.amount !== existing.amount) ? null : existing.destinationAmount);
+        if (destinationAmount == null) throw new TransferError('Se requiere el monto convertido', 'CROSS_CURRENCY_AMOUNT_REQUIRED');
+      }
+
       if (sourceId === destId) {
         throw new TransferError('La cuenta origen y destino deben ser diferentes', 'SAME_ACCOUNT');
       }
@@ -281,7 +301,7 @@ export class TransferService {
           name: input.name ?? existing.name,
           amount: input.amount ?? existing.amount,
           // P4.11: allow updating the cross-currency destination amount.
-          ...(input.destinationAmount !== undefined && { destinationAmount: input.destinationAmount ?? null }),
+          destinationAmount,
           date: input.date ?? existing.date,
           sourceAccountId: sourceId,
           destinationAccountId: destId,

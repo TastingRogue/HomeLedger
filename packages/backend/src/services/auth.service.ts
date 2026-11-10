@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { eq, and, count } from 'drizzle-orm';
-import { getDb } from '../db/connection.js';
+import { getDb, getSqlite } from '../db/connection.js';
 import { users, refreshTokens, apiKeys } from '../db/schema.js';
 import { getRegistrationMode, getRegistrationAllowlist } from '../config/registration.js';
 import { seedCategoriesForUser } from '../db/seed.js';
@@ -114,6 +114,12 @@ function getJwtSecret(): string {
   return secret;
 }
 
+// Bind access tokens to the current credential without exposing the password
+// hash. A password reset invalidates tokens immediately, even in the same second.
+function credentialVersion(passwordHash: string): string {
+  return crypto.createHmac('sha256', getJwtSecret()).update(passwordHash).digest('hex');
+}
+
 export class AuthService {
   /**
    * Register a new user. First user automatically gets 'admin' role.
@@ -122,57 +128,61 @@ export class AuthService {
   static async register(input: RegisterSchema): Promise<RegisterResult> {
     const db = getDb();
 
-    // Check if email already exists
-    const existing = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, input.email))
-      .limit(1);
-
-    if (existing.length > 0) {
-      throw new AuthError('El correo electrónico ya está registrado', 'EMAIL_EXISTS');
-    }
-
-    // Determine role: first user = admin, subsequent = user
-    const userCountResult = await db.select({ value: count() }).from(users);
-    const userCount = userCountResult[0]?.value ?? 0;
-    const role = userCount === 0 ? 'admin' : 'user';
-
-    // Enforce the registration policy. The very first user is ALWAYS allowed
-    // (bootstraps the admin); after that the admin-controlled policy applies.
-    if (userCount > 0) {
-      const mode = getRegistrationMode();
-      if (mode === 'closed' || mode === 'first_user_only') {
-        throw new AuthError('El registro está deshabilitado. Contacta al administrador.', 'REGISTRATION_CLOSED');
-      }
-      // mode === 'open': if an allowlist is configured, the email must be on it.
-      const allowlist = getRegistrationAllowlist();
-      if (allowlist.length > 0 && !allowlist.includes(input.email.trim().toLowerCase())) {
-        throw new AuthError('Este correo no está autorizado para registrarse.', 'EMAIL_NOT_ALLOWED');
-      }
-    }
-
-    // Hash password
+    // Hash outside the transaction; policy and first-admin selection must be
+    // rechecked together with the insert after this asynchronous work finishes.
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+    const result = getSqlite().transaction(() => {
 
-    const now = new Date().toISOString();
+      // Check if email already exists
+      const existing = db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, input.email))
+        .limit(1).all();
 
-    // Insert user
-    const result = db
-      .insert(users)
-      .values({
-        email: input.email,
-        passwordHash,
-        name: input.name,
-        role,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
-      .get();
+      if (existing.length > 0) {
+        throw new AuthError('El correo electrónico ya está registrado', 'EMAIL_EXISTS');
+      }
 
-    // Every new user gets their own default category set (per-user model).
-    seedCategoriesForUser(result.id);
+      // Determine role: first user = admin, subsequent = user
+      const userCountResult = db.select({ value: count() }).from(users).all();
+      const userCount = userCountResult[0]?.value ?? 0;
+      const role = userCount === 0 ? 'admin' : 'user';
+
+      // Enforce the registration policy. The very first user is ALWAYS allowed
+      // (bootstraps the admin); after that the admin-controlled policy applies.
+      if (userCount > 0) {
+        const mode = getRegistrationMode();
+        if (mode === 'closed' || mode === 'first_user_only') {
+          throw new AuthError('El registro está deshabilitado. Contacta al administrador.', 'REGISTRATION_CLOSED');
+        }
+        // mode === 'open': if an allowlist is configured, the email must be on it.
+        const allowlist = getRegistrationAllowlist();
+        if (allowlist.length > 0 && !allowlist.includes(input.email.trim().toLowerCase())) {
+          throw new AuthError('Este correo no está autorizado para registrarse.', 'EMAIL_NOT_ALLOWED');
+        }
+      }
+
+      const now = new Date().toISOString();
+
+      // Insert user
+      const result = db
+        .insert(users)
+        .values({
+          email: input.email,
+          passwordHash,
+          name: input.name,
+          role,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+        .get();
+
+      // Every new user gets their own default category set (per-user model).
+      seedCategoriesForUser(result.id);
+      return result;
+    }).immediate();
 
     // Generate tokens
     const tokenPayload: TokenPayload = {
@@ -345,6 +355,9 @@ export class AuthService {
     const foundUser = user[0]!;
 
     // Generate new access token
+    if (foundUser.disabled) {
+      throw new AuthError('La cuenta está deshabilitada', 'USER_DISABLED');
+    }
     const tokenPayload: TokenPayload = {
       userId: foundUser.id,
       email: foundUser.email,
@@ -372,11 +385,15 @@ export class AuthService {
     const secret = getJwtSecret();
 
     try {
-      const decoded = jwt.verify(token, secret) as jwt.JwtPayload & TokenPayload;
+      const decoded = jwt.verify(token, secret) as jwt.JwtPayload & TokenPayload & { credentialVersion?: string };
+      const user = getDb().select().from(users).where(eq(users.id, decoded.userId)).get();
+      if (!user || user.disabled || decoded.credentialVersion !== credentialVersion(user.passwordHash)) {
+        throw new AuthError('La sesión ya no es válida', 'INVALID_TOKEN');
+      }
       return {
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
+        userId: user.id,
+        email: user.email,
+        role: user.role,
       };
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
@@ -505,6 +522,7 @@ export class AuthService {
 
     const foundUser = user[0]!;
 
+    if (foundUser.disabled) return null;
     return {
       payload: {
         userId: foundUser.id,
@@ -521,7 +539,9 @@ export class AuthService {
 
   private static generateAccessToken(payload: TokenPayload): string {
     const secret = getJwtSecret();
-    return jwt.sign(payload, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
+    const user = getDb().select().from(users).where(eq(users.id, payload.userId)).get();
+    if (!user || user.disabled) throw new AuthError('La sesión ya no es válida', 'INVALID_TOKEN');
+    return jwt.sign({ ...payload, credentialVersion: credentialVersion(user.passwordHash) }, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
   }
 
   private static async createRefreshToken(userId: number, session: SessionContext = {}): Promise<string> {
