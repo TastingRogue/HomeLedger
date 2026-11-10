@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatPercentage } from '$lib/utils/format';
   import { localDateString } from '$lib/utils/format';
   import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
@@ -343,7 +344,7 @@
         </div>
         <div class="stat">
           <span class="stat-label">{$t('budgets.usage')}</span>
-          <span class="stat-value {summary.percentUsed > 100 ? 'exceeded' : summary.percentUsed >= 80 ? 'warn' : ''}">{summary.percentUsed.toFixed(1)}%</span>
+          <span class="stat-value {summary.percentUsed > 100 ? 'exceeded' : summary.percentUsed >= 80 ? 'warn' : ''}">{formatPercentage(summary.percentUsed)}</span>
         </div>
       </div>
     {/if}
@@ -371,7 +372,7 @@
             <div class="budget-progress">
               <div class="progress-info">
                 <span class="progress-amounts">{formatCurrency(budget.totalSpent)} / {formatCurrency(budget.totalAllocated)}</span>
-                <span class="progress-pct {getProgressColor(budget.totalSpent, budget.totalAllocated)}">{budget.percentUsed.toFixed(1)}%</span>
+                <span class="progress-pct {getProgressColor(budget.totalSpent, budget.totalAllocated)}">{formatPercentage(budget.percentUsed)}</span>
               </div>
               <div class="progress-bar" role="progressbar" aria-valuenow={budget.percentUsed} aria-valuemin={0} aria-valuemax={100}>
                 <div class="progress-fill {getProgressColor(budget.totalSpent, budget.totalAllocated)}" style="width:{Math.min(budget.percentUsed, 100)}%"></div>

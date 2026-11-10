@@ -22,7 +22,7 @@ type CategoryType = 'Gasto' | 'Ingreso' | 'Ambos';
  * transactions; the import service and rules engine look it up by KEY per user
  * (not by name), so it works regardless of the seed language.
  */
-const SYSTEM_CATEGORIES: { key: string; es: string; en: string; 'pt-BR': string; type: CategoryType }[] = [
+export const SYSTEM_CATEGORIES: { key: string; es: string; en: string; 'pt-BR': string; type: CategoryType }[] = [
   { key: 'income', es: 'Ingresos', en: 'Income', 'pt-BR': 'Receitas', type: 'Ingreso' },
   { key: 'housing', es: 'Vivienda', en: 'Housing', 'pt-BR': 'Moradia', type: 'Gasto' },
   { key: 'groceries', es: 'Despensa', en: 'Groceries', 'pt-BR': 'Supermercado', type: 'Gasto' },

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { formatNumber } from '$lib/utils/format';
+  import { formatPercentage } from '$lib/utils/format';
   import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
@@ -293,10 +295,10 @@
             {/if}
           </div>
           <div class="goal-progress-row">
-            <div class="progress-bar" role="progressbar" aria-valuenow={goal.progress} aria-valuemin={0} aria-valuemax={100} aria-label={$t('a11y.goal_progress', { pct: goal.progress.toFixed(1) })}>
+            <div class="progress-bar" role="progressbar" aria-valuenow={goal.progress} aria-valuemin={0} aria-valuemax={100} aria-label={$t('a11y.goal_progress', { pct: formatNumber(goal.progress) })}>
               <div class="progress-fill {getProgressBarClass(goal.progress, goal.status)}" style="width:{Math.min(goal.progress, 100)}%"></div>
             </div>
-            <span class="progress-pct {getProgressBarClass(goal.progress, goal.status)}">{goal.progress.toFixed(1)}%</span>
+            <span class="progress-pct {getProgressBarClass(goal.progress, goal.status)}">{formatPercentage(goal.progress)}</span>
           </div>
           <div class="goal-amounts">
             <span class="amount-saved">{formatCurrency(goal.savedAmount)}</span>

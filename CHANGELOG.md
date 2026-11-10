@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Complete Brazilian Portuguese coverage for shared API error messages, numeric
+  and date formatting, default category display names, and desktop menus/dialogs.
+  Preserve custom category names and stored data when switching languages.
+- Preserve two-factor authentication challenges from unauthenticated login requests.
 - Validate transfer edits, available funds and cross-currency destination amounts.
 - Attribute split transactions to their actual categories in reports and budgets,
   convert category totals to the base currency, and prevent inconsistent split edits.

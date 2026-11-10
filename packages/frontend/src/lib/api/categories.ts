@@ -19,6 +19,7 @@ export interface Category {
   id: number;
   userId: number | null;
   name: string;
+  originalName?: string;
   icon: string | null;
   color: string | null;
   type: 'Gasto' | 'Ingreso' | 'Ambos';

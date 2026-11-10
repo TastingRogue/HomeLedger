@@ -1,8 +1,10 @@
 /**
  * Currency and number formatting utilities for the frontend.
- * Format: "MX$X,XXX.XX" with comma thousands separator and dot decimal.
+ * Numeric separators follow the active interface language.
  */
 import { get } from 'svelte/store';
+import { preferences } from '../stores/preferences';
+import { getIntlTag } from '../i18n/registry';
 import { t } from '../i18n';
 import { daysRemainingLabel, type Translate } from '../i18n/labels';
 
@@ -29,18 +31,17 @@ export function formatCurrency(amount: number): string {
 
   const isNegative = amount < 0;
   const absAmount = Math.abs(amount);
-  const fixed = absAmount.toFixed(2);
-  const [intPart, decPart] = fixed.split('.');
-  const withCommas = intPart!.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const formatted = `${symbol}${withCommas}.${decPart}`;
-  return isNegative ? `-${formatted}` : formatted;
+  const locale = getIntlTag(get(preferences).locale);
+  const number = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(absAmount);
+  const space = locale === 'pt-BR' ? '\u00a0' : '';
+  return `${isNegative ? '-' : ''}${symbol}${space}${number}`;
 }
 
 /**
  * Format a percentage value with up to 1 decimal place.
  */
 export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
+  return `${new Intl.NumberFormat(getIntlTag(get(preferences).locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)}%`;
 }
 
 /**
@@ -49,19 +50,12 @@ export function formatPercentage(value: number): string {
 export const formatPercent = formatPercentage;
 
 /**
- * Format a date in Spanish: "d de MMMM de yyyy"
+ * Format a long date in the selected interface language.
  * Accepts Date object or ISO string.
  */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const months = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-  ];
-  const day = d.getDate();
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  return `${day} de ${month} de ${year}`;
+  const d = typeof date === 'string' ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00:00` : date) : date;
+  return new Intl.DateTimeFormat(getIntlTag(get(preferences).locale), { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 }
 
 /**
@@ -70,7 +64,7 @@ export function formatDate(date: Date | string): string {
  */
 export function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString('es-MX', {
+  return d.toLocaleTimeString(getIntlTag(get(preferences).locale), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -128,4 +122,12 @@ export function localDateString(date=new Date()):string {
  */
 export function nowDatetimeLocal(): string {
   return toDatetimeLocal(new Date().toISOString());
+}
+
+/** Format a numeric value using the selected interface language. */
+export function formatNumber(value: number, digits = 1): string {
+  return new Intl.NumberFormat(getIntlTag(get(preferences).locale), { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+}
+export function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString(getIntlTag(get(preferences).locale));
 }

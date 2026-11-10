@@ -17,8 +17,9 @@ const dataDir = path.join(userDir, 'data');
 let window, child, origin, config, shuttingDown = false, starting = false, stopPromise;
 let stoppingChild = false;
 let handlingFailure = false;
-const spanish = () => app.getLocale().startsWith('es');
-const text = (en, es) => spanish() ? es : en;
+const { resolveLocale, text: localizedText } = require('./locale.cjs');
+const locale = () => resolveLocale(config?.locale ?? app.getLocale());
+const text = (en, es) => localizedText(locale(), en, es);
 function log(message) {
   appendDiagnostic(userDir, message);
 }
@@ -115,6 +116,7 @@ async function start() {
   starting = true;
   try {
     config = loadConfig(userDir);
+    installMenu();
     fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
     if (!window) loadingWindow();
     const token = randomBytes(32).toString('hex');
@@ -134,7 +136,7 @@ async function start() {
         if (message?.type === 'ready') { clearTimeout(timeout); resolve(message); }
         if (message?.type === 'error') fail(Object.assign(new Error('Backend failed'), { code: message.code }));
       });
-      active.send({ type: 'init', token, jwtSecret: config.jwtSecret, dataDir, port: config.port, locale: spanish() ? 'es' : 'en' });
+      active.send({ type: 'init', token, jwtSecret: config.jwtSecret, dataDir, port: config.port, locale: locale() });
     });
     if (!Number.isInteger(ready.port) || ready.port < 1 || ready.port > 65535) throw new Error('Invalid backend address');
     config.port = ready.port;
@@ -145,6 +147,12 @@ async function start() {
     ses.webRequest.onBeforeSendHeaders((details, callback) => {
       const local = isAppUrl(details.url, origin);
       if (local && details.webContentsId === window?.webContents.id) {
+        const chosenLocale = details.requestHeaders['Accept-Language'] ?? details.requestHeaders['accept-language'];
+        if (['en', 'es', 'pt-BR'].includes(chosenLocale) && config.locale !== chosenLocale) {
+          config.locale = chosenLocale;
+          try { saveConfig(userDir, config); } catch { log('Could not save interface language'); }
+          installMenu();
+        }
         callback({ requestHeaders: { ...details.requestHeaders, 'X-HomeLedger-Desktop': token } });
       } else {
         const cancel = !details.url.startsWith('data:') && !details.url.startsWith(`blob:${origin}/`) && !isPdfResourceUrl(details.url, details.frame?.url);
@@ -172,6 +180,21 @@ async function start() {
   }
 }
 
+function installMenu() {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+      { label: text('File', 'Archivo'), submenu: [{ label: text('Open data folder', 'Abrir carpeta de datos'), click: () => void shell.openPath(userDir) }, { label: text('Open logs', 'Abrir logs'), click: () => void shell.openPath(path.join(userDir, 'logs')) }, { type: 'separator' }, { role: 'quit', label: text('Quit', 'Salir') }] },
+      { label: text('Edit', 'Editar'), submenu: [{ role: 'undo', label: text('Undo', 'Deshacer') }, { role: 'redo', label: text('Redo', 'Rehacer') }, { role: 'cut', label: text('Cut', 'Cortar') }, { role: 'copy', label: text('Copy', 'Copiar') }, { role: 'paste', label: text('Paste', 'Pegar') }, { role: 'selectAll', label: text('Select all', 'Seleccionar todo') }] },
+      { label: text('View', 'Ver'), submenu: [
+        { label: text('Back', 'Atrás'), accelerator: process.platform === 'darwin' ? 'Cmd+[' : 'Alt+Left', click: goBack },
+        { label: text('Return to HomeLedger', 'Volver a HomeLedger'), accelerator: 'CommandOrControl+Shift+H', click: returnToApp },
+        { type: 'separator' }, { role: 'resetZoom', label: text('Actual size', 'Tamaño real') }, { role: 'zoomIn', label: text('Zoom in', 'Acercar') }, { role: 'zoomOut', label: text('Zoom out', 'Alejar') }, { type: 'separator' }, { role: 'togglefullscreen', label: text('Full screen', 'Pantalla completa') },
+      ] },
+      { label: text('Window', 'Ventana'), submenu: [{ role: 'minimize', label: text('Minimize', 'Minimizar') }, { role: 'close', label: text('Close', 'Cerrar') }] },
+      { role: 'help', label: text('Help', 'Ayuda'), submenu: [{ label: text('About HomeLedger', 'Acerca de HomeLedger'), click: () => void dialog.showMessageBox({ title: 'HomeLedger', message: `HomeLedger ${app.getVersion()}`, detail: text('Your data are stored on this computer. Background tasks run while the app is open. Update manually from GitHub Releases.', 'Tus datos se guardan en este equipo. Las tareas se ejecutan mientras la app está abierta. Actualiza manualmente desde GitHub Releases.') }) }, { label: text('Documentation', 'Documentación'), click: () => void openExternal('https://github.com/TastingRogue/HomeLedger/blob/main/docs/desktop.md') }] },
+    ]));
+}
+
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (window?.isMinimized()) window.restore(); window?.show(); window?.focus(); });
@@ -195,18 +218,7 @@ else {
       if (!origin || !isAppUrl(item.getURL(), origin)) { event.preventDefault(); return; }
       item.setSaveDialogOptions({ title: text('Save file', 'Guardar archivo'), defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
     });
-    Menu.setApplicationMenu(Menu.buildFromTemplate([
-      ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
-      { label: text('File', 'Archivo'), submenu: [{ label: text('Open data folder', 'Abrir carpeta de datos'), click: () => void shell.openPath(userDir) }, { label: text('Open logs', 'Abrir logs'), click: () => void shell.openPath(path.join(userDir, 'logs')) }, { type: 'separator' }, { role: 'quit' }] },
-      { role: 'editMenu' },
-      { role: 'viewMenu', submenu: [
-        { label: text('Back', 'Atrás'), accelerator: process.platform === 'darwin' ? 'Cmd+[' : 'Alt+Left', click: goBack },
-        { label: text('Return to HomeLedger', 'Volver a HomeLedger'), accelerator: 'CommandOrControl+Shift+H', click: returnToApp },
-        { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' },
-      ] },
-      { role: 'windowMenu' },
-      { role: 'help', submenu: [{ label: text('About HomeLedger', 'Acerca de HomeLedger'), click: () => void dialog.showMessageBox({ title: 'HomeLedger', message: `HomeLedger ${app.getVersion()}`, detail: text('Your data are stored on this computer. Background tasks run while the app is open. Update manually from GitHub Releases.', 'Tus datos se guardan en este equipo. Las tareas se ejecutan mientras la app está abierta. Actualiza manualmente desde GitHub Releases.') }) }, { label: text('Documentation', 'Documentación'), click: () => void openExternal('https://github.com/TastingRogue/HomeLedger/blob/main/docs/desktop.md') }] },
-    ]));
+    installMenu();
     return start();
-  }).catch(() => { dialog.showErrorBox('HomeLedger', 'Could not initialize HomeLedger. Check folder permissions.'); app.quit(); });
+  }).catch(() => { dialog.showErrorBox('HomeLedger', text('Could not initialize HomeLedger. Check folder permissions.', 'No se pudo iniciar HomeLedger. Revisa los permisos de la carpeta.')); app.quit(); });
 }

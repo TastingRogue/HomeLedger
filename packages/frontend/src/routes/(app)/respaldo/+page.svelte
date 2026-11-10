@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDateTime } from '$lib/utils/format';
   import { onMount } from 'svelte';
   import {
     exportBackup,
@@ -296,7 +297,7 @@
             <span class="history-type-tag" class:export={entry.type === 'export'} class:import={entry.type === 'import'}>
               {entry.type === 'export' ? $t('backup.type_export') : $t('backup.type_import')}
             </span>
-            <span class="history-date">{new Date(entry.createdAt).toLocaleString('es-MX')}</span>
+            <span class="history-date">{formatDateTime(entry.createdAt)}</span>
           </div>
         {/each}
       </div>

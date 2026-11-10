@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatPercentage } from '$lib/utils/format';
   import { exposeViewActions } from '$lib/themes/view-actions';
   import { onMount } from 'svelte';
   import {
@@ -402,7 +403,7 @@
                 <div class="credit-section">
                   <div class="util-row">
                     <span>{$t('accounts.utilization')}</span>
-                    <span class="util-pct util-{level}">{util.toFixed(1)}%</span>
+                    <span class="util-pct util-{level}">{formatPercentage(util)}</span>
                   </div>
                   <div class="util-bar" role="progressbar" aria-valuenow={util} aria-valuemin={0} aria-valuemax={100}>
                     <div class="util-fill util-{level}" style="width:{Math.min(util, 100)}%"></div>
@@ -584,7 +585,7 @@
             {#if statement.creditLimit != null}
               <div class="detail-balance">
                 <span class="db-label">{$t('accounts.credit_utilization')}</span>
-                <span class="db-value util-{getUtilizationLevel(util)}">{util.toFixed(1)}%</span>
+                <span class="db-value util-{getUtilizationLevel(util)}">{formatPercentage(util)}</span>
               </div>
             {/if}
             {#if statement.nextStatementDate}

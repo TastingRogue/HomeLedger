@@ -40,6 +40,7 @@ import { tagRoutes } from './routes/v1/tags.routes.js';
 import { searchRoutes } from './routes/v1/search.routes.js';
 import { parseTrustProxy } from './config/trust-proxy.js';
 import { registerDesktopBoundary } from './middleware/desktop.middleware.js';
+import { registerCategoryLocale } from './middleware/category-locale.js';
 
 const { version: appVersion } = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -75,6 +76,7 @@ export async function buildApp(runtime: { desktopToken?: string; requireFrontend
     }
   });
   registerAuthMiddleware(app);
+  registerCategoryLocale(app);
   registerErrorHandler(app);
   // Liveness/readiness probe with a real DB connectivity check. Returns 503 when
   // the database can't be reached so Docker/HA healthchecks can detect it.

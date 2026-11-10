@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { formatNumber } from '$lib/utils/format';
+  import { formatDateTime } from '$lib/utils/format';
   import { onMount } from 'svelte';
   import { apiGet, apiPut, apiPost } from '$lib/api/client';
   import Icon from '$lib/components/Icon.svelte';
@@ -263,8 +265,8 @@
 
   function fmtBytes(n: number): string {
     if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    if (n < 1024 * 1024) return `${formatNumber(n / 1024)} KB`;
+    return `${formatNumber(n / (1024 * 1024))} MB`;
   }
 
   // Lazy-load each admin dataset the first time its tab is opened.
@@ -439,7 +441,7 @@
 
   function formatSessionDate(iso: string | null): string {
     if (!iso) return '—';
-    try { return new Date(iso).toLocaleString(); } catch { return iso; }
+    try { return formatDateTime(iso); } catch { return iso; }
   }
 
   // ─── App lock (P4.14) ───
@@ -1160,7 +1162,7 @@
                 <div class="admin-row">
                   <div class="admin-user">
                     <span class="admin-name snap-name">{s.name}</span>
-                    <span class="admin-email">{new Date(s.createdAt).toLocaleString()} · {fmtBytes(s.size)}</span>
+                    <span class="admin-email">{formatDateTime(s.createdAt)} · {fmtBytes(s.size)}</span>
                   </div>
                   <div class="admin-actions">
                     <button class="btn-action-sm danger" onclick={() => openRestore(s)}>{$t('admin.restore')}</button>

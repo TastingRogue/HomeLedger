@@ -6,6 +6,8 @@
 import { browser } from '$app/environment';
 import { get } from 'svelte/store';
 import { t } from '../i18n';
+import { preferences } from '../stores/preferences';
+import { apiErrorMessage, apiErrorDetails } from '../i18n/api-errors';
 
 const API_BASE = '/api/v1';
 
@@ -65,6 +67,7 @@ function getAuthHeaders(): Record<string, string> {
   const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept-Language': get(preferences).locale,
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -119,8 +122,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
     throw new ApiError(
       response.status,
       code,
-      code==='NO_TRANSACTIONS'?get(t)('import.no_transactions'):code==='VALIDATION_ERROR'?get(t)('common.validation_error'):body.error?.message ?? body.message ?? 'Error desconocido',
-      body.error?.details ?? body.details
+      apiErrorMessage(get(t), code, response.status),
+      apiErrorDetails(get(t), body.error?.details ?? body.details)
     );
   }
 
@@ -144,7 +147,7 @@ export interface RequestOptions {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, skipAuth = false } = options;
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 'Accept-Language': get(preferences).locale };
   if (path.startsWith('/auth/')) headers['X-HomeLedger-Session'] = 'browser';
   if (!skipAuth) {
     const token = getAccessToken();
@@ -178,7 +181,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   // If still 401 after refresh, redirect to login
-  if (response.status === 401) {
+  if (response.status === 401 && !skipAuth) {
     clearTokens();
     redirectToLogin();
     throw new ApiError(401, 'SESSION_EXPIRED', get(t)('errors.session_expired'));
@@ -259,7 +262,7 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   const doFetch = (token: string | null): Promise<Response> =>
     fetch(`${API_BASE}${path}`, {
       method: 'GET',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { 'Accept-Language': get(preferences).locale, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
 
   let response = await doFetch(getAccessToken());
@@ -274,7 +277,8 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, body.error?.code ?? 'DOWNLOAD_ERROR', body.error?.message ?? `Error ${response.status}`);
+    const code = body.error?.code ?? 'DOWNLOAD_ERROR';
+    throw new ApiError(response.status, code, apiErrorMessage(get(t), code, response.status));
   }
   return response.blob();
 }
@@ -287,7 +291,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
   const doFetch = (token: string | null): Promise<Response> =>
     fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { 'Accept-Language': get(preferences).locale, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: formData,
     });
 

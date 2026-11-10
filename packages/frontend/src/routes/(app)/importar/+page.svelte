@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '$lib/utils/format';
   import { apiPost } from '$lib/api/client';
   import { onMount } from 'svelte';
   import { t } from '$lib/i18n';
@@ -220,7 +221,7 @@
       return { stats, columns: headers.slice(0, 5), sample, warnings };
     }
 
-    return { stats: [{ label: 'Tipo', value: ext?.toUpperCase() ?? 'Desconocido' }, { label: 'Tamaño', value: `${(file.size / 1024).toFixed(1)} KB` }], columns: [], sample: [], warnings: [] };
+    return { stats: [{ label: $t('common.type'), value: ext?.toUpperCase() ?? '—' }, { label: $t('import.size_label'), value: `${formatNumber(file.size / 1024)} KB` }], columns: [], sample: [], warnings: [] };
   }
 
   async function startImport() {
@@ -390,7 +391,7 @@
         <span class="file-icon">📄</span>
         <div class="file-details">
           <span class="file-name">{file?.name}</span>
-          <span class="file-size">{((file?.size ?? 0) / 1024).toFixed(1)} KB</span>
+          <span class="file-size">{formatNumber((file?.size ?? 0) / 1024)} KB</span>
         </div>
         <button class="btn-change" onclick={reset}>{$t('import.change_file')}</button>
       </div>

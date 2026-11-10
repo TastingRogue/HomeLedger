@@ -133,7 +133,7 @@
   // ─── Edit Modal ───
   function openEditModal(cat: Category) {
     editCat = cat;
-    editName = cat.name;
+    editName = cat.originalName ?? cat.name;
     editType = (cat.type as 'Gasto' | 'Ingreso' | 'Ambos') ?? 'Ambos';
     editError = null;
     editSubmitting = false;

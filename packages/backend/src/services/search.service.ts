@@ -39,6 +39,7 @@ export interface TransactionSearchHit {
   date: string;
   accountName: string | null;
   categoryName: string | null;
+  categoryId: number | null;
 }
 
 export interface ReceiptSearchHit {
@@ -129,6 +130,7 @@ export class SearchService {
         date: transactions.date,
         accountName: accounts.name,
         categoryName: categories.name,
+        categoryId: transactions.categoryId,
       })
       .from(transactions)
       .leftJoin(accounts, eq(transactions.accountId, accounts.id))
@@ -147,6 +149,7 @@ export class SearchService {
       date: r.date,
       accountName: r.accountName ?? null,
       categoryName: r.categoryName ?? null,
+      categoryId: r.categoryId ?? null,
     }));
   }
 

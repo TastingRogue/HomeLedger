@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatPercentage } from '$lib/utils/format';
   import { listAlerts, type AlertData } from '$lib/api/alerts';
   import { getAlertTitle, getAlertMessage } from '$lib/utils/alert-copy';
   let dashboardAlerts = $state<AlertData[]>([]);
@@ -768,7 +769,7 @@
                   <div class="cat-row">
                     <span class="cat-dot" style="background: {catColors[i % catColors.length]}"></span>
                     <span class="cat-name">{cat.categoryName}</span>
-                    <span class="cat-pct">{cat.percentage.toFixed(1)}%</span>
+                    <span class="cat-pct">{formatPercentage(cat.percentage)}</span>
                     <span class="cat-amount">{chartMoney(cat.total)}</span>
                   </div>
                 {/each}

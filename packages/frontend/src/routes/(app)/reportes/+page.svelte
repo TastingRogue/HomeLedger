@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatPercentage } from '$lib/utils/format';
   import { getViewCharts } from '$lib/themes/view-actions';
   import Icon from '$lib/components/Icon.svelte';
   const viewCharts = getViewCharts();
@@ -115,7 +116,7 @@
       </div>
       <div class="summary-card">
         <span class="sc-label">{$t('reports.savings_title')}</span>
-        <span class="sc-value" class:green={savingsRate > 0} class:red={savingsRate <= 0}>{savingsRate.toFixed(1)}%</span>
+        <span class="sc-value" class:green={savingsRate > 0} class:red={savingsRate <= 0}>{formatPercentage(savingsRate)}</span>
       </div>
       <div class="summary-card">
         <span class="sc-label">{$t('reports.current_networth')}</span>
@@ -166,7 +167,7 @@
               <div class="cat-row">
                 <span class="cat-dot" style="background: {catColors[i % catColors.length]}"></span>
                 <span class="cat-name">{cat.categoryName}</span>
-                <span class="cat-pct">{cat.percentage.toFixed(1)}%</span>
+                <span class="cat-pct">{formatPercentage(cat.percentage)}</span>
                 <span class="cat-amount">{formatCurrency(cat.total)}</span>
               </div>
             {/each}
@@ -197,7 +198,7 @@
             <path class="ring-fill" stroke-dasharray="{Math.max(savingsRate, 0)}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
           </svg>
           <div class="ring-center">
-            <span class="ring-pct" class:green={savingsRate > 0} class:red={savingsRate <= 0}>{savingsRate.toFixed(1)}%</span>
+            <span class="ring-pct" class:green={savingsRate > 0} class:red={savingsRate <= 0}>{formatPercentage(savingsRate)}</span>
             <span class="ring-label">{$t('reports.savings_rate_label')}</span>
           </div>
         </div>
@@ -252,11 +253,11 @@
         <h3 class="card-title"><Icon name="wallet" size={14}/> {$t('reports.credit_title')}</h3>
         <p class="card-desc">{$t('reports.credit_desc')}</p>
         {#if credit && credit.cards.length > 0}
-          <div class="report-total"><span>{$t('reports.credit_overall')}</span><strong class:red={credit.overallUtilization >= 30}>{credit.overallUtilization.toFixed(1)}%</strong></div>
+          <div class="report-total"><span>{$t('reports.credit_overall')}</span><strong class:red={credit.overallUtilization >= 30}>{formatPercentage(credit.overallUtilization)}</strong></div>
           <div class="rank-list">
             {#each credit.cards as c}
               <div class="util-row">
-                <div class="util-head"><span class="rank-name">{c.name}</span><span class="rank-amount">{c.utilization.toFixed(1)}%</span></div>
+                <div class="util-head"><span class="rank-name">{c.name}</span><span class="rank-amount">{formatPercentage(c.utilization)}</span></div>
                 <div class="util-bar"><div class="util-fill" class:high={c.utilization >= 30} style="width:{Math.min(c.utilization, 100)}%"></div></div>
                 <span class="util-sub">{formatCurrency(c.owed)} / {formatCurrency(c.limit)}</span>
               </div>
