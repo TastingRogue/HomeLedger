@@ -183,11 +183,12 @@ npm run db:migrate  -w packages/backend   # Apply migrations
 docker compose up -d --build --force-recreate
 docker compose ps            # confirm both containers are healthy
 
-# Standalone image:
+# Standalone image: first create/preserve homeledger.env as described in
+# docs/INSTALLATION.md. Back up the instance before replacing its container.
 docker build -t homeledger:standalone .
 docker rm -f homeledger
 docker run -d --name homeledger -p 3000:3000 -v homeledger-data:/data \
-  -e JWT_SECRET="your-strong-random-secret-min-32-chars" homeledger:standalone
+  --env-file homeledger.env homeledger:standalone
 ```
 
 **Publishing to Docker Hub:** commit to `main` and push — the GitHub Actions

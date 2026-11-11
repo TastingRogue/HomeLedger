@@ -9,6 +9,16 @@ if (path.dirname(output) !== path.join(desktop, '.staging')) throw new Error('Un
 await fs.rm(output, { recursive: true, force: true });
 await fs.mkdir(output, { recursive: true });
 for (const file of ['package.json', 'package-lock.json', 'tsconfig.base.json', 'LICENSE']) await fs.copyFile(path.join(root, file), path.join(output, file));
+// Locale validation runs before build and runtime staging. Keep this allowlist
+// explicit so local configuration and profiles never enter the Docker context.
+for (const file of ['scripts/locales.mjs', 'ha-addon/config.yaml']) {
+  await fs.mkdir(path.dirname(path.join(output, file)), { recursive: true });
+  await fs.copyFile(path.join(root, file), path.join(output, file));
+}
+await fs.mkdir(path.join(output, 'locales'), { recursive: true });
+for (const file of await fs.readdir(path.join(root, 'locales'))) {
+  if (file.endsWith('.json')) await fs.copyFile(path.join(root, 'locales', file), path.join(output, 'locales', file));
+}
 for (const name of ['backend', 'frontend', 'shared']) {
   await fs.cp(path.join(root, 'packages', name), path.join(output, 'packages', name), {
     recursive: true,

@@ -1,7 +1,11 @@
 # HomeLedger — Roadmap to v1.0.0
 
-This is the living checklist we use to drive HomeLedger from **v0.1.0** to a
-stable **v1.0.0**. It's grounded in a full codebase audit, not assumptions.
+> Historical v1.0 planning record. Statuses, test counts and architecture claims
+> below describe that milestone, not the current release. Retained as evidence.
+> See [releases](https://github.com/TastingRogue/HomeLedger/releases) for shipped
+> changes and [issues](https://github.com/TastingRogue/HomeLedger/issues) for current
+> work. Use [Installation](docs/INSTALLATION.md) and [Deployment](docs/DEPLOYMENT.md)
+> for current operating instructions.
 
 **What v1.0.0 means here:** a promise of stability for people running the app
 with real financial data — the database schema and backup format won't break

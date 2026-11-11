@@ -1,3 +1,12 @@
+# Historical Docker setup notes — August 2026
+
+> Archived implementation snapshot, not current operating instructions. Image
+> sizes, pending work and build details below describe the original setup and
+> must not be used to configure today's release.
+>
+> Use [Installation](docs/INSTALLATION.md), [Deployment](docs/DEPLOYMENT.md) and
+> the current [Dockerfile](Dockerfile) / [build workflow](.github/workflows/docker-build.yml).
+
 # Docker Setup Summary & Next Steps
 
 ## ✅ What's Been Done

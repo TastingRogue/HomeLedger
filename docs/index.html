@@ -269,7 +269,7 @@
         <div class="value"><div class="ico">💸</div><h3>Free &amp; open source</h3><p>MIT licensed. No paid tiers, no upsells — fork it, self-host it, own it.</p></div>
         <div class="value"><div class="ico">🏠</div><h3>Runs anywhere</h3><p>One Docker command on a home server, VPS, NAS, homelab or Raspberry Pi.</p></div>
         <div class="value"><div class="ico">📱</div><h3>Installable PWA</h3><p>Responsive, offline-capable, with quick-add and on-device camera receipt capture.</p></div>
-        <div class="value"><div class="ico">🌍</div><h3>Bilingual</h3><p>Full English / Spanish interface with a configurable install currency.</p></div>
+        <div class="value"><div class="ico">🌍</div><h3>Multilingual</h3><p>English, Spanish and Brazilian Portuguese, with a configurable base currency.</p></div>
       </div>
     </section>
 
@@ -358,45 +358,42 @@
           <div class="tab-panel" id="panel-docker">
             <h3>Prebuilt image from Docker Hub</h3>
             <p class="note">A self-contained multi-arch image (amd64 + arm64). One process serves the app + API on port 3000.</p>
+            <p class="note">First <a href="https://github.com/TastingRogue/HomeLedger/blob/main/docs/INSTALLATION.md#docker-recommended-for-production">create a private homeledger.env file with a generated JWT_SECRET</a>. Keep it for upgrades.</p>
             <pre><code>docker run -d \
   -p 3000:3000 \
   -v homeledger-data:/data \
-  -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
-  -e ADMIN_EMAIL="admin@homeledger.local" \
-  -e ADMIN_PASSWORD="your-strong-password" \
-  -e DEFAULT_LOCALE="en" \
-  -e DISPLAY_CURRENCY="USD" \
+  --env-file homeledger.env \
   --name homeledger \
   irving1flores/homeledger:latest</code></pre>
-            <p class="note">Then open <code>http://localhost:3000</code>. Only <code>JWT_SECRET</code> and <code>ADMIN_PASSWORD</code> are required — omit the rest to take the defaults (<code>en</code> / <code>MXN</code>).</p>
+            <p class="note">Then open <code>http://localhost:3000</code> and register the first administrator before exposing the instance publicly. Admin bootstrap credentials are optional.</p>
           </div>
 
           <!-- Docker Desktop -->
           <div class="tab-panel" id="panel-desktop">
             <h3>Docker Desktop (no command line)</h3>
-            <p class="note">The image ships with demo defaults, so it runs with no env vars — but you must map the port.</p>
+            <p class="note">The image requires a random JWT_SECRET of at least 32 characters. It has no built-in login credentials.</p>
             <ol>
               <li>Open the <strong>Images</strong> tab and click <strong>Run</strong> on <code>irving1flores/homeledger</code>.</li>
               <li>Expand <strong>Optional settings</strong>.</li>
               <li>Under <strong>Ports</strong>, set <strong>Host port</strong> to <code>3000</code>.</li>
-              <li>(Optional) Add a <strong>Volume</strong> → container path <code>/data</code> so your data persists.</li>
-              <li>(Optional) Set <strong>Environment variables</strong> <code>DEFAULT_LOCALE</code> (<code>en</code>/<code>es</code>) and <code>DISPLAY_CURRENCY</code> (e.g. <code>USD</code>).</li>
+              <li>Add a persistent <strong>Volume</strong> → container path <code>/data</code> so your data persists.</li>
+              <li>Set <code>JWT_SECRET</code> under <strong>Environment variables</strong>. Optionally set <code>DEFAULT_LOCALE</code> (<code>en</code>/<code>es</code>/<code>pt-BR</code>) and <code>DISPLAY_CURRENCY</code> (e.g. <code>USD</code>).</li>
               <li>Click <strong>Run</strong>, then open <code>http://localhost:3000</code>.</li>
             </ol>
-            <p class="note">Demo login: <code>admin@homeledger.local</code> / <code>changeme123</code> — change these for any real deployment.</p>
+            <p class="note">Register the first account to become administrator, or supply your own ADMIN_EMAIL and ADMIN_PASSWORD at startup.</p>
           </div>
 
           <!-- Docker Compose -->
           <div class="tab-panel" id="panel-compose">
-            <h3>Build from source with Docker Compose</h3>
+            <h3>Local development with Docker Compose</h3>
             <pre><code>git clone https://github.com/TastingRogue/HomeLedger.git
 cd HomeLedger
 cp .env.example .env
-# Edit .env: set JWT_SECRET + ADMIN_PASSWORD (required),
-# and optionally DEFAULT_LOCALE (en|es) and DISPLAY_CURRENCY (USD|MXN|…)
+# Edit .env: set JWT_SECRET (required), ADMIN_PASSWORD (optional bootstrap),
+# and optionally DEFAULT_LOCALE (en|es|pt-BR) and DISPLAY_CURRENCY (USD|MXN|…)
 
 docker compose up -d</code></pre>
-            <p class="note">Compose reads <code>.env</code>, so that file — not <code>-e</code> flags — is where you configure this deployment.</p>
+            <p class="note">Compose reads <code>.env</code>. Open the development UI on <code>http://localhost:5173</code>; the backend is on port 3000. Use the standalone image for production.</p>
           </div>
 
           <!-- Home Assistant -->

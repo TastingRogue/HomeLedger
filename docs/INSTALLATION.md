@@ -13,21 +13,41 @@ A multi-arch image is published to Docker Hub on every push to `main`. The
 image is self-contained: a single process serves both the web app and the API
 on port 3000, so it runs with no extra command.
 
+Create `homeledger.env` **once**, in a private folder outside source control.
+The commands below use Bash and Docker's Node image to generate a random secret:
+
+```bash
+(umask 077; docker run --rm node:22-alpine node -e 'console.log("JWT_SECRET=" + require("node:crypto").randomBytes(32).toString("hex"))' > homeledger.env)
+```
+
+PowerShell equivalent:
+
+```powershell
+$secretBytes = New-Object byte[] 32
+$secretGenerator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$secretGenerator.GetBytes($secretBytes)
+$secretGenerator.Dispose()
+"JWT_SECRET=$([Convert]::ToBase64String($secretBytes))" | Set-Content -Encoding ascii homeledger.env
+```
+
+Verify the command succeeded and the file contains a `JWT_SECRET=` value before
+starting. Keep this file private and preserve it for upgrades; **do not regenerate
+it on each restart**. Optionally add `DEFAULT_LOCALE=en`, `DISPLAY_CURRENCY=USD`,
+or `ADMIN_EMAIL` and a strong `ADMIN_PASSWORD` (one `KEY=value` per line).
+Without admin bootstrap credentials, register the first account immediately;
+it becomes administrator. Do this before exposing the instance publicly.
+
 ```bash
 docker pull irving1flores/homeledger:latest
 
 docker run -d \
   -p 3000:3000 \
   -v homeledger-data:/data \
-  -e JWT_SECRET="your-strong-random-secret-min-32-chars" \
-  -e ADMIN_EMAIL="admin@homeledger.local" \
-  -e ADMIN_PASSWORD="your-strong-password" \
-  -e DEFAULT_LOCALE="en" \
-  -e DISPLAY_CURRENCY="USD" \
+  --env-file homeledger.env \
   --name homeledger \
   irving1flores/homeledger:latest
 
-# Then open http://localhost:3000 and log in with the email/password above.
+# Then open http://localhost:3000 and register the first administrator.
 ```
 
 **What each flag does.** `JWT_SECRET` is required. Set `ADMIN_PASSWORD` to bootstrap an administrator, or register the first account in the app.
@@ -36,6 +56,7 @@ docker run -d \
 |------|--------------|--------------|
 | `-p 3000:3000` | Publishes the app + API on host port 3000. Without it the container runs but you can't reach it. | Any `HOST:3000` (e.g. `-p 8080:3000` to use `localhost:8080`) |
 | `-v homeledger-data:/data` | Persists the SQLite DB + attachments in a named volume, so data survives rebuilds. | A named volume, or a host path (`-v /my/folder:/data`) |
+| `--env-file homeledger.env` | Loads your private configuration. Preserve the same file for updates. | One `KEY=value` per line; `-e` flags below are alternatives |
 | `-e JWT_SECRET=…` | **Required.** Random secret (≥32 chars) used to sign login tokens. | Any long random string |
 | `-e ADMIN_EMAIL=…` | Email for the first admin user, created on first run. | Any email (default `admin@homeledger.local`) |
 | `-e ADMIN_PASSWORD=…` | Optional password for an administrator created at startup. | A strong password |
@@ -63,7 +84,10 @@ The image requires a strong `JWT_SECRET` before it can start.
 6. Click **Run** and open <http://localhost:3000>. Without a bootstrapped admin,
    register the first account to become the administrator.
 
-**Option 2 — Build from source with Docker Compose**
+**Option 2 — Local development with Docker Compose**
+
+This repository's Compose setup runs development services; use the standalone
+image above for production. Service names are `backend` and `frontend`.
 
 ```bash
 # Clone and configure
@@ -86,7 +110,7 @@ production startup rejects missing or known insecure values.
 | Variable | Description | Default (Docker image) |
 |----------|-------------|------------------------|
 | `JWT_SECRET` | Secret key for signing tokens (min 32 chars) | unset — **required** |
-| `CORS_ORIGIN` | Comma-separated allowed origins; unset reflects the request origin | unset (reflect origin) |
+| `CORS_ORIGIN` | Comma-separated allowlist for cross-origin browser clients. Same-origin use needs no CORS setting. | unset (CORS disabled) |
 | `ADMIN_EMAIL` | Admin user email | `admin@homeledger.local` |
 | `ADMIN_PASSWORD` | Admin password | unset — optional admin bootstrap |
 | `ALLOW_INSECURE_DEFAULTS` | Explicitly bypass startup security checks for disposable demos only. | `false` |
@@ -142,29 +166,26 @@ strong one is generated and printed once — copy it, then change it in-app.
 
 ## Upgrading
 
-Upgrades are designed to be safe: your data lives on the `homeledger-data`
-volume (see above), and the app brings the database schema up to date
-automatically on startup.
+Read the target release notes and make a [consistent backup](DEPLOYMENT.md#backup--restore)
+of the full instance before upgrading. Preserve the image version, environment
+file and mount configuration used by the old container. A per-user JSON export
+alone does not preserve the entire installation.
 
 ```bash
-# Prebuilt image
+# Standalone image: use the SAME private environment file and data mount.
 docker pull irving1flores/homeledger:latest
-docker stop homeledger && docker rm homeledger
+docker stop homeledger
+docker rm homeledger
 docker run -d -p 3000:3000 -v homeledger-data:/data \
-  -e JWT_SECRET="..." --name homeledger irving1flores/homeledger:latest
+  --env-file homeledger.env --name homeledger irving1flores/homeledger:latest
 
-# Docker Compose (from source)
+# Development Compose: preserve .env and the existing project/volume name.
 git pull
 docker compose up -d --build --force-recreate
 ```
 
-On boot the backend runs any pending Drizzle migrations and reconciles a couple
-of columns that are managed idempotently (`attachments.transfer_id` /
-`original_name` and their index). Running an old database against a newer image
-is safe — schema changes are additive and applied automatically; no manual
-migration step is required.
-
-> :bulb: **Always keep a backup before upgrading.** Use **Settings → Data &
-> Backup → Export** (or the `/api/v1/backup/export` endpoint) so you can restore
-> if something goes wrong. Backup import remaps ids safely, so a restore never
-> collides with existing data.
+Reapply any custom ports, networks, restart policy or proxy labels when recreating
+a standalone container. Migrations run automatically at startup. Check logs and
+`/api/v1/health`, then confirm your accounts and receipts are accessible.
+Automatic migration does not guarantee compatibility with older images:
+see [rollback requirements](DEPLOYMENT.md#upgrading--rolling-back).

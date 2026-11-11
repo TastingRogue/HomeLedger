@@ -11,8 +11,12 @@ running the most recent release (and, for Docker, pulling the latest image).
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.1.x   | :white_check_mark: |
-| < 1.1   | :x:                |
+| 1.2.x server | :white_check_mark: |
+| < 1.2 | :x: |
+
+The Windows desktop installer is an unsigned development preview, even when
+attached to the server release. It is not a certified stable desktop release;
+see [desktop status](../docs/desktop.md).
 
 ## Reporting a Vulnerability
 
@@ -60,10 +64,11 @@ To keep your instance secure:
 
 - **Set a strong `JWT_SECRET`** (min 32 random chars). Never run production on
   the insecure demo default.
-- **Change `ADMIN_PASSWORD`** from the demo value and do not set
+- **Use a strong `ADMIN_PASSWORD`** if bootstrapping an administrator; otherwise
+  register the first account before public exposure. Do not set
   `ALLOW_INSECURE_DEFAULTS` in production.
-- **Restrict `CORS_ORIGIN`** to your known origins rather than reflecting any
-  request origin.
+- **Set `CORS_ORIGIN` only for cross-origin browser clients**, using an explicit
+  allowlist. When unset, CORS is disabled; same-origin use still works.
 - **Use `REGISTRATION_MODE=first_user_only` or `closed`** once your admin
   account exists, and optionally an email allowlist for `open` mode.
 - **Run behind HTTPS** (a reverse proxy such as Caddy, Traefik, or nginx).

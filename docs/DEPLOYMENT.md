@@ -112,7 +112,7 @@ services:
     volumes:
       - homeledger-data:/data
     environment:
-      JWT_SECRET: "your-strong-random-secret-min-32-chars"
+      JWT_SECRET: "${JWT_SECRET:?Set a generated JWT_SECRET in your private .env}"
       TRUST_PROXY: "true"
     labels:
       - "traefik.enable=true"
@@ -121,6 +121,11 @@ services:
       - "traefik.http.routers.homeledger.tls.certresolver=le"
       - "traefik.http.services.homeledger.loadbalancer.server.port=3000"
 ```
+
+This is a separate production Compose example, not the repository's development
+Compose file. Declare `volumes: { homeledger-data: {} }` at the top level and join
+the existing Traefik network. Generate the secret as described in
+[Installation](INSTALLATION.md#docker-recommended-for-production); preserve it.
 
 Traefik forwards the `X-Forwarded-*` headers by default.
 
@@ -133,7 +138,7 @@ the full list):
 | Variable | Set it to | Why |
 |----------|-----------|-----|
 | `TRUST_PROXY` | `true` | Makes HomeLedger trust `X-Forwarded-*`, so rate limiting and logs use the **real client IP** instead of the proxy's. Leave unset for direct connections (avoids IP spoofing). |
-| `CORS_ORIGIN` | `https://homeledger.example.com` | Restricts browser API calls to your domain. Optional — if unset, HomeLedger reflects the request origin, which is fine for a single-domain deploy. |
+| `CORS_ORIGIN` | `https://homeledger.example.com` | Allowlist for cross-origin browser clients. Leave unset for same-origin deployment; CORS is disabled by default, not reflected. |
 
 > :warning: Only enable `TRUST_PROXY` when a proxy really is in front of
 > HomeLedger. If you enable it on a directly-exposed instance, clients can spoof
@@ -166,7 +171,11 @@ or a personal restore point.
 ### 2. Automated whole-database snapshots
 
 **What:** gzip-compressed copies of the **entire** SQLite database (all users +
-system data) — the disaster-recovery mechanism. **Who:** admin only.
+system data). **Who:** admin only. SQLite's online backup API produces a
+consistent database snapshot while the app runs. Snapshots do **not** contain
+attachment files or external configuration/secrets. Keep a full volume backup
+and your private deployment configuration for complete disaster recovery; copy
+backups off the source disk.
 
 - Runs on a schedule (a cron job), controlled by env vars — see the
   [installation environment table](INSTALLATION.md#environment-variables):
@@ -186,21 +195,65 @@ system data) — the disaster-recovery mechanism. **Who:** admin only.
 
 ### 3. Volume-level file backup
 
-**What:** a raw tar of the `homeledger-data` volume (the `.db` files, the
-`attachments/` folder, and the `backups/` snapshots). Useful for off-host copies
-or migrating the whole instance to a new server.
+**What:** an offline copy of the database, attachments and snapshot files.
+Stop **all** processes writing to this storage before archiving it. A tar of a
+live SQLite/WAL directory is not a guaranteed consistent backup.
+
+These commands use Bash. First choose the container that owns `/data`:
 
 ```bash
-# Back up the volume to a tarball in the current directory
-docker run --rm -v homeledger-data:/data -v "$(pwd)":/backup \
-  alpine tar czf /backup/homeledger-volume.tar.gz -C /data .
+# Standalone installation
+DATA_CONTAINER=homeledger
+# OR development Compose, from the original project directory:
+# DATA_CONTAINER=$(docker compose ps -q backend)
 
-# Restore it (stop HomeLedger first so the DB isn't mid-write)
-docker stop homeledger
-docker run --rm -v homeledger-data:/data -v "$(pwd)":/backup \
-  alpine tar xzf /backup/homeledger-volume.tar.gz -C /data
-docker start homeledger
+# Inspect the actual mount. Compose normally prefixes volume names with its
+# project name; do not assume its volume is literally homeledger-data.
+docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}} {{.Name}} {{.Source}}{{end}}{{end}}' "$DATA_CONTAINER"
 ```
+
+Verify the mount points to the intended data. Pre-pull the archive helper so a
+network failure does not extend downtime. Create a new private backup directory:
+
+```bash
+docker pull alpine:3.22
+mkdir -m 700 homeledger-backup
+BACKUP_DIR="$(pwd)/homeledger-backup"
+docker stop "$DATA_CONTAINER" || exit 1
+# Continue only after stop succeeds. --volumes-from uses the actual mount.
+docker run --rm --volumes-from "$DATA_CONTAINER":ro \
+  --mount "type=bind,src=$BACKUP_DIR,dst=/backup" \
+  alpine:3.22 tar czf /backup/homeledger-volume.tar.gz -C /data . || { docker start "$DATA_CONTAINER"; exit 1; }
+# Check that tar succeeded and inspect the archive before accepting the backup.
+docker run --rm --mount "type=bind,src=$BACKUP_DIR,dst=/backup,readonly" \
+  alpine:3.22 tar tzf /backup/homeledger-volume.tar.gz
+docker start "$DATA_CONTAINER"
+```
+
+Keep the environment file, image version/digest and deployment configuration
+privately alongside the backup. They are not stored in `/data`. Backups contain
+financial data and authentication material; restrict access on the backup host.
+
+**Restore into a new empty volume**, keeping the original available for recovery.
+Do not extract over a running or populated database directory. For example:
+
+```bash
+# BACKUP_DIR must identify the verified backup directory above.
+# Pick a NEW volume name and verify it did not already exist.
+docker volume create homeledger-restore-check
+docker run --rm -v homeledger-restore-check:/data \
+  --mount "type=bind,src=$BACKUP_DIR,dst=/backup,readonly" \
+  alpine:3.22 sh -c 'test -z "$(ls -A /data)" && tar xzf /backup/homeledger-volume.tar.gz -C /data'
+```
+
+Start an isolated instance with the **matching original image version** and
+private configuration, binding a different loopback port and mounting only the
+restored volume. Check health, login, balances and receipt downloads. Keep it
+disconnected from integrations to avoid duplicate webhook deliveries. Once
+verified, stop the old instance and recreate your deployment with the restored
+mount and original configuration. Do not discard the old volume until recovery
+has been confirmed. Preserve file ownership: the production process runs as
+`node`; see [permissions](../DOCKER.md#data-permissions).
 
 ### Which one should I use?
 
@@ -209,29 +262,26 @@ docker start homeledger
 | "Export my own data" / move one user | JSON export/import (#1) |
 | Scheduled protection against DB corruption | Automated snapshots (#2) — on by default |
 | Full off-host copy / migrate the whole server | Volume tar (#3) |
-| **Before upgrading** | A JSON export **or** trigger a snapshot (#2) |
+| **Before upgrading** | Full consistent volume backup (#3), original image version and private configuration; optionally also export user data |
 
 ---
 
 ## Upgrading & rolling back
 
-HomeLedger upgrades are designed to be safe: your data lives on the
-`homeledger-data` volume, and the app runs any pending schema migrations
-automatically on startup (migrations are additive; running an old database
-against a newer image just brings it up to date). The full upgrade commands are
-in the [installation guide](INSTALLATION.md#upgrading).
+Migrations run automatically when a newer image opens the database. Read the
+target release notes and take a complete backup before upgrading; use the
+[installation guide](INSTALLATION.md#upgrading) to preserve configuration.
 
-**Before every upgrade:** take a backup (JSON export, or an admin snapshot).
+Do not assume an older image can read a database modified by a newer release.
+API/JSON compatibility does not guarantee database downgrade compatibility.
+Unless the release explicitly supports rollback, restore the **pre-upgrade**
+backup into a fresh volume and use its matching image and configuration. Changes
+made after that backup will not be present. Keep the failed/newer volume intact
+until recovery is verified.
 
-**Rolling back** an image is straightforward because the schema changes are
-additive — a newer database generally still works with a slightly older image.
-If you need to fully revert data, restore a snapshot (#2) or the volume tar (#3)
-taken before the upgrade. Pin a specific version instead of `latest` if you want
-deterministic rollbacks:
-
-```bash
-docker pull irving1flores/homeledger:1.0.0   # example pinned tag
-```
+Desktop has its own downgrade guard and can refuse newer profile data. Do not
+bypass that check: preserve the profile and use a compatible desktop version or
+its pre-upgrade backup. Server Docker commands do not restore a desktop profile.
 
 ---
 

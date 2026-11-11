@@ -18,7 +18,7 @@ require a **new major version** (`2.0.0`) and a documented migration path.
 
 Stable across `1.x`:
 
-- **Route paths and methods** listed in the README's *API Endpoints* section
+- **Route paths and methods** listed in the [API reference](REFERENCE.md#api-endpoints)
   (e.g. `POST /api/v1/auth/login`, `GET /api/v1/transactions`,
   `GET /api/v1/transactions/export.csv`).
 - **Authentication mechanisms**: `Authorization: Bearer <jwt>` and `X-API-Key`.

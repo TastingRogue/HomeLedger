@@ -48,6 +48,9 @@
 
 ## API Endpoints
 
+This is a resource summary. For request/response schemas, open `/api/docs` on
+your running instance.
+
 Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: <key>`.
 
 | Resource | Methods |
@@ -62,6 +65,12 @@ Base URL: `/api/v1` — Auth via `Authorization: Bearer <token>` or `X-API-Key: 
 | `/budgets` | CRUD + summary |
 | `/loans` | CRUD + record payment + amortization schedule + payments |
 | `/categories` | CRUD + subcategories + analysis |
+| `/rules` | Categorization rules and application |
+| `/tags` | Transaction tags |
+| `/search` | Global search |
+| `/api-keys` | API key management |
+| `/webhooks` | Outgoing webhook management |
+| `/mcp` | MCP integration |
 | `/alerts` | list, mark read, mark all read, evaluate, delete, settings |
 | `/reports` | dashboard, cashflow, trends, categories, budget-vs-actual |
 | `/networth` | current, history, assets/liabilities CRUD |

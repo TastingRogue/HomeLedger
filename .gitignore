@@ -39,6 +39,7 @@ __pycache__/
 .venv/
 
 # Local configuration and scratch files
+homeledger.env
 .env.*
 !.env.example
 *.tmp

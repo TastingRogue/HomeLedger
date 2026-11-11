@@ -31,7 +31,7 @@ What actually happened.
 
 ## Logs
 
-<!-- Relevant container/server logs (docker compose logs -f homeledger).
+<!-- Relevant container/server logs (docker compose logs -f backend frontend).
      Please redact secrets (JWT_SECRET, passwords, tokens). -->
 
 ```

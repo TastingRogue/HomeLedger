@@ -7,7 +7,7 @@ interface (the same UI whether you run Docker, the Home Assistant add-on, or the
 desktop app). All screenshots use demo data; no real financial information is
 shown.
 
-**Language note.** HomeLedger is bilingual (English / Spanish). Every label
+**Language note.** HomeLedger supports English, Spanish and Brazilian Portuguese (pt-BR). Every label
 adapts to your chosen language in Settings. This manual uses the English labels;
 the Spanish equivalents appear on-screen when Spanish is selected.
 
@@ -75,7 +75,7 @@ admin sets it during setup or in Settings. Individual accounts can optionally
 carry a different currency with an exchange rate (see [Accounts](#3-accounts)),
 and cross-account aggregations convert to the base currency.
 
-Language (English / Spanish) is per-user — switch it any time in Settings.
+Language (English / Spanish / Brazilian Portuguese) is per-user — switch it any time in Settings.
 
 ---
 
@@ -561,6 +561,10 @@ A monthly calendar view of **subscription payment dates**.
 
 ## 19. Quick Register
 
+Quick Entry opens in a popup over the current view. The normal theme uses the
+steps below; Cyberpunk presents details, categories and preview together in a
+responsive layout. Both save the same transaction data.
+
 A mobile-first, 3-step keypad for recording a transaction in under 5 seconds.
 
 ### Step 1 — Amount
@@ -621,7 +625,7 @@ Open **Settings** from the sidebar (gear icon).
 ### Profile Tab
 
 - Edit your **name**. Email and role are read-only.
-- **Language**: switch between English and Spanish (takes effect immediately).
+- **Language**: choose English, Spanish or Brazilian Portuguese (takes effect immediately).
 - **Interface design**: Normal or Cyberpunk 2077, applied instantly and saved in this browser.
 - **Theme**: Dark or Light for the Normal design. Cyberpunk uses its own dark palette and preserves your previous preference.
 
@@ -638,7 +642,7 @@ All security features live in the **Security** tab of Settings.
 
 ### Change Password
 
-Enter your current password, then a new one (minimum 6 characters) with
+Enter your current password, then a new one (minimum 8 characters) with
 confirmation.
 
 ### Two-Factor Authentication (2FA)
@@ -675,8 +679,9 @@ A local, opt-in lock that gates the app on this device:
 - **PIN** (4–8 digits): fallback when biometrics aren't available.
 
 This is a convenience lock (like a phone app-lock). It does **not** replace your
-login session or affect the server — if someone bypasses it in dev tools, they
-still can't call the API without your JWT token.
+login session or affect the server. The active session tokens remain accessible
+to someone with access to your browser profile or developer tools. Sign out to
+end your session; the local lock is not protection against that level of access.
 
 ---
 

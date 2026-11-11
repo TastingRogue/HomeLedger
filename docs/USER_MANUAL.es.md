@@ -7,7 +7,7 @@ interfaz web (la misma UI ya sea que uses Docker, el complemento de Home
 Assistant o la app de escritorio). Todas las capturas usan datos de demostración;
 no se muestra información financiera real.
 
-**Nota de idioma.** HomeLedger es bilingüe (español / inglés). Cada etiqueta se
+**Nota de idioma.** HomeLedger admite español, inglés y portugués de Brasil (pt-BR). Cada etiqueta se
 adapta al idioma que elijas en Ajustes. Este manual usa las etiquetas en español.
 
 ---
@@ -75,7 +75,7 @@ individuales pueden opcionalmente usar otra moneda con un tipo de cambio (ver
 [Cuentas](#3-cuentas)), y las agregaciones entre cuentas convierten a la moneda
 base.
 
-El idioma (español / inglés) es por usuario — cámbialo cuando quieras en Ajustes.
+El idioma (español / inglés / portugués de Brasil) es por usuario — cámbialo cuando quieras en Ajustes.
 
 ---
 
@@ -578,6 +578,10 @@ Una vista de calendario mensual de las **fechas de pago de suscripciones**.
 
 ## 19. Registro rápido
 
+Registro rápido se abre como ventana emergente sobre la vista actual. El tema
+normal usa los pasos descritos abajo; Cyberpunk reúne detalles, categorías y
+vista previa en una distribución adaptable. Ambos guardan los mismos datos.
+
 Un teclado numérico de 3 pasos, pensado para móvil, que registra una transacción
 en menos de 5 segundos.
 
@@ -640,7 +644,7 @@ Abre **Ajustes** desde la barra lateral (ícono de engrane).
 ### Pestaña Perfil
 
 - Edita tu **nombre**. El correo y el rol son de solo lectura.
-- **Idioma**: alterna entre español e inglés (surte efecto de inmediato).
+- **Idioma**: elige español, inglés o portugués de Brasil (surte efecto de inmediato).
 - **Diseño de la interfaz**: Normal o Cyberpunk 2077, aplicado al instante y guardado en este navegador.
 - **Tema**: Oscuro o Claro para el diseño Normal. Cyberpunk usa su propia paleta oscura y conserva tu preferencia anterior.
 
@@ -657,7 +661,7 @@ Todas las funciones de seguridad están en la pestaña **Seguridad** de Ajustes.
 
 ### Cambiar contraseña
 
-Ingresa tu contraseña actual, luego una nueva (mínimo 6 caracteres) con
+Ingresa tu contraseña actual, luego una nueva (mínimo 8 caracteres) con
 confirmación.
 
 ### Verificación en dos pasos (2FA)
@@ -697,8 +701,10 @@ Un bloqueo local, opcional, que protege la app en este dispositivo:
 - **PIN** (4–8 dígitos): alternativa cuando la biometría no está disponible.
 
 Es un bloqueo de conveniencia (como el bloqueo de apps del teléfono). **No**
-reemplaza tu sesión de inicio ni afecta al servidor — si alguien lo evade con
-herramientas de desarrollador, aún no puede llamar a la API sin tu token JWT.
+reemplaza tu sesión ni afecta al servidor. Alguien con acceso al perfil del
+navegador o a sus herramientas de desarrollo puede acceder a los tokens de la
+sesión activa. Cierra la sesión para terminarla; el bloqueo local no protege
+frente a ese nivel de acceso.
 
 ---
 
