@@ -1,7 +1,7 @@
 # Product screenshots
 
-Current Docker UI with synthetic English demo data. All images are linked from
-the root README. The original theme workflows are grouped in an expandable gallery.
+Current Docker UI with synthetic English demo data. All images are available in
+the [screenshot gallery](../SCREENSHOTS.md), linked from the root README.
 
 - dashboard.jpg: Normal dashboard overview
 - *-normal.jpg: focused workflows with a content-sized frame (1440 px wide)

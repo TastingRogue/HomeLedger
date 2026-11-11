@@ -90,5 +90,5 @@ served in parallel under a new namespace (e.g. `/api/v2`) rather than mutating
 ---
 
 *See also: [CHANGELOG.md](../CHANGELOG.md) for the per-release record, and the
-README's [API Endpoints](../README.md#api-endpoints) section for the current
+[API Endpoints](REFERENCE.md#api-endpoints) section for the current
 surface.*

@@ -19,6 +19,7 @@ issue.
 git clone https://github.com/TastingRogue/HomeLedger.git
 cd HomeLedger
 npm install
+npm run build -w packages/shared
 
 # Configure environment (JWT_SECRET is required, min 32 chars)
 cp .env.example .env
@@ -52,7 +53,7 @@ check that will fail on any missing or mismatched key (see below).
 
 If you changed backend or frontend code and run via Docker, remember the images
 bake the source at build time — rebuild the image to see your changes (see
-[README → Applying code changes](README.md#applying-code-changes-docker-rebuild)).
+[Applying code changes](#applying-code-changes-docker-rebuild)).
 
 ## Project layout
 
@@ -63,7 +64,7 @@ A monorepo with three workspaces under `packages/`:
 - `packages/shared` — shared TypeScript types
 
 The full structure is documented in the
-[README → Project structure](README.md#project-structure).
+[Project structure](#project-structure).
 
 ## Conventions
 
@@ -78,7 +79,7 @@ The full structure is documented in the
 - **New tables created outside Drizzle** (raw SQL): also clear them in
   `BackupService.import()` so a restore wipes them like the rest.
 - **New env vars**: give them a sensible default in the `Dockerfile` (for the
-  zero-config run) and document them in the README environment table.
+  zero-config run) and document them in the [installation environment table](docs/INSTALLATION.md#environment-variables).
 - Keep the app **local-first**: no outbound network calls or cloud dependencies
   by default.
 
@@ -154,6 +155,74 @@ requires a separate RTL layout review; registration alone cannot validate that U
 
 Use the issue templates (Bug report / Feature request). For bugs, include your
 deploy method (Docker image, Compose, HA add-on) and the app version.
+
+## Development commands
+
+```bash
+npm run dev:backend       # Backend with hot-reload (tsx watch)
+npm run dev:frontend      # Frontend with Vite HMR
+npm run build             # Build shared + backend + frontend
+npm run test              # Run all tests (Vitest, backend + frontend)
+npm run lint              # Lint all packages
+npm run format            # Format with Prettier
+npm run db:generate -w packages/backend   # Generate a migration
+npm run db:migrate  -w packages/backend   # Apply migrations
+```
+
+## Applying code changes (Docker rebuild)
+
+> :warning: **The Docker images bake the source at build time — they do not
+> mount your working copy.** After changing backend or frontend code you **must
+> rebuild the image**, or the container keeps running the old code. (Compose only
+> mounts `/data`, never the source.)
+
+```bash
+# Docker Compose (dev): rebuild + recreate with the new code.
+# --force-recreate replaces the running containers; the homeledger-data volume
+# (your DB) is preserved. No need to stop/remove anything first.
+docker compose up -d --build --force-recreate
+docker compose ps            # confirm both containers are healthy
+
+# Standalone image:
+docker build -t homeledger:standalone .
+docker rm -f homeledger
+docker run -d --name homeledger -p 3000:3000 -v homeledger-data:/data \
+  -e JWT_SECRET="your-strong-random-secret-min-32-chars" homeledger:standalone
+```
+
+**Publishing to Docker Hub:** commit to `main` and push — the GitHub Actions
+workflow (`.github/workflows/docker-build.yml`) rebuilds and pushes automatically.
+
+**Notes for specific changes:**
+
+- **Receipt OCR:** results are cached in the DB. After changing the parser,
+  existing receipts keep their old values until you press **Re-analyze** in the
+  receipt popup (or restore a backup).
+- **New tables created outside Drizzle** (raw SQL, like `receipt_analyses`): also
+  clear them in `BackupService.import()` so a restore wipes them like the rest.
+- **New env vars:** add a sensible default in the `Dockerfile` (for zero-config
+  run) and document them in the [Environment Variables](docs/INSTALLATION.md#environment-variables) table.
+
+## Project structure
+
+```
+homeledger/
+├── packages/
+│   ├── backend/          # Fastify API — routes/v1, services, db (schema/
+│   │   │                 #   migrations), middleware, scheduler, importers
+│   │   └── data/         # SQLite DB + attachments (DATA_DIR)
+│   ├── frontend/         # SvelteKit 5 — routes, lib/api, lib/stores,
+│   │   │                 #   lib/components, lib/i18n (generated language registry), app.css
+│   │   └── ...
+│   └── shared/           # Shared TypeScript types
+├── locales/              # Modular language packs (JSON)
+├── ha-addon/             # Home Assistant Add-on
+├── ha-integration/       # HA Custom Integration (Python)
+├── docs/                 # USER_MANUAL.md, DEPLOYMENT.md, STABILITY.md, screenshots
+├── Dockerfile            # Single self-contained image (app + API)
+├── docker-compose.yml    # Deployment config
+└── .env.example          # Environment template
+```
 
 ## License
 

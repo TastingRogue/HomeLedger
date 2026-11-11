@@ -5,7 +5,7 @@ and for backing up, restoring, and upgrading your instance.
 
 For getting the container running in the first place (Docker run, Docker
 Compose, Docker Desktop) and the full environment-variable reference, start with
-the [README](../README.md#docker-recommended-for-production). This document
+the [installation guide](INSTALLATION.md#docker-recommended-for-production). This document
 covers what comes **after** that: putting it on the public internet safely and
 keeping your data recoverable.
 
@@ -127,7 +127,7 @@ Traefik forwards the `X-Forwarded-*` headers by default.
 ### Tell HomeLedger it's behind a proxy
 
 Behind any of the above, set these environment variables on the HomeLedger
-container (see the [README env table](../README.md#environment-variables) for
+container (see the [installation environment table](INSTALLATION.md#environment-variables) for
 the full list):
 
 | Variable | Set it to | Why |
@@ -169,7 +169,7 @@ or a personal restore point.
 system data) — the disaster-recovery mechanism. **Who:** admin only.
 
 - Runs on a schedule (a cron job), controlled by env vars — see the
-  [README env table](../README.md#environment-variables):
+  [installation environment table](INSTALLATION.md#environment-variables):
   - `BACKUP_ENABLED` (default `true`)
   - `BACKUP_CRON` (default `0 3 * * *` — daily 03:00, server timezone)
   - `BACKUP_RETENTION` (default `7` — older snapshots are rotated out)
@@ -219,7 +219,7 @@ HomeLedger upgrades are designed to be safe: your data lives on the
 `homeledger-data` volume, and the app runs any pending schema migrations
 automatically on startup (migrations are additive; running an old database
 against a newer image just brings it up to date). The full upgrade commands are
-in the [README](../README.md#upgrading).
+in the [installation guide](INSTALLATION.md#upgrading).
 
 **Before every upgrade:** take a backup (JSON export, or an admin snapshot).
 
@@ -239,6 +239,6 @@ docker pull irving1flores/homeledger:1.0.0   # example pinned tag
 
 Locked out (forgot the admin password, disabled the only admin)? HomeLedger
 ships an **admin recovery CLI** that runs directly against the database, no email
-required — see [README → Account Recovery](../README.md#account-recovery-locked-out).
+required — see [Installation → Account recovery](INSTALLATION.md#account-recovery-locked-out).
 An admin who can still log in can also reset another user's password from
 **Settings → Users**.
