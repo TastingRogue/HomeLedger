@@ -31,9 +31,13 @@ The desktop preview needs no separate server or Docker. See its
 
 ### ❤️ Help keep HomeLedger free and open source
 
-[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on_GitHub-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TastingRogue)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/TastingRogue)
-[![Star the project](https://img.shields.io/badge/Star_the_project-181717?logo=github&logoColor=white)](https://github.com/TastingRogue/HomeLedger)
+<div align="center">
+
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor_on_GitHub-%E2%99%A5-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TastingRogue)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/TastingRogue)
+[![Star the project](https://img.shields.io/badge/Star_the_project-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/TastingRogue/HomeLedger)
+
+</div>
 
 Your support helps sustain development and maintenance.
 
