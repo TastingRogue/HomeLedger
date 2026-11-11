@@ -27,7 +27,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       TZ: ${TZ:-America/Mexico_City}
       # Primary language for the install (system categories + default UI
-      # language): 'es' or 'en'. Falls back to English. Users can still switch.
+      # language): use a supported language pack code. Falls back to English.
       DEFAULT_LOCALE: ${DEFAULT_LOCALE:-en}
       # Base currency for consolidated totals.
       DISPLAY_CURRENCY: ${DISPLAY_CURRENCY:-MXN}

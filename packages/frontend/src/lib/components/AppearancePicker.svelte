@@ -18,14 +18,14 @@
           <span class="mini-sidebar"><i></i><i></i><i></i><i></i></span>
           <span class="mini-content"><span class="mini-heading"></span><span class="mini-stats"><i></i><i></i><i></i></span><span class="mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
         </span>
-        <span class="choice-heading"><strong>{choice.name[$preferences.locale]}</strong>
+        <span class="choice-heading"><strong>{choice.name[$preferences.locale] ?? choice.name.en}</strong>
           {#if $uiSkin === choice.id}<span class="selected-label">✓ {$t('appearance.selected')}</span>{/if}
         </span>
-        <span class="choice-description">{choice.description[$preferences.locale]}</span>
+        <span class="choice-description">{choice.description[$preferences.locale] ?? choice.description.en}</span>
       </label>
     {/each}
   </div>
-  {#if $activeTheme.notice}<p class="note">{$activeTheme.notice[$preferences.locale]}</p>{/if}
+  {#if $activeTheme.notice}<p class="note">{$activeTheme.notice[$preferences.locale] ?? $activeTheme.notice.en}</p>{/if}
 </fieldset>
 
 <style>

@@ -34,6 +34,9 @@ jobs:
           npm ci
           npm install --no-save @rollup/rollup-linux-x64-gnu@4.67.4
 
+      - name: Verify language packs and generated integrations
+        run: npm run locales:check && npm run locales:test
+
       - name: Build shared package
         run: npm run build -w packages/shared
 

@@ -17,9 +17,9 @@ const dataDir = path.join(userDir, 'data');
 let window, child, origin, config, shuttingDown = false, starting = false, stopPromise;
 let stoppingChild = false;
 let handlingFailure = false;
-const { resolveLocale, text: localizedText } = require('./locale.cjs');
+const { resolveLocale, isSupportedLocale, text: localizedText } = require('./locale.cjs');
 const locale = () => resolveLocale(config?.locale ?? app.getLocale());
-const text = (en, es) => localizedText(locale(), en, es);
+const text = key => localizedText(locale(), key);
 function log(message) {
   appendDiagnostic(userDir, message);
 }
@@ -62,15 +62,15 @@ function loadingWindow() {
   });
   window.webContents.on('render-process-gone', () => { if (!shuttingDown) void fatal('RENDERER_STOPPED'); });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
-  const title = text('Opening HomeLedger', 'Abriendo HomeLedger');
-  const subtitle = text('Preparing your local workspace…', 'Preparando tus datos locales…');
+  const title = text("opening_homeledger");
+  const subtitle = text("preparing_your_local_workspace");
   void window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>HomeLedger</title><style>body{margin:0;min-height:100vh;display:grid;place-content:center;background:#10131c;color:#f1f5f9;font:16px system-ui;text-align:center}h1{font-size:28px}p{color:#aebed0}</style></head><body><h1>${title}</h1><p>${subtitle}</p></body></html>`)}`);
 }
 async function openExternal(url) {
   if (!externalUrl(url)) return;
   const answer = await dialog.showMessageBox(window ?? undefined, {
-    type: 'question', title: 'HomeLedger', message: text('Open this link in your browser?', '¿Abrir este enlace en tu navegador?'),
-    detail: new URL(url).origin, buttons: [text('Cancel', 'Cancelar'), text('Open browser', 'Abrir navegador')], defaultId: 0, cancelId: 0,
+    type: 'question', title: 'HomeLedger', message: text("open_this_link_in_your_browser"),
+    detail: new URL(url).origin, buttons: [text("cancel"), text("open_browser")], defaultId: 0, cancelId: 0,
   });
   if (answer.response === 1) await shell.openExternal(url);
 }
@@ -92,17 +92,17 @@ async function fatal(code) {
   handlingFailure = true;
   log(`Application error: ${code}`);
   const detail = code === 'PORT_IN_USE'
-    ? text('The saved local port is in use. Close the conflicting application and retry. HomeLedger will never connect to another server.', 'El puerto local está ocupado. Cierra la aplicación que lo utiliza y reintenta. HomeLedger no se conectará a otro servidor.')
+    ? text("the_saved_local_port_is_in_use")
     : code === 'NEWER_DATA'
-      ? text('These data were opened by a newer version. Install that version or restore a compatible backup. Your files have not been deleted.', 'Estos datos pertenecen a una versión más reciente. Instala esa versión o restaura un respaldo compatible. No se eliminaron tus archivos.')
+      ? text("these_data_were_opened_by_a_newer")
       : code === 'BACKEND_STOPPED'
-        ? text('The local service stopped unexpectedly. Retry to restart it. Your saved data have not been deleted.', 'El servicio local se detuvo inesperadamente. Reintenta para reiniciarlo. No se eliminaron tus datos guardados.')
+        ? text("the_local_service_stopped_unexpectedly_retry_to")
         : code === 'RENDERER_STOPPED'
-          ? text('The application window stopped unexpectedly. Retry to reopen it. Unsaved changes may need to be entered again.', 'La ventana de la aplicación se detuvo inesperadamente. Reintenta para abrirla. Quizá debas volver a ingresar los cambios sin guardar.')
-          : text('Your local workspace could not be opened. Check free disk space and folder permissions. Your data have not been deleted.', 'No se pudieron abrir tus datos locales. Revisa espacio libre y permisos. No se eliminaron tus archivos.');
+          ? text("the_application_window_stopped_unexpectedly_retry_to")
+          : text("your_local_workspace_could_not_be_opened");
   const answer = await dialog.showMessageBox(window ?? undefined, {
-    type: 'error', title: 'HomeLedger', message: text('HomeLedger could not continue', 'HomeLedger no pudo continuar'), detail,
-    buttons: [text('Retry', 'Reintentar'), text('Open data folder', 'Abrir carpeta de datos'), text('Quit', 'Salir')], defaultId: 0, cancelId: 2,
+    type: 'error', title: 'HomeLedger', message: text("homeledger_could_not_continue"), detail,
+    buttons: [text("retry"), text("open_data_folder"), text("quit")], defaultId: 0, cancelId: 2,
   });
   if (answer.response === 2) { handlingFailure = false; app.quit(); return; }
   if (answer.response === 1) { await shell.openPath(userDir); handlingFailure = false; return fatal(code); }
@@ -148,7 +148,7 @@ async function start() {
       const local = isAppUrl(details.url, origin);
       if (local && details.webContentsId === window?.webContents.id) {
         const chosenLocale = details.requestHeaders['Accept-Language'] ?? details.requestHeaders['accept-language'];
-        if (['en', 'es', 'pt-BR'].includes(chosenLocale) && config.locale !== chosenLocale) {
+        if (isSupportedLocale(chosenLocale) && config.locale !== chosenLocale) {
           config.locale = chosenLocale;
           try { saveConfig(userDir, config); } catch { log('Could not save interface language'); }
           installMenu();
@@ -183,15 +183,15 @@ async function start() {
 function installMenu() {
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
-      { label: text('File', 'Archivo'), submenu: [{ label: text('Open data folder', 'Abrir carpeta de datos'), click: () => void shell.openPath(userDir) }, { label: text('Open logs', 'Abrir logs'), click: () => void shell.openPath(path.join(userDir, 'logs')) }, { type: 'separator' }, { role: 'quit', label: text('Quit', 'Salir') }] },
-      { label: text('Edit', 'Editar'), submenu: [{ role: 'undo', label: text('Undo', 'Deshacer') }, { role: 'redo', label: text('Redo', 'Rehacer') }, { role: 'cut', label: text('Cut', 'Cortar') }, { role: 'copy', label: text('Copy', 'Copiar') }, { role: 'paste', label: text('Paste', 'Pegar') }, { role: 'selectAll', label: text('Select all', 'Seleccionar todo') }] },
-      { label: text('View', 'Ver'), submenu: [
-        { label: text('Back', 'Atrás'), accelerator: process.platform === 'darwin' ? 'Cmd+[' : 'Alt+Left', click: goBack },
-        { label: text('Return to HomeLedger', 'Volver a HomeLedger'), accelerator: 'CommandOrControl+Shift+H', click: returnToApp },
-        { type: 'separator' }, { role: 'resetZoom', label: text('Actual size', 'Tamaño real') }, { role: 'zoomIn', label: text('Zoom in', 'Acercar') }, { role: 'zoomOut', label: text('Zoom out', 'Alejar') }, { type: 'separator' }, { role: 'togglefullscreen', label: text('Full screen', 'Pantalla completa') },
+      { label: text("file"), submenu: [{ label: text("open_data_folder"), click: () => void shell.openPath(userDir) }, { label: text("open_logs"), click: () => void shell.openPath(path.join(userDir, 'logs')) }, { type: 'separator' }, { role: 'quit', label: text("quit") }] },
+      { label: text("edit"), submenu: [{ role: 'undo', label: text("undo") }, { role: 'redo', label: text("redo") }, { role: 'cut', label: text("cut") }, { role: 'copy', label: text("copy") }, { role: 'paste', label: text("paste") }, { role: 'selectAll', label: text("select_all") }] },
+      { label: text("view"), submenu: [
+        { label: text("back"), accelerator: process.platform === 'darwin' ? 'Cmd+[' : 'Alt+Left', click: goBack },
+        { label: text("return_to_homeledger"), accelerator: 'CommandOrControl+Shift+H', click: returnToApp },
+        { type: 'separator' }, { role: 'resetZoom', label: text("actual_size") }, { role: 'zoomIn', label: text("zoom_in") }, { role: 'zoomOut', label: text("zoom_out") }, { type: 'separator' }, { role: 'togglefullscreen', label: text("full_screen") },
       ] },
-      { label: text('Window', 'Ventana'), submenu: [{ role: 'minimize', label: text('Minimize', 'Minimizar') }, { role: 'close', label: text('Close', 'Cerrar') }] },
-      { role: 'help', label: text('Help', 'Ayuda'), submenu: [{ label: text('About HomeLedger', 'Acerca de HomeLedger'), click: () => void dialog.showMessageBox({ title: 'HomeLedger', message: `HomeLedger ${app.getVersion()}`, detail: text('Your data are stored on this computer. Background tasks run while the app is open. Update manually from GitHub Releases.', 'Tus datos se guardan en este equipo. Las tareas se ejecutan mientras la app está abierta. Actualiza manualmente desde GitHub Releases.') }) }, { label: text('Documentation', 'Documentación'), click: () => void openExternal('https://github.com/TastingRogue/HomeLedger/blob/main/docs/desktop.md') }] },
+      { label: text("window"), submenu: [{ role: 'minimize', label: text("minimize") }, { role: 'close', label: text("close") }] },
+      { role: 'help', label: text("help"), submenu: [{ label: text("about_homeledger"), click: () => void dialog.showMessageBox({ title: 'HomeLedger', message: `HomeLedger ${app.getVersion()}`, detail: text("your_data_are_stored_on_this_computer") }) }, { label: text("documentation"), click: () => void openExternal('https://github.com/TastingRogue/HomeLedger/blob/main/docs/desktop.md') }] },
     ]));
 }
 
@@ -216,9 +216,9 @@ else {
     ses.setPermissionCheckHandler(() => false);
     ses.on('will-download', (event, item) => {
       if (!origin || !isAppUrl(item.getURL(), origin)) { event.preventDefault(); return; }
-      item.setSaveDialogOptions({ title: text('Save file', 'Guardar archivo'), defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
+      item.setSaveDialogOptions({ title: text("save_file"), defaultPath: path.join(app.getPath('downloads'), path.basename(item.getFilename())) });
     });
     installMenu();
     return start();
-  }).catch(() => { dialog.showErrorBox('HomeLedger', text('Could not initialize HomeLedger. Check folder permissions.', 'No se pudo iniciar HomeLedger. Revisa los permisos de la carpeta.')); app.quit(); });
+  }).catch(() => { dialog.showErrorBox('HomeLedger', text("could_not_initialize_homeledger_check_folder_permissions")); app.quit(); });
 }

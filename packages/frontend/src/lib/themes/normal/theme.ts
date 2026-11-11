@@ -1,15 +1,12 @@
+import { themeTexts } from '../../i18n/theme-texts';
 import type { ThemeDefinition } from '../types';
 import './styles.css';
 import './responsive.css';
 
 export default {
   id: 'normal',
-  name: { es: 'Normal', en: 'Normal', 'pt-BR': 'Normal' },
-  description: {
-    'pt-BR': 'O design original, em modo claro ou escuro.',
-    es: 'El diseño original, en modo claro u oscuro.',
-    en: 'The original design, in light or dark mode.',
-  },
+  name: themeTexts.normal.name,
+  description: themeTexts.normal.description,
   colorScheme: 'preference',
   browserThemeColor: { dark: '#0b1118', light: '#eef1f6' },
   preview: {

@@ -1,32 +1,10 @@
-/**
- * Backend locale configuration.
- *
- * The host/admin chooses ONE primary language for the install via the
- * `DEFAULT_LOCALE` environment variable. This is the language the system
- * categories are seeded in. Individual users can switch their own UI language
- * afterwards without changing the (shared) category names.
- *
- * Falls back to English when unset or invalid.
- */
-export const SUPPORTED_LOCALES = ['es', 'en', 'pt-BR'] as const;
-export type BackendLocale = (typeof SUPPORTED_LOCALES)[number];
-
+/** Installation defaults and supported languages derive from the shared catalog. */
+import { localeCodes, resolveLocale } from '@homeledger/shared';
+import type { LocaleCode } from '@homeledger/shared';
+export { isSupportedLocale } from '@homeledger/shared';
+export const SUPPORTED_LOCALES = localeCodes;
+export type BackendLocale = LocaleCode;
 export const FALLBACK_LOCALE: BackendLocale = 'en';
-
-export function isSupportedLocale(value: unknown): value is BackendLocale {
-  return typeof value === 'string' && (SUPPORTED_LOCALES as readonly string[]).includes(value);
-}
-
-/**
- * Resolves the host's primary locale from `DEFAULT_LOCALE`.
- * Normalizes values like `en-US` / `ES` to the base language code and
- * `pt`, `pt-BR`, or `pt_BR` to `pt-BR`. Falls
- * back to English for anything unknown.
- */
 export function getDefaultLocale(): BackendLocale {
-  const raw = process.env['DEFAULT_LOCALE']?.trim().toLowerCase();
-  if (!raw) return FALLBACK_LOCALE;
-  if (raw === 'pt' || /^pt[-_]br$/.test(raw)) return 'pt-BR';
-  const base = raw.split(/[-_]/)[0]; // 'en-us' -> 'en'
-  return isSupportedLocale(base) ? base : FALLBACK_LOCALE;
+  return resolveLocale(process.env['DEFAULT_LOCALE']);
 }

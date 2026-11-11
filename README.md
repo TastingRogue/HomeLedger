@@ -226,7 +226,7 @@ docker run -d \
 | `-e JWT_SECRET=…` | **Required.** Random secret (≥32 chars) used to sign login tokens. | Any long random string |
 | `-e ADMIN_EMAIL=…` | Email for the first admin user, created on first run. | Any email (default `admin@homeledger.local`) |
 | `-e ADMIN_PASSWORD=…` | **Required.** Password for that admin. | A strong password |
-| `-e DEFAULT_LOCALE=…` | Starting UI language + the language your default categories are seeded in. Each user can change their own later in **Settings**. | `en`, `es`, or `pt-BR` (default `en`) |
+| `-e DEFAULT_LOCALE=…` | Starting UI language + the language your default categories are seeded in. Each user can change their own later in **Settings**. | Any [supported locale](#supported-languages-and-translation-credits) (default `en`) |
 | `-e DISPLAY_CURRENCY=…` | The base currency for consolidated totals. Accounts can use other currencies with manual exchange rates. | `MXN` `USD` `EUR` `GBP` `COP` `ARS` `CLP` `PEN` `BRL` (default `MXN`) |
 
 > :bulb: The `\` at the end of each line is a **bash** line-continuation. On
@@ -246,7 +246,7 @@ The image requires a strong `JWT_SECRET` before it can start.
 4. Under **Environment variables**, set `JWT_SECRET` to a random value of at
    least 32 characters. Optionally set `ADMIN_EMAIL` and `ADMIN_PASSWORD` to
    create an administrator at startup.
-5. Optionally set `DEFAULT_LOCALE` (`en`, `es`, or `pt-BR`) and `DISPLAY_CURRENCY`.
+5. Optionally set `DEFAULT_LOCALE` (see [supported languages](#supported-languages-and-translation-credits)) and `DISPLAY_CURRENCY`.
 6. Click **Run** and open <http://localhost:3000>. Without a bootstrapped admin,
    register the first account to become the administrator.
 
@@ -258,7 +258,7 @@ git clone https://github.com/TastingRogue/HomeLedger.git
 cd HomeLedger
 cp .env.example .env
 # Edit .env: set JWT_SECRET + ADMIN_PASSWORD (required), and optionally
-# DEFAULT_LOCALE (en|es|pt-BR) and DISPLAY_CURRENCY (MXN|USD|…). Compose reads .env,
+# DEFAULT_LOCALE (see supported languages) and DISPLAY_CURRENCY (MXN|USD|…). Compose reads .env,
 # so this file — not -e flags — is where you configure this deployment.
 
 # Start with Docker Compose (backend on 3000, frontend on 5173)
@@ -278,7 +278,7 @@ production startup rejects missing or known insecure values.
 | `ADMIN_PASSWORD` | Admin password | unset — optional admin bootstrap |
 | `ALLOW_INSECURE_DEFAULTS` | Explicitly bypass startup security checks for disposable demos only. | `false` |
 | `TRUST_PROXY` | Trust `X-Forwarded-*` from a reverse proxy so `request.ip` (rate limiting/logging) is the real client. Set to `true` when behind Nginx/Traefik/Caddy; leave unset for direct connections. | unset (disabled) |
-| `DEFAULT_LOCALE` | Primary language for the install (the language each user's default categories are seeded in at sign-up, and the UI's default language before any user picks one): `es`, `en`, or `pt-BR`. Users can still switch their own language and rename/delete their own categories. | `en` (falls back to English if unset/invalid) |
+| `DEFAULT_LOCALE` | Primary language for the install (the language each user's default categories are seeded in at sign-up, and the UI's default language before any user picks one): see [supported languages](#supported-languages-and-translation-credits). Users can still switch their own language and rename/delete their own categories. | `en` (falls back to English if unset/invalid) |
 | `DISPLAY_CURRENCY` | Base currency for consolidated totals (`MXN`, `USD`, `EUR`, `GBP`, `COP`, `ARS`, `CLP`, `PEN`, `BRL`). Accounts have their own currency and manual exchange rate to base. | `MXN` |
 | `LOG_LEVEL` | Server log verbosity (pino): `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info` |
 | `TZ` | Timezone | `America/Mexico_City` |
@@ -434,7 +434,8 @@ Choose your interface language in **Settings → Profile**.
 | Spanish (Español) | `es` | Original project language |
 | Brazilian Portuguese (Português do Brasil) | `pt-BR` | Thiago Alves ([@ThiaAlves](https://github.com/ThiaAlves)) added the translation in [PR #20](https://github.com/TastingRogue/HomeLedger/pull/20). |
 
-To contribute a translation, see the [language contribution guide](CONTRIBUTING.md#adding-a-language).
+Languages are maintained as modular packs in `locales/`, shared by web, backend,
+and desktop through generated integrations. To contribute a translation, see the [language contribution guide](CONTRIBUTING.md#adding-a-language).
 
 ## Home Assistant
 

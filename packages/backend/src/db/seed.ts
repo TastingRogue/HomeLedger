@@ -4,7 +4,7 @@ import { getDb } from './connection.js';
 import { categories, users } from './schema.js';
 import { getDefaultLocale, type BackendLocale } from '../config/locale.js';
 
-type CategoryType = 'Gasto' | 'Ingreso' | 'Ambos';
+import { defaultCategories, backendTranslations } from '@homeledger/shared';
 
 /**
  * Designed default categories, keyed by a stable, language-independent `key`.
@@ -22,32 +22,16 @@ type CategoryType = 'Gasto' | 'Ingreso' | 'Ambos';
  * transactions; the import service and rules engine look it up by KEY per user
  * (not by name), so it works regardless of the seed language.
  */
-export const SYSTEM_CATEGORIES: { key: string; es: string; en: string; 'pt-BR': string; type: CategoryType }[] = [
-  { key: 'income', es: 'Ingresos', en: 'Income', 'pt-BR': 'Receitas', type: 'Ingreso' },
-  { key: 'housing', es: 'Vivienda', en: 'Housing', 'pt-BR': 'Moradia', type: 'Gasto' },
-  { key: 'groceries', es: 'Despensa', en: 'Groceries', 'pt-BR': 'Supermercado', type: 'Gasto' },
-  { key: 'dining', es: 'Restaurantes', en: 'Dining Out', 'pt-BR': 'Restaurantes', type: 'Gasto' },
-  { key: 'transportation', es: 'Transporte', en: 'Transportation', 'pt-BR': 'Transporte', type: 'Gasto' },
-  { key: 'utilities', es: 'Servicios', en: 'Utilities', 'pt-BR': 'Serviços essenciais', type: 'Gasto' },
-  { key: 'health', es: 'Salud', en: 'Health', 'pt-BR': 'Saúde', type: 'Gasto' },
-  { key: 'entertainment', es: 'Entretenimiento', en: 'Entertainment', 'pt-BR': 'Lazer', type: 'Gasto' },
-  { key: 'shopping', es: 'Compras', en: 'Shopping', 'pt-BR': 'Compras', type: 'Gasto' },
-  { key: 'personal', es: 'Personal', en: 'Personal Care', 'pt-BR': 'Cuidados pessoais', type: 'Gasto' },
-  { key: 'education', es: 'Educación', en: 'Education', 'pt-BR': 'Educação', type: 'Gasto' },
-  { key: 'savings', es: 'Ahorro', en: 'Savings', 'pt-BR': 'Economia', type: 'Ambos' },
-  { key: 'debt', es: 'Deudas', en: 'Debt & Loans', 'pt-BR': 'Dívidas e empréstimos', type: 'Ambos' },
-  { key: 'gifts', es: 'Regalos y donativos', en: 'Gifts & Donations', 'pt-BR': 'Presentes e doações', type: 'Ambos' },
-  { key: 'other', es: 'Otros', en: 'Other', 'pt-BR': 'Outros', type: 'Ambos' },
-  { key: 'uncategorized', es: 'Sin categoría', en: 'Uncategorized', 'pt-BR': 'Sem categoria', type: 'Ambos' },
-];
+export const SYSTEM_CATEGORIES = defaultCategories;
+
 
 /** Stable key of the default/"uncategorized" system category. */
 export const UNCATEGORIZED_KEY = 'uncategorized';
 
 const SALT_ROUNDS = 12;
 
-function localizedName(cat: Record<BackendLocale, string>, locale: BackendLocale): string {
-  return cat[locale];
+function localizedName(cat: (typeof defaultCategories)[number], locale: BackendLocale): string {
+  return backendTranslations[locale].categories[cat.key];
 }
 
 /**

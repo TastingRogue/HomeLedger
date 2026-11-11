@@ -15,7 +15,7 @@ describe('host locale resolution', () => {
   it.each([
     ['es-MX', 'es'],
     ['en-US', 'en'],
-    ['fr', 'en'],
+    ['zz', 'en'],
     ['pt-PT', 'en'],
     ['', 'en'],
   ])('preserves fallback behavior for %s', (value, expected) => {

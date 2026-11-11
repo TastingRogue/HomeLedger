@@ -11,7 +11,7 @@ export const t = derived(preferences, ($prefs) => {
     let text = dict[key as keyof typeof dict] ?? fallback[key as keyof typeof fallback] ?? key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        text = text.replace(`{${k}}`, String(v));
+        text = text.replaceAll(`{${k}}`, String(v));
       });
     }
     return text;

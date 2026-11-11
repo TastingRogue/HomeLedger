@@ -3,16 +3,20 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
-const { resolveLocale, text, portuguese } = require('../src/locale.cjs');
-test('resolves Brazilian locale and preserves English/Spanish fallback', () => {
+const { resolveLocale, isSupportedLocale, text, dictionaries, localeCodes } = require('../src/locale.cjs');
+test('normalizes OS language tags and rejects unsupported/prototype keys', () => {
   for (const locale of ['pt', 'pt-BR', 'pt_BR']) assert.equal(resolveLocale(locale), 'pt-BR');
   assert.equal(resolveLocale('es-MX'), 'es');
-  assert.equal(resolveLocale('fr'), 'en');
-  assert.equal(text('pt-BR', 'File', 'Archivo'), 'Arquivo');
+  assert.equal(resolveLocale('zz'), 'en');
+  assert.equal(isSupportedLocale('toString'), false);
+  assert.equal(text('pt-BR', 'file'), 'Arquivo');
 });
-test('every explicit native menu and dialog string has a Portuguese translation', () => {
+test('every native text key is translated in every registered language', () => {
   const source = readFileSync(new URL('../src/main.cjs', import.meta.url), 'utf8');
-  for (const match of source.matchAll(/\btext\('([^']+)'\s*,/g)) {
-    assert.ok(portuguese[match[1]], `Missing Portuguese: ${match[1]}`);
+  const used = [...source.matchAll(/\btext\(["']([^"']+)["']\)/g)].map(m => m[1]);
+  assert.ok(used.length > 30);
+  for (const locale of localeCodes) {
+    assert.deepEqual(Object.keys(dictionaries[locale]).sort(), Object.keys(dictionaries.en).sort());
+    for (const key of used) assert.ok(dictionaries[locale][key], `${locale}: missing ${key}`);
   }
 });

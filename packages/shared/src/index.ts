@@ -100,3 +100,6 @@ export type {
   TransactionFilters,
   DateRange,
 } from './types/api.js';
+
+export { localeMetadata, localeCodes, backendTranslations, defaultCategories, resolveLocale, isSupportedLocale } from './locales.js';
+export type { LocaleCode } from './locales.js';

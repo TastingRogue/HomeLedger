@@ -1,3 +1,4 @@
+import { backendTranslations } from '@homeledger/shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -420,31 +421,12 @@ function extractPdfText(filePath: string): string | null {
 }
 
 // ── Receipt error messages (follow the host's DEFAULT_LOCALE) ───────────────
-const RECEIPT_MESSAGES = {
-  fileNotFound: { es: 'Archivo no encontrado', en: 'File not found', 'pt-BR': 'Arquivo não encontrado' },
-  fileMissingOnDisk: { es: 'Archivo no encontrado en disco', en: 'File not found on disk', 'pt-BR': 'Arquivo não encontrado no disco' },
-  analyzeFailed: { es: 'Error al analizar el archivo', en: 'Could not analyze the file', 'pt-BR': 'Não foi possível analisar o arquivo' },
-  pdfUnreadable: {
-    'pt-BR': 'Não foi possível ler este PDF: ele não tem texto incorporado e não pôde ser convertido para OCR. Envie uma imagem do documento.',
-    es: 'No se pudo leer el PDF: no tiene texto incrustado y no se pudo convertir para OCR. Sube una imagen del documento.',
-    en: 'Could not read this PDF: it has no embedded text and could not be converted for OCR. Upload an image of the document instead.',
-  },
-  imageNoText: {
-    'pt-BR': 'O OCR não reconheceu texto na imagem. Tente uma foto mais nítida e bem iluminada.',
-    es: 'El OCR no reconoció texto en la imagen. Prueba con una foto más nítida y bien iluminada.',
-    en: 'OCR could not recognize any text in the image. Try a sharper, well-lit photo.',
-  },
-} as const;
-
-export function receiptMessage(key: keyof typeof RECEIPT_MESSAGES): string {
-  return RECEIPT_MESSAGES[key][getDefaultLocale()];
+export function receiptMessage(key: keyof typeof backendTranslations.en.receipts): string {
+  return backendTranslations[getDefaultLocale()].receipts[key];
 }
 
 function unsupportedTypeMessage(type: string): string {
-  if (getDefaultLocale() === 'pt-BR') return `Tipo de arquivo não aceito para análise: ${type}`;
-  return getDefaultLocale() === 'es'
-    ? `Tipo de archivo no soportado para análisis: ${type}`
-    : `Unsupported file type for analysis: ${type}`;
+  return receiptMessage('unsupportedType').replaceAll('{type}', type);
 }
 
 // ── Scanned-PDF support (issue #16) ─────────────────────────────────────────

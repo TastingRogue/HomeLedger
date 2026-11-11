@@ -1,0 +1,66 @@
+[
+  {
+    "key": "income",
+    "type": "Ingreso"
+  },
+  {
+    "key": "housing",
+    "type": "Gasto"
+  },
+  {
+    "key": "groceries",
+    "type": "Gasto"
+  },
+  {
+    "key": "dining",
+    "type": "Gasto"
+  },
+  {
+    "key": "transportation",
+    "type": "Gasto"
+  },
+  {
+    "key": "utilities",
+    "type": "Gasto"
+  },
+  {
+    "key": "health",
+    "type": "Gasto"
+  },
+  {
+    "key": "entertainment",
+    "type": "Gasto"
+  },
+  {
+    "key": "shopping",
+    "type": "Gasto"
+  },
+  {
+    "key": "personal",
+    "type": "Gasto"
+  },
+  {
+    "key": "education",
+    "type": "Gasto"
+  },
+  {
+    "key": "savings",
+    "type": "Ambos"
+  },
+  {
+    "key": "debt",
+    "type": "Ambos"
+  },
+  {
+    "key": "gifts",
+    "type": "Ambos"
+  },
+  {
+    "key": "other",
+    "type": "Ambos"
+  },
+  {
+    "key": "uncategorized",
+    "type": "Ambos"
+  }
+]

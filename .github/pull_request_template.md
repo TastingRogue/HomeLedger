@@ -23,5 +23,5 @@
 - [ ] Added/updated tests for logic changes
 - [ ] Schema changes include a Drizzle migration **and** the `schema.ts` update (additive/idempotent)
 - [ ] New env vars have a Dockerfile default and are documented in the README table
-- [ ] i18n keys updated in **both** `es.ts` and `en.ts` (parity), if UI strings changed
+- [ ] i18n text updated in **all** `locales/*.json` language packs; ran `npm run locales:sync` and `npm run locales:check`, if UI strings changed
 - [ ] Docs updated if behavior/setup changed

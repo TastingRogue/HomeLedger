@@ -4,7 +4,7 @@
  */
 import { get } from 'svelte/store';
 import { preferences } from '../stores/preferences';
-import { getIntlTag } from '../i18n/registry';
+import { getIntlTag, locales } from '../i18n/registry';
 import { t } from '../i18n';
 import { daysRemainingLabel, type Translate } from '../i18n/labels';
 
@@ -33,7 +33,7 @@ export function formatCurrency(amount: number): string {
   const absAmount = Math.abs(amount);
   const locale = getIntlTag(get(preferences).locale);
   const number = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(absAmount);
-  const space = locale === 'pt-BR' ? '\u00a0' : '';
+  const space = locales[get(preferences).locale].currencySpace;
   return `${isNegative ? '-' : ''}${symbol}${space}${number}`;
 }
 

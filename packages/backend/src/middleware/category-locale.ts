@@ -1,3 +1,4 @@
+import { backendTranslations, localeCodes } from '@homeledger/shared';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { getDb } from '../db/connection.js';
@@ -14,8 +15,8 @@ export function registerCategoryLocale(app: FastifyInstance): void {
     const names = new Map<number, { original: string; localized: string }>();
     for (const category of getDb().select().from(categories).where(eq(categories.userId, request.user.userId)).all()) {
       const seeded = SYSTEM_CATEGORIES.find(item => item.key === category.key);
-      if (seeded && [seeded.es, seeded.en, seeded['pt-BR']].includes(category.name)) {
-        names.set(category.id, { original: category.name, localized: seeded[locale] });
+      if (seeded && localeCodes.some(code => backendTranslations[code].categories[seeded.key] === category.name)) {
+        names.set(category.id, { original: category.name, localized: backendTranslations[locale].categories[seeded.key] });
       }
     }
     const visit = (value: unknown): unknown => {

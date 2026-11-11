@@ -91,49 +91,64 @@ token contract, chart palettes and validation steps.
 
 ## Adding a language
 
-The i18n system is built so the compiler forces a new language to be complete.
-Start with these **two** steps:
+Languages are self-contained JSON packs in `locales/<code>.json`. One pack
+contains metadata, interface text (both themes), default category names,
+receipt-processing messages, native desktop text, and built-in theme metadata.
+There are no language-specific branches to add to application code.
 
-1. **Create the dictionary.** Add `packages/frontend/src/lib/i18n/<code>.ts`
-   (e.g. `fr.ts`) and type it as `Record<TranslationKey, string>`:
+1. Create a pack from the English template:
 
-   ```ts
-   import type { TranslationKey } from './es';
-
-   export const fr: Record<TranslationKey, string> = {
-     'nav.dashboard': 'Tableau de bord',
-     // ...every key the compiler asks for
-   };
+   ```sh
+   npm run locales:add -- fr "Français" fr-FR
    ```
 
-   `es.ts` is the **canonical** dictionary — its keys define the
-   `TranslationKey` union, so TypeScript will error until you translate **every**
-   key. (The test suite also has a parity + placeholder-consistency guard.)
+   This creates `locales/fr.json` without overwriting existing files. The pack is
+   marked `meta.draft: true` so an untranslated template cannot accidentally ship.
 
-2. **Register it.** Add one entry to `locales` in
-   `packages/frontend/src/lib/i18n/registry.ts`:
+2. Translate every string in `ui`, `categories`, `receipts`, `desktop`, and
+   `themes`. Keep keys and `{placeholders}` unchanged. Configure `meta.label`,
+   `intlTag`, `aliases` (such as `pt` for `pt-BR`), display `order`, and
+   `currencySpace` (`""`, a space, or `"\u00a0"`). Do not change category keys or
+   persisted enum values. Remove `meta.draft` when the translation is ready.
 
-   ```ts
-   export const locales = {
-     es: { dictionary: es, label: 'Español', intlTag: 'es-MX' },
-     en: { dictionary: en, label: 'English (US)', intlTag: 'en-US' },
-     fr: { dictionary: fr, label: 'Français', intlTag: 'fr-FR' },
-   } satisfies Record<string, LocaleConfig>;
+3. Generate the integrations and validate them:
+
+   ```sh
+   npm run locales:sync
+   npm run build -w packages/shared
+   npm run typecheck -w packages/backend
+   npm run typecheck -w packages/frontend
+   npm test
+   npm test --prefix packages/desktop
+   npm run build
    ```
 
-The supported-locale type, the settings language picker, the
-translation fallback, and `Intl` date/number formatting all derive from that
-map. Theme manifests also provide a name, description, and optional notice for
-every supported locale (`packages/frontend/src/lib/themes/*/theme.ts`).
-Run `npm run typecheck -w packages/frontend` and `npm run test` to confirm
-full coverage.
+   The generator discovers packs by filename. It updates frontend dictionaries
+   and registration, shared backend metadata, category/receipt translations,
+   desktop registration and dictionaries, built-in theme metadata, and the Home
+   Assistant language selector. Commit the pack **and** generated files.
+   Generated files have a header; never edit them directly. `locales:check`, CI,
+   and desktop staging reject stale output. English is the fallback and Spanish
+   remains the existing UI key-type compatibility baseline; keep both packs.
 
-To support the language as an installation default, also register its canonical
-code and normalization in `packages/backend/src/config/locale.ts`, add default
-category names in `packages/backend/src/db/seed.ts` and receipt error messages
-in `packages/backend/src/services/receipt.service.ts`, and update the
-`DEFAULT_LOCALE` options in `ha-addon/config.yaml`, `.env.example`, and README.
-The Cyberpunk workspace uses the same dictionaries as the original UI.
+4. Review actual screens in Normal and Cyberpunk, date/number formats, validation
+   messages and desktop dialogs. Automated checks verify keys, nonempty strings,
+   placeholders and integration; a fluent speaker must review translation quality.
+   Add your credit to the README's supported-language table.
+
+To change existing wording, edit the pack and run `npm run locales:sync`.
+When adding a UI key, add it to all packs. `locales/categories.json` contains only
+language-independent default-category keys/types. Existing custom category names
+and stored data are never rewritten when the language changes.
+
+Unknown locale tags fall back to English. Exact codes and explicit aliases are
+matched first; regional tags may fall back to a registered base language (for
+example `en-GB` to `en`). Aliases must not overlap across packs.
+
+Community themes may supply extra translations in their own manifests; English
+is required as their fallback, so adding a language does not break existing themes.
+This system covers text and locale formats. Adding a right-to-left language also
+requires a separate RTL layout review; registration alone cannot validate that UI.
 
 ## Reporting bugs & requesting features
 

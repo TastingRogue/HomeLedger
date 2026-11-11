@@ -32,6 +32,7 @@ async function clean(target) {
   await fs.rm(target, { recursive: true, force: true });
   await fs.mkdir(target, { recursive: true });
 }
+run(process.execPath, ['scripts/locales.mjs', '--check']);
 await clean(runtime);
 await clean(scratch);
 await fs.mkdir(cache, { recursive: true });

@@ -36,7 +36,8 @@ describe('i18n registry', () => {
     expect(isSupportedLocale('es')).toBe(true);
     expect(isSupportedLocale('en')).toBe(true);
     expect(isSupportedLocale('pt-BR')).toBe(true);
-    expect(isSupportedLocale('fr')).toBe(false);
+    expect(isSupportedLocale('zz')).toBe(false);
+    expect(isSupportedLocale('toString')).toBe(false);
     expect(isSupportedLocale(null)).toBe(false);
     expect(isSupportedLocale(42)).toBe(false);
   });
@@ -46,7 +47,7 @@ describe('i18n registry', () => {
     expect(getIntlTag('en')).toBe('en-US');
     expect(getIntlTag('pt-BR')).toBe('pt-BR');
     // Unknown locale → default locale's tag.
-    expect(getIntlTag('fr' as never)).toBe(getIntlTag(DEFAULT_LOCALE));
+    expect(getIntlTag('zz' as never)).toBe(getIntlTag(DEFAULT_LOCALE));
   });
 
   it('builds picker options for every supported locale', () => {

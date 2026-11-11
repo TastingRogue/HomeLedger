@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Consolidate language contributions into `locales/<code>.json` packs. Generate
+  web/backend/desktop registrations, built-in theme text and Home Assistant options
+  from one catalog, with a scaffold command and CI checks for missing translations,
+  conflicting aliases, invalid placeholders and stale generated files.
+- Let community themes fall back to English when a new language is added.
+
 ### Fixed
 
 - Complete Brazilian Portuguese coverage for shared API error messages, numeric

@@ -33,6 +33,7 @@ COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/backend ./packages/backend
 COPY packages/frontend ./packages/frontend
+COPY locales ./locales
 
 # Build every workspace so the image can run standalone:
 #  - shared: compiled types/utilities used by backend and frontend
@@ -52,7 +53,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV DATA_DIR=/data
 # Primary language for the install (system categories + default UI language).
-# 'es' or 'en'; falls back to English if unset/invalid. Users can still switch.
+# Use a supported language pack code; falls back to English if unset/invalid.
 ENV DEFAULT_LOCALE=en
 # Base currency for consolidated reports; accounts may use other currencies.
 ENV DISPLAY_CURRENCY=MXN

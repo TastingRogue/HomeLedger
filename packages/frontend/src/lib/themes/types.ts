@@ -3,7 +3,7 @@ import type { Component, Snippet } from 'svelte';
 
 export type ColorMode = 'dark' | 'light';
 export type ThemeId = string;
-export type ThemeText = Record<SupportedLocale, string>;
+export type ThemeText = Partial<Record<SupportedLocale, string>> & { en: string };
 export type ThemeComposition<Props extends Record<string, unknown>> = () => Promise<{ default: Component<Props> }>;
 
 export interface ThemePreview {
