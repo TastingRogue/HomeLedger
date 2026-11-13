@@ -28,6 +28,8 @@ import {
   creditSubscriptions,
   attachments,
 } from '../db/schema.js';
+import { MAX_BACKUP_JSON_BYTES } from '../config/backup.js';
+import { CustomReportService, CUSTOM_REPORT_TYPES } from './custom-report.service.js';
 import { AttachmentService, type AttachmentRecord } from './attachment.service.js';
 
 // Attachment binaries live under DATA_DIR/attachments (same resolution as
@@ -100,6 +102,8 @@ export interface BackupData {
   receiptAnalyses: unknown[];
   /** Receipt line items belonging to the user's analyses. */
   receiptItems: unknown[];
+  /** Optional for compatibility with earlier 1.x exports. */
+  customReports?: unknown[];
 }
 
 /**
@@ -153,12 +157,18 @@ export class BackupService {
     // file is missing on disk) so the backup restores binaries with no separate
     // bundle. See P2.6.
     const attachmentRows = db.select().from(attachments).where(eq(attachments.userId, userId)).all() as unknown as AttachmentRecord[];
+    let attachmentBytes = 0;
     const attachmentData = attachmentRows.map((row) => {
       let fileBase64: string | null = null;
       try {
         const filePath = AttachmentService.getFilePath(row);
-        if (fs.existsSync(filePath)) fileBase64 = fs.readFileSync(filePath).toString('base64');
-      } catch {
+        if (fs.existsSync(filePath)) {
+          attachmentBytes += 4 * Math.ceil(fs.statSync(filePath).size / 3);
+          if (attachmentBytes > MAX_BACKUP_JSON_BYTES) throw new BackupError('El respaldo JSON supera 32 MiB. Usa un respaldo completo del volumen.', 'BACKUP_TOO_LARGE');
+          fileBase64 = fs.readFileSync(filePath).toString('base64');
+        }
+      } catch (error) {
+        if (error instanceof BackupError) throw error;
         fileBase64 = null;
       }
       return { ...row, fileBase64 };
@@ -277,16 +287,18 @@ export class BackupService {
       attachments: attachmentData,
       receiptAnalyses,
       receiptItems,
+      customReports: CustomReportService.list(userId),
     };
 
-    BackupService.recordHistory(userId, 'export');
-
-    return {
+    const backup = {
       version: APP_VERSION,
       exportedAt: new Date().toISOString(),
       userId,
       data,
     };
+    BackupService.assertSize(backup);
+    BackupService.recordHistory(userId, 'export');
+    return backup;
   }
 
   /**
@@ -350,11 +362,14 @@ export class BackupService {
 
     const db = getDb();
     const sqlite = getSqlite();
+    // Ensure the optional legacy table exists before opening the restore transaction.
+    CustomReportService.list(userId);
     const promotedFiles: string[] = [];
     let stagingDir: string | undefined;
 
     // Perform atomic replacement using a database transaction
     const restore = sqlite.transaction(() => {
+      sqlite.prepare('DELETE FROM custom_reports WHERE user_id = ?').run(userId);
       // Delete all existing user data in dependency order (children first)
       // Credit subscriptions (depends on accounts and subscriptions)
       const userAccounts = db.select({ id: accounts.id }).from(accounts).where(eq(accounts.userId, userId)).all();
@@ -859,6 +874,27 @@ export class BackupService {
           sqlite.prepare(`INSERT INTO receipt_items (${cols.join(', ')}) VALUES (${placeholders})`).run(...values);
         }
       }
+      const reportReferences: Record<string, Map<number, number>> = {
+        accountId: acctMap, categoryId: catMap, subcategoryId: subcatMap,
+        tagId: tagMap, transactionId: txMap, transferId: transferMap,
+        subscriptionId: subMap, budgetId: budgetMap,
+      };
+      const mapConfig = (value: unknown, key = '', depth = 0): unknown => {
+        if (depth > 50) throw new BackupError('Configuración de reporte demasiado anidada', 'INVALID_DATA_FIELD');
+        const singular = key.endsWith('Ids') ? key.slice(0, -1) : key;
+        const reference = Object.hasOwn(reportReferences, singular) ? reportReferences[singular] : undefined;
+        if (reference && (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value)))) return reference.get(Number(value)) ?? null;
+        if (Array.isArray(value)) return value.map(item => mapConfig(item, singular, depth + 1));
+        if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapConfig(v, k, depth + 1)]));
+        return value;
+      };
+      for (const value of backupData.customReports ?? []) {
+        const report = value as { name: string; type: string; config: Record<string, unknown>; createdAt?: string };
+        const restored = CustomReportService.create(userId, { ...report, config: mapConfig(report.config) as Record<string, unknown> });
+        if (typeof report.createdAt === 'string' && Number.isFinite(Date.parse(report.createdAt))) {
+          sqlite.prepare('UPDATE custom_reports SET created_at = ? WHERE id = ? AND user_id = ?').run(report.createdAt, restored.id, userId);
+        }
+      }
     });
     try {
       restore();
@@ -887,7 +923,14 @@ export class BackupService {
    *
    * Requirements: 13.8
    */
+  static assertSize(backup: unknown): void {
+    if (Buffer.byteLength(JSON.stringify(backup) ?? '', 'utf8') > MAX_BACKUP_JSON_BYTES) {
+      throw new BackupError('El respaldo JSON supera 32 MiB. Usa un respaldo completo del volumen.', 'BACKUP_TOO_LARGE');
+    }
+  }
+
   static validateBackup(backup: unknown): BackupFile {
+    BackupService.assertSize(backup);
     if (!backup || typeof backup !== 'object') {
       throw new BackupError(
         'El formato del archivo de respaldo es inválido. Se esperaba un objeto JSON.',
@@ -954,7 +997,7 @@ export class BackupService {
       'categories', 'subcategories', 'rules', 'alerts',
       'assets', 'liabilities', 'loans', 'loanPayments',
       'networthSnapshots', 'creditSubscriptions',
-      'attachments', 'receiptAnalyses', 'receiptItems',
+      'attachments', 'receiptAnalyses', 'receiptItems', 'customReports',
     ];
 
     for (const field of expectedArrayFields) {
@@ -966,6 +1009,14 @@ export class BackupService {
       }
     }
 
+    for (const value of (data['customReports'] as unknown[] | undefined) ?? []) {
+      const report = value as Record<string, unknown> | null;
+      if (!report || typeof report.name !== 'string' || !report.name.trim() ||
+          typeof report.type !== 'string' || !CUSTOM_REPORT_TYPES.includes(report.type as typeof CUSTOM_REPORT_TYPES[number]) ||
+          !report.config || typeof report.config !== 'object' || Array.isArray(report.config)) {
+        throw new BackupError('Reporte personalizado inválido', 'INVALID_DATA_FIELD');
+      }
+    }
     return {
       version: backupVersion,
       exportedAt: obj['exportedAt'] as string,
@@ -996,6 +1047,7 @@ export class BackupService {
         attachments: Array.isArray(data['attachments']) ? data['attachments'] : [],
         receiptAnalyses: Array.isArray(data['receiptAnalyses']) ? data['receiptAnalyses'] : [],
         receiptItems: Array.isArray(data['receiptItems']) ? data['receiptItems'] : [],
+        customReports: Array.isArray(data['customReports']) ? data['customReports'] : [],
       },
     };
   }
@@ -1051,6 +1103,7 @@ export class BackupService {
     const sqlite = getSqlite();
     const tableExists = (name: string): boolean =>
       !!sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+    if (tableExists('custom_reports')) currentCounts['customReports'] = BackupService.countByUser('custom_reports', userId);
     if (tableExists('attachments')) currentCounts['attachments'] = BackupService.countByUser('attachments', userId);
     if (tableExists('receipt_analyses')) currentCounts['receiptAnalyses'] = BackupService.countByUser('receipt_analyses', userId);
     if (tableExists('receipt_items') && tableExists('receipt_analyses')) {

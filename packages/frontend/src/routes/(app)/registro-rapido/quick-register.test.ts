@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { ApiError } from '$lib/api/client';
-import QuickRegister from '$lib/components/QuickEntryForm.svelte';
+import { ApiError } from '#lib/api/client.ts';
+import QuickRegister from '#lib/components/QuickEntryForm.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto: (...args: unknown[]) => goto(...args) }));
 
@@ -11,8 +11,8 @@ vi.mock('$app/navigation', () => ({ goto: (...args: unknown[]) => goto(...args) 
 // Mock the client module, keep the real ApiError so the error branch is exercised.
 const apiGet = vi.fn();
 const apiPost = vi.fn();
-vi.mock('$lib/api/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('$lib/api/client')>();
+vi.mock('#lib/api/client.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#lib/api/client.ts')>();
   return {
     ...actual,
     apiGet: (...args: unknown[]) => apiGet(...args),

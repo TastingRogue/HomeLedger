@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n/index.ts';
   import './workspace.css';
   let { kind, children }: { kind:'login'|'register'|'offline'; children:Snippet }=$props();
   const title=$derived($t(kind==='login'?'page_title.login':kind==='register'?'page_title.register':'offline.title'));

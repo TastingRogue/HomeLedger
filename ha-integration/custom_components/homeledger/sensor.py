@@ -162,8 +162,12 @@ class HomeLedgerAccountSensor(CoordinatorEntity[HomeLedgerCoordinator], SensorEn
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Currency from the API (instance currency), fallback MXN."""
-        return (self.coordinator.data or {}).get("currency") or "MXN"
+        """Use the native account currency, matching its unconverted balance."""
+        data = self.coordinator.data or {}
+        for account in data.get("accounts", []):
+            if account["id"] == self._account_id:
+                return account.get("currency") or data.get("currency") or "MXN"
+        return data.get("currency") or "MXN"
 
     def __init__(
         self,
@@ -205,7 +209,7 @@ class HomeLedgerCategorySensor(CoordinatorEntity[HomeLedgerCoordinator], SensorE
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Currency from the API (instance currency), fallback MXN."""
+        """Category totals are converted to the instance currency."""
         return (self.coordinator.data or {}).get("currency") or "MXN"
 
     def __init__(

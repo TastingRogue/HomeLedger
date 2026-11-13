@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { localDateString } from '$lib/utils/format';
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { localDateString } from '#lib/utils/format.ts';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listSubscriptions,
@@ -16,17 +16,17 @@
     type CreateSubscriptionPayload,
     type SubscriptionInsightsResult,
     type SubscriptionInsight,
-  } from '$lib/api/subscriptions';
-  import { listAccounts, type AccountData } from '$lib/api/accounts';
-  import { apiGet } from '$lib/api/client';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency, formatDaysRemaining } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/subscriptions.ts';
+  import { listAccounts, type AccountData } from '#lib/api/accounts.ts';
+  import { apiGet } from '#lib/api/client.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency, formatDaysRemaining } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── Types ───
   interface Category {

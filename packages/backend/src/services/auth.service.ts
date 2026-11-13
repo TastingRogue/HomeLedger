@@ -49,6 +49,7 @@ export interface GeneratedApiKey {
   key: string;
   keyPrefix: string;
   scopes: string[] | null;
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -57,6 +58,7 @@ export interface ApiKeyInfo {
   id: number;
   name: string;
   scopes: string[] | null;
+  expiresAt: string | null;
   createdAt: string;
   lastUsedAt: string | null;
 }
@@ -410,7 +412,8 @@ export class AuthService {
    * Generate a new API key for a user.
    * Returns the raw key (only shown once) and stores a hash in the database.
    */
-  static async generateApiKey(userId: number, name: string, scopes?: string[] | null): Promise<GeneratedApiKey> {
+  static async generateApiKey(userId: number, name: string, scopes?: string[] | null, expiresAt?: string): Promise<GeneratedApiKey> {
+    if (expiresAt !== undefined && (!Number.isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) throw new AuthError('Fecha de expiración inválida', 'INVALID_EXPIRATION');
     const db = getDb();
 
     // Generate a random 64-character hex string
@@ -429,6 +432,7 @@ export class AuthService {
         name,
         key: keyHash,
         scopes: normalizedScopes ? JSON.stringify(normalizedScopes) : null,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         createdAt: now,
       })
       .returning()
@@ -440,6 +444,7 @@ export class AuthService {
       key: rawKey,
       keyPrefix: rawKey.substring(0, 8),
       scopes: normalizedScopes,
+      expiresAt: result.expiresAt,
       createdAt: result.createdAt,
     };
   }
@@ -460,6 +465,7 @@ export class AuthService {
       id: r.id,
       name: r.name,
       scopes: parseScopes(r.scopes),
+      expiresAt: r.expiresAt,
       createdAt: r.createdAt,
       lastUsedAt: r.lastUsedAt ?? null,
     }));
@@ -502,6 +508,7 @@ export class AuthService {
     }
 
     const record = keyRecord[0]!;
+    if (record.expiresAt && (!Number.isFinite(Date.parse(record.expiresAt)) || Date.parse(record.expiresAt) <= Date.now())) return null;
 
     // Update last used timestamp
     db.update(apiKeys)

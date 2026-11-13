@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 import { get } from 'svelte/store';
 import { t } from './index';
 import { setLocale } from '../stores/preferences';

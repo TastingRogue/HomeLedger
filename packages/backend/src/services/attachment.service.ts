@@ -82,6 +82,8 @@ export class AttachmentService {
     const storedName = `${crypto.randomUUID()}${ext}`;
     const filePath = path.join(UPLOAD_DIR, storedName);
 
+    // Recreate lazily if storage was unavailable at startup.
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     // Write file to disk
     fs.writeFileSync(filePath, file.data);
 

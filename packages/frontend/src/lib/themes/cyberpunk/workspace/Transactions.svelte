@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Icon from '$lib/components/Icon.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import type { Model, Actions, Row } from './model';
   import { text, number } from './model';
   let { m, a, items }: { m: Model; a: Actions; items: Row[] } = $props();

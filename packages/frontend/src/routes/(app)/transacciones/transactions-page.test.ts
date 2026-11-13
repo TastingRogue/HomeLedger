@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
-import { preferences } from '$lib/stores/preferences';
+import { preferences } from '#lib/stores/preferences.ts';
 import TransactionsPage from './+page.svelte';
 
 const state = vi.hoisted(() => ({ composed: false, deleted: false, failDelete: false }));
 const apiDelete = vi.hoisted(() => vi.fn());
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/themes/view-actions', () => ({ hasViewActions: () => state.composed }));
-vi.mock('$lib/motion', () => ({
+vi.mock('#lib/themes/view-actions.ts', () => ({ hasViewActions: () => state.composed }));
+vi.mock('#lib/motion/index.ts', () => ({
   modalPanel: () => ({ duration: 0, css: () => '' }),
   scrim: () => ({ duration: 0, css: () => '' }),
 }));
-vi.mock('$lib/api/client', async importOriginal => {
-  const original = await importOriginal<typeof import('$lib/api/client')>();
+vi.mock('#lib/api/client.ts', async importOriginal => {
+  const original = await importOriginal<typeof import('#lib/api/client.ts')>();
   return {
     ...original,
     apiDelete,

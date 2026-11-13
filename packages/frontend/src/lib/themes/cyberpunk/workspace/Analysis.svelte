@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
-  import { getAlertTitle, getAlertMessage } from '$lib/utils/alert-copy';
+  import { t } from '#lib/i18n/index.ts';
+  import { getAlertTitle, getAlertMessage } from '#lib/utils/alert-copy.ts';
   import Panel from './Panel.svelte'; import Meter from './Meter.svelte';
-  import Icon from '$lib/components/Icon.svelte'; import BarChart from '$lib/components/BarChart.svelte'; import LineChart from '$lib/components/LineChart.svelte';
-  import { evaluateAlerts } from '$lib/api/alerts';
-  import { applyRules } from '$lib/api/rules';
-  import { apiPut, apiPatch, apiDelete } from '$lib/api/client';
+  import Icon from '#lib/components/Icon.svelte'; import BarChart from '#lib/components/BarChart.svelte'; import LineChart from '#lib/components/LineChart.svelte';
+  import { evaluateAlerts } from '#lib/api/alerts.ts';
+  import { applyRules } from '#lib/api/rules.ts';
+  import { apiPut, apiPatch, apiDelete } from '#lib/api/client.ts';
   import { number as n, text, rows, object, type Model, type Actions, type Row } from './model';
   let { m, a }: { m: Model; a: Actions } = $props();
   let alertType=$state(''); let evaluating=$state(false);

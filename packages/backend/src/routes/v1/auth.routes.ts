@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { UserService } from '../../services/user.service.js';
 import { AuthService, AuthError } from '../../services/auth.service.js';
 import { registerSchema, loginSchema, refreshTokenSchema, totpCodeSchema } from '../../validators/auth.schema.js';
 import { authRateLimitPlugin } from '../../middleware/rate-limit.middleware.js';
@@ -206,7 +207,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const currentPassword = body?.currentPassword as string | undefined;
     const newPassword = body?.newPassword as string | undefined;
 
-    if (!currentPassword || !newPassword) {
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || !currentPassword || !newPassword) {
       return reply.status(400).send({ success: false, error: { code: 'BAD_REQUEST', message: 'Se requieren contraseña actual y nueva' } });
     }
 
@@ -230,8 +231,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(401).send({ success: false, error: { code: 'INVALID_PASSWORD', message: 'La contraseña actual es incorrecta' } });
     }
 
-    const newHash = await bcrypt.hash(newPassword, 12);
-    db.update(users).set({ passwordHash: newHash, updatedAt: new Date().toISOString() }).where(eq(users.id, user.userId)).run();
+    await UserService.resetPassword(user.userId, newPassword);
+    clearSessionCookie(request, reply);
 
     return reply.status(200).send({ success: true, data: { message: 'Contraseña actualizada exitosamente' } });
   });
@@ -345,7 +346,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(401).send({ success: false, error: { code: 'NOT_AUTHENTICATED', message: 'No autenticado' } });
     }
     const query = request.query as Record<string, unknown> | null;
-    const currentToken = typeof query?.refreshToken === 'string' ? query.refreshToken : undefined;
+    const marker = typeof query?.refreshToken === 'string' ? query.refreshToken : 'cookie';
+    const currentToken = resolveRefreshToken(request, marker);
     const sessions = AuthService.listSessions(user.userId, currentToken);
     return reply.status(200).send({ success: true, data: sessions });
   });

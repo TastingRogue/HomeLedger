@@ -2,27 +2,27 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import Recibos from './+page.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 // Issue #17: drag & drop (and multi-select) upload on the receipts page.
 const analyzeAttachment = vi.fn();
 const uploadAttachment = vi.fn();
-vi.mock('$lib/api/receipts', () => ({
+vi.mock('#lib/api/receipts.ts', () => ({
   analyzeAttachment: (...a: unknown[]) => analyzeAttachment(...a),
   listReceipts: vi.fn(() => Promise.resolve([])),
   updateReceipt: vi.fn(),
   setReceiptItemCategory: vi.fn(),
   createTransactionFromReceipt: vi.fn(),
 }));
-vi.mock('$lib/api/attachments', () => ({
+vi.mock('#lib/api/attachments.ts', () => ({
   listAttachments: vi.fn(() => Promise.resolve([])),
   uploadAttachment: (...a: unknown[]) => uploadAttachment(...a),
   previewAttachmentUrl: vi.fn(() => Promise.resolve('blob:x')),
   downloadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
 }));
-vi.mock('$lib/api/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('$lib/api/client')>();
+vi.mock('#lib/api/client.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#lib/api/client.ts')>();
   return {
     ...actual,
     apiGet: vi.fn(() => Promise.resolve([])),

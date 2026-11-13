@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import Recibos from './+page.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 // The receipts page loads data on mount via these modules; stub them so the
 // component mounts cleanly and we can open the upload modal.
-vi.mock('$lib/api/receipts', () => ({
+vi.mock('#lib/api/receipts.ts', () => ({
   analyzeAttachment: vi.fn(),
   listReceipts: vi.fn(() => Promise.resolve([])),
   updateReceipt: vi.fn(),
@@ -14,15 +14,15 @@ vi.mock('$lib/api/receipts', () => ({
   createTransactionFromReceipt: vi.fn(),
 }));
 const uploadAttachment = vi.fn();
-vi.mock('$lib/api/attachments', () => ({
+vi.mock('#lib/api/attachments.ts', () => ({
   listAttachments: vi.fn(() => Promise.resolve([])),
   uploadAttachment: (...a: unknown[]) => uploadAttachment(...a),
   previewAttachmentUrl: vi.fn(() => Promise.resolve('blob:x')),
   downloadAttachment: vi.fn(),
   deleteAttachment: vi.fn(),
 }));
-vi.mock('$lib/api/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('$lib/api/client')>();
+vi.mock('#lib/api/client.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#lib/api/client.ts')>();
   return {
     ...actual,
     apiGet: vi.fn(() => Promise.resolve([])),

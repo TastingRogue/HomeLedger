@@ -39,3 +39,7 @@ export function getBackupDir(): string {
 /** Filename prefix + extension for snapshots. */
 export const SNAPSHOT_PREFIX = 'homeledger-';
 export const SNAPSHOT_EXT = '.db.gz';
+
+/** Bounded portable JSON backup; envelope headroom is reserved for HTTP requests. */
+export const MAX_BACKUP_JSON_BYTES = 32 * 1024 * 1024;
+export const BACKUP_BODY_LIMIT = MAX_BACKUP_JSON_BYTES + 1024;

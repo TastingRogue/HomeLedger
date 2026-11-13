@@ -1,8 +1,8 @@
 <script lang="ts">
-  import BarChart from '$lib/components/BarChart.svelte';
+  import BarChart from '#lib/components/BarChart.svelte';
   import type { CashFlowProps } from '../../view-actions';
-  import { preferences } from '$lib/stores/preferences';
-  import { getIntlTag } from '$lib/i18n/registry';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
   let {labels,income,expenses,incomeLabel,expenseLabel,height=230}:CashFlowProps=$props();
   const formatter=$derived(new Intl.NumberFormat(getIntlTag($preferences.locale),{style:'currency',currency:$preferences.currency,currencyDisplay:'narrowSymbol',maximumFractionDigits:0}));
 </script>

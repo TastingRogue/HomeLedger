@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidScope } from '../config/scopes.js';
 
 /**
  * Schema de validación para registro de usuario.
@@ -69,13 +70,13 @@ export const createApiKeySchema = z.object({
     .max(100, 'El nombre no puede exceder 100 caracteres'),
 
   // Optional scope list (P4.13). Omitted/empty = full access.
-  scopes: z.array(z.string()).optional(),
+  scopes: z.array(z.string().trim().refine(isValidScope, 'Permiso desconocido')).optional(),
 
   expiresAt: z
     .string()
     .refine(
-      (val) => !isNaN(Date.parse(val)),
-      { message: 'La fecha de expiración debe estar en formato ISO 8601 válido' }
+      (val) => Number.isFinite(Date.parse(val)) && Date.parse(val) > Date.now(),
+      { message: 'La fecha de expiración debe ser válida y futura' }
     )
     .optional(),
 });

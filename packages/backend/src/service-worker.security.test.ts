@@ -14,7 +14,8 @@ function worker() {
   };
   const fetch = vi.fn(async () => new Response('current user data'));
   const source = readFileSync(new URL('../../frontend/src/service-worker.ts', import.meta.url), 'utf8')
-    .replace(/import .* from '\$service-worker';/, "const build = [], files = [], prerendered = [], version = 'test';");
+    .replace(/import .* from '\$app\/manifest';/, "const immutable = [], assets = [], prerendered = [];")
+    .replace(/import .* from '\$app\/env';/, "const version = 'test';");
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   runInNewContext(code, {
     self: { location: { origin: 'https://ledger.test' }, addEventListener: (name: string, fn: (event: unknown) => void) => { listeners[name] = fn; }, clients: { claim: vi.fn() } },

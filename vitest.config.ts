@@ -4,18 +4,20 @@ import { defineConfig } from 'vitest/config';
 // right environment:
 //  - backend/shared: plain Node (services, DB, pure logic).
 //  - frontend: its own packages/frontend/vitest.config.ts (jsdom + the SvelteKit
-//    Vite plugin), so `$lib/*` / `$app/*` virtual imports and browser globals
+//    Vite plugin), so `#lib/*` / `$app/*` virtual imports and browser globals
 //    (window/localStorage) resolve exactly as in the app.
 // A single `vitest run` at the root then runs the whole monorepo correctly.
 export default defineConfig({
   test: {
     name: 'backend',
     globals: true,
+    // Bound concurrent native DB/bcrypt work on high-core build hosts.
+    maxWorkers: 4,
     environment: 'node',
     // Backend + shared run under plain Node. The frontend suite runs separately
     // (from packages/frontend) via the root `test` script because the SvelteKit
     // Vite plugin must execute with that package as its working directory to
-    // resolve `$lib/*` / `$app/*` and find `src/app.html` when transforming
+    // resolve `#lib/*` / `$app/*` and find `src/app.html` when transforming
     // `.svelte` files — it can't be nested as a Vitest project from the repo root.
     include: ['packages/backend/src/**/*.{test,spec}.ts', 'packages/shared/src/**/*.{test,spec}.ts'],
     coverage: {

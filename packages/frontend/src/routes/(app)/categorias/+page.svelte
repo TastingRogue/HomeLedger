@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listCategories,
@@ -12,13 +12,13 @@
     type Category,
     type Subcategory,
     type CategoryAnalysisItem,
-  } from '$lib/api/categories';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency, formatPercentage } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/categories.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency, formatPercentage } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── State ───
   let categories: Category[] = $state([]);

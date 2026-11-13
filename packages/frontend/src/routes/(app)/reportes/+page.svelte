@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { formatPercentage } from '$lib/utils/format';
-  import { getViewCharts } from '$lib/themes/view-actions';
-  import Icon from '$lib/components/Icon.svelte';
+  import { formatPercentage } from '#lib/utils/format.ts';
+  import { getViewCharts } from '#lib/themes/view-actions.ts';
+  import Icon from '#lib/components/Icon.svelte';
   const viewCharts = getViewCharts();
   import { onMount } from 'svelte';
-  import { apiGet } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import BarChart from '$lib/components/BarChart.svelte';
-  import DoughnutChart from '$lib/components/DoughnutChart.svelte';
-  import LineChart from '$lib/components/LineChart.svelte';
-  import { t } from '$lib/i18n';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
+  import { apiGet } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import BarChart from '#lib/components/BarChart.svelte';
+  import DoughnutChart from '#lib/components/DoughnutChart.svelte';
+  import LineChart from '#lib/components/LineChart.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
 
   interface DashboardData {
     consolidatedBalance: number;

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { goto } from '$app/navigation';
-  import { activeTheme } from '$lib/stores/theme';
-  import { t } from '$lib/i18n';
-  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '#lib/stores/theme.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import ThemeComposition from '#lib/themes/ThemeComposition.svelte';
   import QuickEntryForm from './QuickEntryForm.svelte';
   let open = $state(false);
   let dialog = $state<HTMLDialogElement>();
@@ -13,7 +13,7 @@
   function show() { origin = document.activeElement as HTMLElement; open = true; }
   function close() {
     open = false;
-    if ($page.url.pathname === '/registro-rapido') void goto('/dashboard', { replaceState: true });
+    if (page.url.pathname === '/registro-rapido') void goto('/dashboard', { replace: true });
     else void tick().then(() => origin?.focus());
   }
   function saved() { window.dispatchEvent(new Event('homeledger:quick-entry-saved')); }
@@ -28,7 +28,7 @@
     document.addEventListener('click', intercept, true);
     return () => document.removeEventListener('click', intercept, true);
   });
-  $effect(() => { if ($page.url.pathname === '/registro-rapido') show(); });
+  $effect(() => { if (page.url.pathname === '/registro-rapido') show(); });
   $effect(() => {
     if (!open || !dialog) return;
     dialog.showModal();

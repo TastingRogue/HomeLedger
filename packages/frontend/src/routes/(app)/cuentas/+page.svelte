@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { formatPercentage } from '$lib/utils/format';
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { formatPercentage } from '#lib/utils/format.ts';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listAccounts,
@@ -14,16 +14,16 @@
     type CreditStatement,
     type CreateAccountPayload,
     type AccountType,
-  } from '$lib/api/accounts';
-  import { getTransactions, type Transaction, type PaginatedTransactions } from '$lib/api/transactions';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { modalPanel, scrim } from '$lib/motion';
-  import Tooltip from '$lib/components/Tooltip.svelte';
-  import { preferences, SUPPORTED_CURRENCIES } from '$lib/stores/preferences';
+  } from '#lib/api/accounts.ts';
+  import { getTransactions, type Transaction, type PaginatedTransactions } from '#lib/api/transactions.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
+  import Tooltip from '#lib/components/Tooltip.svelte';
+  import { preferences, SUPPORTED_CURRENCIES } from '#lib/stores/preferences.ts';
 
   // The instance/base currency (from the preferences store, seeded from /config).
   const baseCurrency = $derived($preferences.currency);

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { t } from '$lib/i18n';
-  import { getLockConfig, unlockWebauthn, unlockPin } from '$lib/stores/lock';
+  import { t } from '#lib/i18n/index.ts';
+  import { getLockConfig, unlockWebauthn, unlockPin } from '#lib/stores/lock.ts';
 
   let { onUnlocked }: { onUnlocked: () => void } = $props();
 

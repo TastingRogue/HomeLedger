@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
-  import { apiGet, apiPost } from '$lib/api/client';
-  import { analyzeAttachment, listReceipts, updateReceipt, setReceiptItemCategory, createTransactionFromReceipt, type ReceiptAnalysis } from '$lib/api/receipts';
-  import { listAttachments, uploadAttachment, previewAttachmentUrl, downloadAttachment as apiDownload, deleteAttachment, type Attachment } from '$lib/api/attachments';
-  import { formatCurrency, formatDateShort, nowDatetimeLocal } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
-  import { createBatch, runBatch, countDone, isBusy, UPLOAD_ACCEPT, type BatchItem } from '$lib/utils/batch-upload';
+  import { apiGet, apiPost } from '#lib/api/client.ts';
+  import { analyzeAttachment, listReceipts, updateReceipt, setReceiptItemCategory, createTransactionFromReceipt, type ReceiptAnalysis } from '#lib/api/receipts.ts';
+  import { listAttachments, uploadAttachment, previewAttachmentUrl, downloadAttachment as apiDownload, deleteAttachment, type Attachment } from '#lib/api/attachments.ts';
+  import { formatCurrency, formatDateShort, nowDatetimeLocal } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
+  import { createBatch, runBatch, countDone, isBusy, UPLOAD_ACCEPT, type BatchItem } from '#lib/utils/batch-upload.ts';
 
   interface Account { id:number; name:string }
   interface Category { id:number; name:string }

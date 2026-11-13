@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getAlertTitle as localizedAlertTitle, getAlertMessage as localizedAlertMessage } from '$lib/utils/alert-copy';
+  import { getAlertTitle as localizedAlertTitle, getAlertMessage as localizedAlertMessage } from '#lib/utils/alert-copy.ts';
   import { onMount } from 'svelte';
   import {
     listAlerts,
@@ -10,10 +10,10 @@
     type AlertData,
     type AlertType,
     type AlertSeverity,
-  } from '$lib/api/alerts';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
+  } from '#lib/api/alerts.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
 
   // ─── State ───
   let alerts: AlertData[] = $state([]);

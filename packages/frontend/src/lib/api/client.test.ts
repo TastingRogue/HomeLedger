@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// The token helpers early-return unless SvelteKit's `$app/environment` reports
+// The token helpers early-return unless SvelteKit's `$app/env` reports
 // `browser === true`. Under Vitest/SSR that flag is false, so force it true to
 // exercise the real browser code path (localStorage read/write).
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 import {
   ApiError,
@@ -15,6 +15,7 @@ import {
   apiRequest,
   restoreSession,
 } from './client';
+import { listSessions } from './auth';
 import { setLocale } from '../stores/preferences';
 
 describe('shared data invalidation', () => {
@@ -96,4 +97,17 @@ describe('ApiError', () => {
     const err = new ApiError(500, 'SERVER_ERROR', 'Boom');
     expect(err.details).toBeUndefined();
   });
+});
+
+
+it('lists browser sessions using the HttpOnly cookie marker without a secret in the URL', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, data: [] })));
+  vi.stubGlobal('fetch', fetchMock);
+  try {
+    setTokens('access', 'cookie');
+    await listSessions();
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(new URL(url).search).toBe('');
+    expect(options.headers['X-HomeLedger-Session']).toBe('browser');
+  } finally { clearTokens(); vi.unstubAllGlobals(); }
 });

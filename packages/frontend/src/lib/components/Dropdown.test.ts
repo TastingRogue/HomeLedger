@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import Dropdown from './Dropdown.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 // Replace the css-based Svelte transition with an instant no-op so the menu's
 // unmount happens synchronously in jsdom (which lacks a real Web Animations
 // timeline). We're testing open/close *logic*, not the animation itself.
-vi.mock('$lib/motion', () => ({
+vi.mock('#lib/motion/index.ts', () => ({
   popover: () => ({ duration: 0, css: () => '' }),
 }));
 

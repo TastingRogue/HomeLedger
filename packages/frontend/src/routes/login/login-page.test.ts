@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { ApiError } from '$lib/api';
+import { ApiError } from '#lib/api/index.ts';
 import LoginPage from './+page.svelte';
 
 // SvelteKit virtual modules the component imports. `browser: true` lets the
 // auth store persist to localStorage (jsdom provides it) on a successful login.
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({ goto: (...args: unknown[]) => goto(...args) }));
 
@@ -13,8 +13,8 @@ vi.mock('$app/navigation', () => ({ goto: (...args: unknown[]) => goto(...args) 
 // `err instanceof ApiError` branch behaves like production.
 const login = vi.fn();
 const getMe = vi.fn();
-vi.mock('$lib/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('$lib/api')>();
+vi.mock('#lib/api/index.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('#lib/api/index.ts')>();
   return {
     ...actual,
     authApi: {

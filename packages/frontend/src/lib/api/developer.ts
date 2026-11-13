@@ -11,6 +11,7 @@ export interface ApiKeyInfo {
   id: number;
   name: string;
   scopes: string[] | null;
+  expiresAt: string | null;
   createdAt: string;
   lastUsedAt: string | null;
 }
@@ -21,6 +22,7 @@ export interface CreatedApiKey {
   key: string;
   keyPrefix: string;
   scopes: string[] | null;
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -32,8 +34,8 @@ export function listScopes(): Promise<string[]> {
   return apiGet<string[]>('/api-keys/scopes');
 }
 
-export function createApiKey(name: string, scopes: string[]): Promise<CreatedApiKey> {
-  return apiPost<CreatedApiKey>('/api-keys', { name, scopes });
+export function createApiKey(name: string, scopes: string[], expiresAt?: string): Promise<CreatedApiKey> {
+  return apiPost<CreatedApiKey>('/api-keys', { name, scopes, expiresAt });
 }
 
 export function revokeApiKey(id: number): Promise<void> {

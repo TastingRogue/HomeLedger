@@ -3,7 +3,7 @@
  * Handles authentication, token refresh on 401, and provides typed fetch helpers.
  */
 
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { get } from 'svelte/store';
 import { t } from '../i18n';
 import { preferences } from '../stores/preferences';
@@ -207,7 +207,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string | n
 
   const response = await fetch(url.toString(), {
     method: 'GET',
-    headers: getAuthHeaders(),
+    headers: { ...getAuthHeaders(), ...(path.startsWith('/auth/') ? { 'X-HomeLedger-Session': 'browser' } : {}) },
   });
 
   // On 401: try to refresh and retry
@@ -216,7 +216,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string | n
     if (newToken) {
       const retryResponse = await fetch(url.toString(), {
         method: 'GET',
-        headers: { ...getAuthHeaders(), Authorization: `Bearer ${newToken}` },
+        headers: { ...getAuthHeaders(), Authorization: `Bearer ${newToken}`, ...(path.startsWith('/auth/') ? { 'X-HomeLedger-Session': 'browser' } : {}) },
       });
       if (retryResponse.status === 401) {
         clearTokens();

@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import LockScreen from './LockScreen.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 // Mock the lock store so we control method + unlock outcomes.
 const getLockConfig = vi.fn();
 const unlockWebauthn = vi.fn();
 const unlockPin = vi.fn();
-vi.mock('$lib/stores/lock', () => ({
+vi.mock('#lib/stores/lock.ts', () => ({
   getLockConfig: () => getLockConfig(),
   unlockWebauthn: () => unlockWebauthn(),
   unlockPin: (pin: string) => unlockPin(pin),

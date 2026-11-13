@@ -15,7 +15,7 @@ if [ -f "$CONFIG_PATH" ]; then
   export TZ=$(jq -r '.TZ // "America/Mexico_City"' "$CONFIG_PATH")
   export DEFAULT_LOCALE=$(jq -r '.DEFAULT_LOCALE // "en"' "$CONFIG_PATH")
   export DISPLAY_CURRENCY=$(jq -r '.DISPLAY_CURRENCY // "MXN"' "$CONFIG_PATH")
-  export BACKUP_ENABLED=$(jq -r '.BACKUP_ENABLED // true' "$CONFIG_PATH")
+  export BACKUP_ENABLED=$(jq -r 'if .BACKUP_ENABLED == null then true else .BACKUP_ENABLED end' "$CONFIG_PATH")
   export BACKUP_RETENTION=$(jq -r '.BACKUP_RETENTION // 7' "$CONFIG_PATH")
   export REGISTRATION_MODE=$(jq -r '.REGISTRATION_MODE // "first_user_only"' "$CONFIG_PATH")
   export WEBHOOK_ALLOWED_HOSTS=$(jq -r '.WEBHOOK_ALLOWED_HOSTS // ""' "$CONFIG_PATH")

@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { DEFAULT_LOCALE, isSupportedLocale, type SupportedLocale } from '../i18n/registry';
 
 export type { SupportedLocale };

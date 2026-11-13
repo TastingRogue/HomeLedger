@@ -1,7 +1,7 @@
-import type { TranslationKey } from '$lib/i18n/es';
-import type { Attachment } from '$lib/api/attachments';
-import { apiGet } from '$lib/api/client';
-import { dictionaries, getIntlTag, type SupportedLocale } from '$lib/i18n/registry';
+import type { TranslationKey } from '#lib/i18n/es.ts';
+import type { Attachment } from '#lib/api/attachments.ts';
+import { apiGet } from '#lib/api/client.ts';
+import { dictionaries, getIntlTag, type SupportedLocale } from '#lib/i18n/registry.ts';
 
 export type Row = Record<string, unknown> & { id: number };
 export const number = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;

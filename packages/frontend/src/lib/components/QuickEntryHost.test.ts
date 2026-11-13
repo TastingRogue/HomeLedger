@@ -1,24 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/svelte';
-import { page } from '$app/stores';
-import { get } from 'svelte/store';
+import { page } from '$app/state';
 import { goto } from '$app/navigation';
-import { setUiSkin } from '$lib/stores/theme';
+import { setUiSkin } from '#lib/stores/theme.ts';
 import QuickEntryHost from './QuickEntryHost.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$app/stores', async () => {
-  const { writable } = await import('svelte/store');
-  return { page: writable({ url: new URL('http://localhost/cuentas') }) };
+vi.mock('$app/state', async () => {
+  return { page: { url: new URL('http://localhost/cuentas') } };
 });
-vi.mock('$lib/api/client', async importOriginal => ({
-  ...await importOriginal<typeof import('$lib/api/client')>(),
+vi.mock('#lib/api/client.ts', async importOriginal => ({
+  ...await importOriginal<typeof import('#lib/api/client.ts')>(),
   apiGet: vi.fn().mockResolvedValue([]), apiPost: vi.fn(),
 }));
 
 function setPath(path: string) {
-  (page as unknown as { set(value: { url: URL }): void }).set({ url: new URL(path, 'http://localhost') });
+  (page as unknown as { url: URL }).url = new URL(path, 'http://localhost');
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,7 +35,7 @@ describe('quick entry popup navigation', () => {
       anchor.focus();
       await fireEvent.click(anchor);
       expect(HTMLDialogElement.prototype.showModal).toHaveBeenCalled();
-      expect(get(page).url.pathname).toBe('/cuentas');
+      expect(page.url.pathname).toBe('/cuentas');
       await fireEvent.click(screen.getAllByRole('button', { name: /close/i, hidden: true })[0]);
       await waitFor(() => expect(document.querySelector('dialog')).toBeNull());
       expect(goto).not.toHaveBeenCalled();
@@ -53,6 +51,6 @@ describe('quick entry popup navigation', () => {
     expect(dialog).not.toBeNull();
     if (!dialog) throw new Error('Missing quick entry dialog');
     await fireEvent(dialog, new Event('cancel', { cancelable: true }));
-    expect(goto).toHaveBeenCalledWith('/dashboard', { replaceState: true });
+    expect(goto).toHaveBeenCalledWith('/dashboard', { replace: true });
   });
 });

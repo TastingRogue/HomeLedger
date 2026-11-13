@@ -39,7 +39,7 @@ Stable across `1.x`:
   `transactionSplits`, `transfers`, `subscriptions`, `goals`, `budgets`,
   `budgetCategories`, `categories`, `subcategories`, `rules`, `alerts`,
   `assets`, `liabilities`, `loans`, `loanPayments`, `networthSnapshots`,
-  `creditSubscriptions`, `attachments`, `receiptAnalyses`, `receiptItems`) and
+  `creditSubscriptions`, `attachments`, `receiptAnalyses`, `receiptItems`, `customReports`) and
   their existing field names.
 - **Self-containment**: attachment binaries travel inline as base64
   (`fileBase64`), so a backup restores with no separate file bundle.

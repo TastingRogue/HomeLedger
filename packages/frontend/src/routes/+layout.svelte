@@ -2,8 +2,8 @@
 	import '../app.css';
 	import type { Snippet } from 'svelte';
 	import { onMount } from 'svelte';
-	import { theme } from '$lib/stores/theme';
-	import { applyInstanceConfig } from '$lib/stores/preferences';
+	import { theme } from '#lib/stores/theme.ts';
+	import { applyInstanceConfig } from '#lib/stores/preferences.ts';
 
 	let { children }: { children: Snippet } = $props();
 

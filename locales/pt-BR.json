@@ -621,9 +621,9 @@
     "developer.mcp_password_invalid": "A senha está incorreta",
     "developer.mcp_enabled_ok": "✓ MCP ativado",
     "developer.mcp_disabled_ok": "✓ MCP desativado",
-    "settings.password_updated": "✓ Senha atualizada",
+    "settings.password_updated": "Senha atualizada. Entre novamente com sua nova senha.",
     "settings.fill_all_fields": "Preencha todos os campos",
-    "settings.min_chars": "Mínimo de 6 caracteres",
+    "settings.min_chars": "Use pelo menos 8 caracteres.",
     "settings.passwords_mismatch": "As senhas não coincidem",
     "settings.change_btn": "Alterar",
     "settings.change_password_btn": "Alterar senha",
@@ -1661,7 +1661,9 @@
     "cyberpunk.route_buscar_description": "Busque transações, comprovantes e assinaturas",
     "cyberpunk.route_registro-rapido_description": "Adicione uma receita ou despesa em segundos",
     "cyberpunk.route_configuracion_description": "Personalize sua experiência",
-    "cyberpunk.auth_tagline": "Suas finanças sob controle"
+    "cyberpunk.auth_tagline": "Suas finanças sob controle",
+    "api_error.backup_large": "O backup JSON excede 32 MiB. Use um backup completo do volume de dados para conjuntos maiores.",
+    "backup.entity.customReports": "Relatórios salvos"
   },
   "categories": {
     "income": "Receitas",

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     getNetWorth, createAsset, updateAsset, deleteAsset,
@@ -7,11 +7,11 @@
     getNetWorthHistory,
     type NetWorthSummary, type Asset, type Liability,
     type NetWorthSnapshot, type NetWorthRange
-  } from '$lib/api/networth';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency, formatDateShort } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/networth.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency, formatDateShort } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   let data = $state<NetWorthSummary | null>(null);
   let loading = $state(true);

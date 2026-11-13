@@ -11,7 +11,7 @@ describe('DatePicker local calendar values', () => {
   it('keeps the chosen local time when selecting another day', async () => {
     const { container } = render(DatePicker, { value: '2026-11-01T18:30', showTime: true });
     await fireEvent.click(screen.getByRole('button', { name: '01/11/2026 18:30' }));
-    const day = [...container.querySelectorAll<HTMLButtonElement>('.dp-day:not(.other-month)')]
+    const day = Array.from(container.querySelectorAll<HTMLButtonElement>('.dp-day:not(.other-month)'))
       .find(button => button.textContent?.trim() === '2')!;
     await fireEvent.click(day);
     expect(screen.getByRole('button', { name: '02/11/2026 18:30' })).toBeInTheDocument();

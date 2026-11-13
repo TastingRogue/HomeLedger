@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
 
   // A small help affordance: an info icon that reveals a themed popover with a
   // short explanation on hover AND keyboard focus. The popover is positioned with

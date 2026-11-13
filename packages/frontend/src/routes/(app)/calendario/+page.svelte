@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { apiGet } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
+  import { apiGet } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
 
   interface CalendarPayment {
     id: number;

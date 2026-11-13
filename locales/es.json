@@ -619,9 +619,9 @@
     "developer.mcp_password_invalid": "La contraseña es incorrecta",
     "developer.mcp_enabled_ok": "✓ MCP activado",
     "developer.mcp_disabled_ok": "✓ MCP desactivado",
-    "settings.password_updated": "✓ Contraseña actualizada",
+    "settings.password_updated": "Contraseña actualizada. Inicia sesión de nuevo con tu nueva contraseña.",
     "settings.fill_all_fields": "Completa todos los campos",
-    "settings.min_chars": "Mínimo 6 caracteres",
+    "settings.min_chars": "Usa al menos 8 caracteres.",
     "settings.passwords_mismatch": "Las contraseñas no coinciden",
     "settings.change_btn": "Cambiar",
     "settings.change_password_btn": "Cambiar contraseña",
@@ -1659,7 +1659,9 @@
     "cyberpunk.route_buscar_description": "Busca movimientos, recibos y suscripciones",
     "cyberpunk.route_registro-rapido_description": "Registra ingresos o gastos en segundos",
     "cyberpunk.route_configuracion_description": "Personaliza tu experiencia",
-    "cyberpunk.auth_tagline": "Tus finanzas, en control"
+    "cyberpunk.auth_tagline": "Tus finanzas, en control",
+    "api_error.backup_large": "El respaldo JSON supera los 32 MiB. Usa un respaldo completo del volumen de datos para conjuntos más grandes.",
+    "backup.entity.customReports": "Reportes guardados"
   },
   "categories": {
     "income": "Ingresos",

@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
-import { preferences } from '$lib/stores/preferences';
-import type { ImportPreview } from '$lib/api/backup';
-import type { ImportPreview as BankPreview } from '$lib/api/imports';
+import { preferences } from '#lib/stores/preferences.ts';
+import type { ImportPreview } from '#lib/api/backup.ts';
+import type { ImportPreview as BankPreview } from '#lib/api/imports.ts';
 import ImportPage from './+page.svelte';
 
 const previewBackup = vi.hoisted(() => vi.fn());
 const apiPost = vi.hoisted(() => vi.fn());
 const bank = vi.hoisted(() => ({ upload: vi.fn(), preview: vi.fn(), confirm: vi.fn() }));
-vi.mock('$app/environment', () => ({ browser: true }));
-vi.mock('$lib/api/client', () => ({ apiPost }));
-vi.mock('$lib/api/accounts', () => ({ listAccounts: vi.fn(async () => [{ id: 1, name: 'QA account' }]) }));
-vi.mock('$lib/api/backup', () => ({ previewImport: previewBackup }));
-vi.mock('$lib/api/imports', () => ({
+vi.mock('$app/env', () => ({ browser: true }));
+vi.mock('#lib/api/client.ts', () => ({ apiPost }));
+vi.mock('#lib/api/accounts.ts', () => ({ listAccounts: vi.fn(async () => [{ id: 1, name: 'QA account' }]) }));
+vi.mock('#lib/api/backup.ts', () => ({ previewImport: previewBackup }));
+vi.mock('#lib/api/imports.ts', () => ({
   getImportHistory: vi.fn(async () => []), uploadImport: bank.upload,
   previewImport: bank.preview, confirmImport: bank.confirm, undoImport: vi.fn(),
 }));

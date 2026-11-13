@@ -1,8 +1,8 @@
 <script lang="ts">
-  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
-  import { activeTheme } from '$lib/stores/theme';
+  import ThemeComposition from '#lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '#lib/stores/theme.ts';
   const ThemeFrame = $derived($activeTheme.authFrame);
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n/index.ts';
 
 </script>
 

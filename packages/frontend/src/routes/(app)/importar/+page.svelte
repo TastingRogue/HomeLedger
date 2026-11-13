@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { formatNumber } from '$lib/utils/format';
-  import { apiPost } from '$lib/api/client';
+  import { formatNumber } from '#lib/utils/format.ts';
+  import { apiPost } from '#lib/api/client.ts';
   import { onMount } from 'svelte';
-  import { t } from '$lib/i18n';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
-  import { previewImport as previewBackup, type ImportPreview as BackupPreview } from '$lib/api/backup';
-  import { listAccounts, type AccountData } from '$lib/api/accounts';
+  import { t } from '#lib/i18n/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { previewImport as previewBackup, type ImportPreview as BackupPreview } from '#lib/api/backup.ts';
+  import { listAccounts, type AccountData } from '#lib/api/accounts.ts';
   import {
     uploadImport,
     previewImport,
@@ -16,7 +16,7 @@
     type ImportPreview,
     type ImportResult,
     type ImportSession,
-  } from '$lib/api/imports';
+  } from '#lib/api/imports.ts';
 
   let step = $state(1);
   let activeTab: 'import' | 'export' = $state('import');

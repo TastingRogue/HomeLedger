@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Daily from './Daily.svelte';
-  import { preferences } from '$lib/stores/preferences';
+  import { preferences } from '#lib/stores/preferences.ts';
   import { loadWorkspace, emptyData, buildModel, type Actions } from './model';
   import './workspace.css';
   let { saved }: { close: () => void; saved: () => void } = $props();

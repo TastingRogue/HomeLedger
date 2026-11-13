@@ -1,7 +1,7 @@
 <script lang="ts">
   import Panel from './Panel.svelte'; import Meter from './Meter.svelte';
-  import Icon from '$lib/components/Icon.svelte'; import LineChart from '$lib/components/LineChart.svelte';
-  import { apiGet } from '$lib/api/client';
+  import Icon from '#lib/components/Icon.svelte'; import LineChart from '#lib/components/LineChart.svelte';
+  import { apiGet } from '#lib/api/client.ts';
   import { number as n, text, rows, type Model, type Actions } from './model';
   let { m, a }: { m: Model; a: Actions } = $props();
   let goalFilter = $state(''); let schedule = $state<ReturnType<typeof rows> | null>(null); let selectedLoan = $state(0);

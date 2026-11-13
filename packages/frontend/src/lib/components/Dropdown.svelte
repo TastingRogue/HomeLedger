@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { popover } from '$lib/motion';
+  import { popover } from '#lib/motion/index.ts';
 
   let { value = $bindable(), options }: {
     value: string;

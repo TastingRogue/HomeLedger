@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { browser } from '$app/environment';
-  import { watchChartTheme, createThemePalette } from '$lib/utils/chart-theme';
+  import { browser } from '$app/env';
+  import { watchChartTheme, createThemePalette } from '#lib/utils/chart-theme.ts';
 
   let { labels, barDataset, lineDataset, height = 220 }: {
     labels: string[];

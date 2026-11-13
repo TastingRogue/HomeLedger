@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { BACKUP_BODY_LIMIT } from '../../config/backup.js';
 import { BackupService, BackupError } from '../../services/backup.service.js';
 import { SnapshotService, SnapshotError } from '../../services/snapshot.service.js';
 import { requireRole } from '../../middleware/auth.middleware.js';
@@ -12,7 +13,7 @@ import type { TokenPayload } from '../../services/auth.service.js';
  * INCOMPATIBLE_VERSION → 400 Bad Request
  */
 function handleBackupError(error: BackupError, reply: FastifyReply): FastifyReply {
-  const statusCode = error.code === 'CONFIRMATION_REQUIRED' ? 409 : 400;
+  const statusCode = error.code === 'BACKUP_TOO_LARGE' ? 413 : error.code === 'CONFIRMATION_REQUIRED' ? 409 : 400;
   return reply.status(statusCode).send({
     success: false,
     error: {
@@ -31,6 +32,12 @@ function handleBackupError(error: BackupError, reply: FastifyReply): FastifyRepl
  * Requirements: 13.3, 13.4
  */
 export async function backupRoutes(app: FastifyInstance): Promise<void> {
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof Error && 'code' in error && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE') {
+      return handleBackupError(new BackupError('El respaldo JSON supera el límite de 32 MiB. Use un respaldo completo del volumen.', 'BACKUP_TOO_LARGE'), reply);
+    }
+    throw error;
+  });
   /**
    * POST /api/v1/backup/export
    * Export all user data to a JSON backup file.
@@ -41,7 +48,9 @@ export async function backupRoutes(app: FastifyInstance): Promise<void> {
   app.post('/export', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as TokenPayload;
 
-    const backup = BackupService.export(user.userId);
+    let backup;
+    try { backup = BackupService.export(user.userId); }
+    catch (error) { if (error instanceof BackupError) return handleBackupError(error, reply); throw error; }
 
     return reply.status(200).send({
       success: true,
@@ -58,7 +67,7 @@ export async function backupRoutes(app: FastifyInstance): Promise<void> {
    *
    * Requirements: 13.4, 13.8, 13.9
    */
-  app.post('/import', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post('/import', { bodyLimit: BACKUP_BODY_LIMIT }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as TokenPayload;
     const body = request.body as Record<string, unknown> | null;
 
@@ -98,7 +107,7 @@ export async function backupRoutes(app: FastifyInstance): Promise<void> {
    *
    * Body: { backup: BackupFile } (or the backup object directly)
    */
-  app.post('/preview', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post('/preview', { bodyLimit: BACKUP_BODY_LIMIT }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as TokenPayload;
     const body = request.body as Record<string, unknown> | null;
 

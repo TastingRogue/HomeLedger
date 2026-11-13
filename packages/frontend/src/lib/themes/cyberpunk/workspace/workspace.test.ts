@@ -4,8 +4,8 @@ import { buildModel, emptyData, loadWorkspace, type Actions } from './model';
 import Daily from './Daily.svelte';
 import Operations from './Operations.svelte';
 import Editor from './Editor.svelte';
-import { apiGet, apiPost } from '$lib/api/client';
-vi.mock('$lib/api/client', () => ({ apiGet: vi.fn(), apiPost: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn() }));
+import { apiGet, apiPost } from '#lib/api/client.ts';
+vi.mock('#lib/api/client.ts', () => ({ apiGet: vi.fn(), apiPost: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn() }));
 const a: Actions = { edit: vi.fn(), manage: vi.fn(), refresh: vi.fn().mockResolvedValue(undefined), notify: vi.fn() };
 function model(route: string) {
   const data = emptyData();

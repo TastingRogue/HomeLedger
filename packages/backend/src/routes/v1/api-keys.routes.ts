@@ -51,7 +51,7 @@ export async function apiKeyRoutes(app: FastifyInstance): Promise<void> {
     const user = request.user as TokenPayload;
     const parsed = createApiKeySchema.parse(request.body);
 
-    const created = await AuthService.generateApiKey(user.userId, parsed.name, parsed.scopes ?? null);
+    const created = await AuthService.generateApiKey(user.userId, parsed.name, parsed.scopes ?? null, parsed.expiresAt);
     return reply.status(201).send({ success: true, data: created });
   });
 

@@ -1,20 +1,20 @@
 <script lang="ts">
-  import QuickEntryHost from '$lib/components/QuickEntryHost.svelte';
+  import QuickEntryHost from '#lib/components/QuickEntryHost.svelte';
   import { onMount } from 'svelte';
-  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
-  import { activeTheme } from '$lib/stores/theme';
+  import ThemeComposition from '#lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '#lib/stores/theme.ts';
   const ThemeWorkspace = $derived($activeTheme.workspace);
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
-  import { restoreSession, logout } from '$lib/api';
-  import '$lib/styles/shared.css';
-  import Icon from '$lib/components/Icon.svelte';
-  import Logo from '$lib/components/Logo.svelte';
-  import OfflineBanner from '$lib/components/OfflineBanner.svelte';
-  import LockScreen from '$lib/components/LockScreen.svelte';
-  import { isLockEnabled } from '$lib/stores/lock';
-  import { t } from '$lib/i18n';
-  import { userProfile, loadUserProfile } from '$lib/stores/user';
+  import { page } from '$app/state';
+  import { restoreSession, logout } from '#lib/api/index.ts';
+  import '#lib/styles/shared.css';
+  import Icon from '#lib/components/Icon.svelte';
+  import Logo from '#lib/components/Logo.svelte';
+  import OfflineBanner from '#lib/components/OfflineBanner.svelte';
+  import LockScreen from '#lib/components/LockScreen.svelte';
+  import { isLockEnabled } from '#lib/stores/lock.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { userProfile, loadUserProfile } from '#lib/stores/user.ts';
   import type { Snippet } from 'svelte';
 
   let { children }: { children: Snippet } = $props();
@@ -104,7 +104,7 @@
   ]);
 
   // Quick-add FAB: hide it on the quick-add screen itself.
-  const showFab = $derived($page.url.pathname !== '/registro-rapido');
+  const showFab = $derived(page.url.pathname !== '/registro-rapido');
 </script>
 
 
@@ -116,7 +116,7 @@
   <OfflineBanner />
   {#if !locked}<QuickEntryHost />{/if}
   {#if ThemeWorkspace}
-    <ThemeComposition load={ThemeWorkspace} props={{ path: $page.url.pathname, children }}/>
+    <ThemeComposition load={ThemeWorkspace} props={{ path: page.url.pathname, children }}/>
   {:else}
   <div class="app-layout">
     <!-- Sidebar overlay (mobile) -->
@@ -144,7 +144,7 @@
                   <a
                     href={item.href}
                     class="nav-link"
-                    class:active={$page.url.pathname === item.href}
+                    class:active={page.url.pathname === item.href}
                     onclick={closeSidebar}
                   >
                     <span class="nav-icon"><Icon name={item.icon} size={16} /></span>

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { theme, setTheme, activeTheme } from '$lib/stores/theme';
-  import { t } from '$lib/i18n';
+  import { theme, setTheme, activeTheme } from '#lib/stores/theme.ts';
+  import { t } from '#lib/i18n/index.ts';
 </script>
 
 {#if $activeTheme.colorScheme === 'preference'}

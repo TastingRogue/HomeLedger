@@ -34,7 +34,7 @@
 
 | Component | Technology |
 |-----------|-----------|
-| Frontend | SvelteKit 5 (SSR + SPA) |
+| Frontend | SvelteKit 3 + Svelte 5 (SSR + SPA) |
 | Backend API | Fastify 5 |
 | Database | SQLite (better-sqlite3) + Drizzle ORM |
 | Language | TypeScript (full-stack) |

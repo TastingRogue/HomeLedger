@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 describe('appearance persistence', () => {
   beforeEach(() => { vi.resetModules(); localStorage.clear(); });

@@ -40,12 +40,13 @@ describe('scopes (P4.13)', () => {
   });
 
   describe('normalizeScopes', () => {
-    it('dedupes, trims and drops invalid; empty => null', () => {
-      expect(normalizeScopes(['read:transactions', ' read:transactions ', 'bogus'])).toEqual(['read:transactions']);
+    it('dedupes and trims valid scopes; rejects invalid grants', () => {
+      expect(normalizeScopes(['read:transactions', ' read:transactions '])).toEqual(['read:transactions']);
       expect(normalizeScopes([])).toBeNull();
-      expect(normalizeScopes(['nope'])).toBeNull();
+      expect(() => normalizeScopes(['nope'])).toThrow('INVALID_SCOPES');
+      expect(() => normalizeScopes(['read:accounts', 'nope'])).toThrow('INVALID_SCOPES');
       expect(normalizeScopes(undefined)).toBeNull();
-      expect(normalizeScopes('read:x')).toBeNull();
+      expect(() => normalizeScopes('read:x')).toThrow('INVALID_SCOPES');
     });
     it('every ALL_SCOPES entry is valid', () => {
       for (const s of ALL_SCOPES) expect(isValidScope(s)).toBe(true);

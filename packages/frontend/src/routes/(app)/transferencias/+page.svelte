@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
-  import { apiGet, ApiError } from '$lib/api/client';
-  import { listTransfers, createTransfer, updateTransfer, deleteTransfer } from '$lib/api/transfers';
-  import type { Transfer } from '$lib/api/transfers';
-  import type { AccountData } from '$lib/api/accounts';
-  import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
+  import { apiGet, ApiError } from '#lib/api/client.ts';
+  import { listTransfers, createTransfer, updateTransfer, deleteTransfer } from '#lib/api/transfers.ts';
+  import type { Transfer } from '#lib/api/transfers.ts';
+  import type { AccountData } from '#lib/api/accounts.ts';
+  import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   let transfers = $state<Transfer[]>([]);
   let accounts = $state<AccountData[]>([]);

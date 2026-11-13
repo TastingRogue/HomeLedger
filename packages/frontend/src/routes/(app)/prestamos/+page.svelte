@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { localDateString } from '$lib/utils/format';
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { localDateString } from '#lib/utils/format.ts';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listLoans,
@@ -14,12 +14,12 @@
     type LoanPayment,
     type AmortizationRow,
     type CreateLoanPayload,
-  } from '$lib/api/loans';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/loans.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── State ───
   let loans = $state<Loan[]>([]);

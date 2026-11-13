@@ -619,9 +619,9 @@
     "developer.mcp_password_invalid": "The password is incorrect",
     "developer.mcp_enabled_ok": "✓ MCP enabled",
     "developer.mcp_disabled_ok": "✓ MCP disabled",
-    "settings.password_updated": "✓ Password updated",
+    "settings.password_updated": "Password updated. Sign in again with your new password.",
     "settings.fill_all_fields": "Fill in all fields",
-    "settings.min_chars": "Minimum 6 characters",
+    "settings.min_chars": "Use at least 8 characters.",
     "settings.passwords_mismatch": "Passwords do not match",
     "settings.change_btn": "Change",
     "settings.change_password_btn": "Change password",
@@ -1659,7 +1659,9 @@
     "cyberpunk.route_buscar_description": "Find transactions, receipts and subscriptions",
     "cyberpunk.route_registro-rapido_description": "Add income or an expense in seconds",
     "cyberpunk.route_configuracion_description": "Make HomeLedger yours",
-    "cyberpunk.auth_tagline": "Your finances, in control"
+    "cyberpunk.auth_tagline": "Your finances, in control",
+    "api_error.backup_large": "The JSON backup exceeds 32 MiB. Use a full data-volume backup for larger datasets.",
+    "backup.entity.customReports": "Saved reports"
   },
   "categories": {
     "income": "Income",

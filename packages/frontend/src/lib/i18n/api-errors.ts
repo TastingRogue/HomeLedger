@@ -63,6 +63,7 @@ const messages: Record<string, string> = {
   CREATE_TX_FAILED: 'api_error.analysis',
   INVALID_SNAPSHOT_CONTENT: 'api_error.backup',
   INVALID_SNAPSHOT_NAME: 'api_error.backup',
+  BACKUP_TOO_LARGE: 'api_error.backup_large',
   INVALID_FORMAT: 'api_error.backup',
   INVALID_VERSION_FORMAT: 'api_error.backup',
   MISSING_VERSION: 'api_error.backup',

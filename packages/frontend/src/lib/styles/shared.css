@@ -323,8 +323,8 @@
    ═══════════════════════════════════════════ */
 
 /* Backdrop - covers all naming variants */
-:global(.overlay),
-:global(.modal-backdrop) {
+.overlay,
+.modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
@@ -337,8 +337,8 @@
 }
 
 /* Modal container */
-:global(.modal),
-:global(.modal-content) {
+.modal,
+.modal-content {
   /* Subtle material (P3.D) — mirrors app.css. */
   background: var(--surface-glass);
   backdrop-filter: var(--material-blur);
@@ -352,12 +352,12 @@
   overflow-y: auto;
 }
 
-:global(.modal-sm) { max-width: 400px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4); }
-:global(.modal-detail) { max-width: 450px; }
-:global(.modal-wide) { box-shadow: 0 24px 68px rgba(0, 0, 0, 0.5); }
+.modal-sm { max-width: 400px; box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4); }
+.modal-detail { max-width: 450px; }
+.modal-wide { box-shadow: 0 24px 68px rgba(0, 0, 0, 0.5); }
 
 /* Header */
-:global(.modal-header) {
+.modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -365,17 +365,17 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-:global(.modal-header h2),
-:global(.modal-header h3),
-:global(.modal-title) {
+.modal-header h2,
+.modal-header h3,
+.modal-title {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
 }
 
-:global(.close-btn),
-:global(.modal-close) {
+.close-btn,
+.modal-close {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -385,11 +385,11 @@
   line-height: 1;
   transition: color 0.15s;
 }
-:global(.close-btn:hover),
-:global(.modal-close:hover) { color: var(--text-primary); }
+.close-btn:hover,
+.modal-close:hover { color: var(--text-primary); }
 
 /* Form inside modal */
-:global(.modal-form) {
+.modal-form {
   padding: 1.1rem;
   display: flex;
   flex-direction: column;
@@ -397,15 +397,15 @@
 }
 
 /* Form fields */
-:global(.form-field),
-:global(.field) {
+.form-field,
+.field {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-:global(.form-field label),
-:global(.field label) {
+.form-field label,
+.field label {
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -413,16 +413,16 @@
   letter-spacing: 0.03em;
 }
 
-:global(.form-row),
-:global(.field-row) {
+.form-row,
+.field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
 }
 
 /* Error/success messages */
-:global(.modal-error),
-:global(.form-alert) {
+.modal-error,
+.form-alert {
   font-size: 0.72rem;
   color: var(--accent-red);
   background: var(--tag-red-bg);
@@ -431,7 +431,7 @@
   margin: 0;
 }
 
-:global(.modal-success) {
+.modal-success {
   padding: 2rem 1rem;
   text-align: center;
   color: var(--accent-green);
@@ -440,22 +440,22 @@
 }
 
 /* Action buttons in modal footer */
-:global(.modal-actions) {
+.modal-actions {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
   margin-top: 0.25rem;
 }
 
-:global(.modal-footer-actions) {
+.modal-footer-actions {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 1.1rem;
   border-top: 1px solid var(--border-subtle);
 }
 
-:global(.btn-cancel),
-:global(.btn-modal-cancel) {
+.btn-cancel,
+.btn-modal-cancel {
   padding: 0.4rem 0.75rem;
   font-size: 0.78rem;
   background: var(--bg-elevated);
@@ -465,11 +465,11 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-:global(.btn-cancel:hover),
-:global(.btn-modal-cancel:hover) { background: var(--bg-hover); color: var(--text-primary); }
+.btn-cancel:hover,
+.btn-modal-cancel:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-:global(.btn-submit),
-:global(.btn-modal-submit) {
+.btn-submit,
+.btn-modal-submit {
   padding: 0.4rem 0.85rem;
   font-size: 0.78rem;
   font-weight: 600;
@@ -480,13 +480,13 @@
   cursor: pointer;
   transition: opacity 0.15s;
 }
-:global(.btn-submit:hover),
-:global(.btn-modal-submit:hover) { opacity: 0.9; }
-:global(.btn-submit:disabled),
-:global(.btn-modal-submit:disabled) { opacity: 0.5; cursor: not-allowed; }
+.btn-submit:hover,
+.btn-modal-submit:hover { opacity: 0.9; }
+.btn-submit:disabled,
+.btn-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-:global(.btn-danger-solid),
-:global(.btn-modal-delete) {
+.btn-danger-solid,
+.btn-modal-delete {
   padding: 0.4rem 0.65rem;
   font-size: 0.75rem;
   background: var(--tag-red-bg);
@@ -496,8 +496,8 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-:global(.btn-danger-solid:hover),
-:global(.btn-modal-delete:hover) { background: var(--accent-red); color: #fff; }
+.btn-danger-solid:hover,
+.btn-modal-delete:hover { background: var(--accent-red); color: #fff; }
 
 /* ─── Responsive tables → cards on mobile ───────────────────────────────────
    Wide data tables are hard to read on phones and force sideways scrolling.

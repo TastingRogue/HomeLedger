@@ -53,7 +53,8 @@ describe('AuthService', () => {
         key TEXT NOT NULL,
         scopes TEXT,
         created_at TEXT NOT NULL,
-        last_used_at TEXT
+        last_used_at TEXT,
+        expires_at TEXT
       );
       CREATE UNIQUE INDEX IF NOT EXISTS api_keys_key_unique ON api_keys("key");
 
@@ -390,11 +391,12 @@ describe('AuthService', () => {
       expect(validation!.scopes).toEqual(['read:transactions', 'write:accounts']);
     });
 
-    it('drops invalid/duplicate scopes and treats empty as full access', async () => {
+    it('rejects invalid scopes, dedupes valid scopes and preserves explicit full access', async () => {
       const r = await registerUser();
-      const created = await AuthService.generateApiKey(r.user.id, 'Cleaned', ['read:transactions', 'read:transactions', 'bogus:scope']);
+      const created = await AuthService.generateApiKey(r.user.id, 'Cleaned', ['read:transactions', 'read:transactions']);
       expect(created.scopes).toEqual(['read:transactions']);
 
+      await expect(AuthService.generateApiKey(r.user.id, 'Invalid', ['read:transactions', 'bogus:scope'])).rejects.toThrow('INVALID_SCOPES');
       const full = await AuthService.generateApiKey(r.user.id, 'Full', []);
       expect(full.scopes).toBeNull();
       const validation = await AuthService.validateApiKey(full.key);

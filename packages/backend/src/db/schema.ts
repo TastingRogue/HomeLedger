@@ -34,6 +34,7 @@ export const apiKeys = sqliteTable('api_keys', {
   scopes: text('scopes'),
   createdAt: text('created_at').notNull(),
   lastUsedAt: text('last_used_at'),
+  expiresAt: text('expires_at'),
 }, (table) => [
   uniqueIndex('api_keys_key_unique').on(table.key),
   index('api_keys_user_id_idx').on(table.userId),

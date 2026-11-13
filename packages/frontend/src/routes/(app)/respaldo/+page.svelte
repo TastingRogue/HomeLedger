@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatDateTime } from '$lib/utils/format';
+  import { formatDateTime } from '#lib/utils/format.ts';
   import { onMount } from 'svelte';
   import {
     exportBackup,
@@ -8,10 +8,10 @@
     previewImport,
     type BackupHistoryEntry,
     type ImportPreview,
-  } from '$lib/api/backup';
-  import { ApiError } from '$lib/api/client';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/backup.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── State ───
   let history: BackupHistoryEntry[] = $state([]);

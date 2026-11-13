@@ -2,8 +2,8 @@
   import Panel from './Panel.svelte';
   import Meter from './Meter.svelte';
   import Transactions from './Transactions.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { apiPost } from '$lib/api/client';
+  import Icon from '#lib/components/Icon.svelte';
+  import { apiPost } from '#lib/api/client.ts';
   import { number as n, text, type Model, type Actions } from './model';
   let { m, a }: { m: Model; a: Actions } = $props();
   let search = $state(''); let category = $state(''); let account = $state(''); let txType = $state(''); let page = $state(1);

@@ -1,4 +1,4 @@
-import { getTransactions, type Transaction, type TransactionFilters } from '$lib/api/transactions';
+import { getTransactions, type Transaction, type TransactionFilters } from '#lib/api/transactions.ts';
 import { transactionDate } from './dashboard-period';
 
 /** Follow server pagination; a larger pageSize cannot bypass the API's cap. */

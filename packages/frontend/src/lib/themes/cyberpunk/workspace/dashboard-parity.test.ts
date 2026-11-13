@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { writable } from 'svelte/store';
 import Harness from './DashboardHarness.test.svelte';
-import { apiGet, apiPost } from '$lib/api/client';
-import { setLocale } from '$lib/stores/preferences';
-vi.mock('$app/environment', () => ({ browser: false }));
-vi.mock('$app/stores', () => ({ page: writable({ url: new URL('http://localhost/dashboard') }) }));
-vi.mock('$lib/api/client', () => ({ apiGet: vi.fn(), apiPost: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn(), apiUpload: vi.fn() }));
+import { apiGet, apiPost } from '#lib/api/client.ts';
+import { setLocale } from '#lib/stores/preferences.ts';
+vi.mock('$app/env', () => ({ browser: false }));
+vi.mock('$app/state', () => ({ page: { url: new URL('http://localhost/dashboard') } }));
+vi.mock('#lib/api/client.ts', () => ({ apiGet: vi.fn(), apiPost: vi.fn(), apiPut: vi.fn(), apiDelete: vi.fn(), apiUpload: vi.fn() }));
 beforeEach(() => {
   vi.clearAllMocks(); setLocale('en');
   vi.mocked(apiGet).mockImplementation(async path => {

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { apiPost, apiPut, apiDelete } from '$lib/api/client';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { t } from '$lib/i18n';
-  import type { TranslationKey } from '$lib/i18n/es';
+  import { apiPost, apiPut, apiDelete } from '#lib/api/client.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import type { TranslationKey } from '#lib/i18n/es.ts';
   import { GoalType, BudgetPeriod } from '@homeledger/shared';
   import { number, text, rows, type Row, type Model } from './model';
   let { entity, row, m, close, saved }: { entity: string; row?: Row; m: Model; close: () => void; saved: () => Promise<void> } = $props();

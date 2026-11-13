@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getTransactions } from '$lib/api/transactions';
+import { getTransactions } from '#lib/api/transactions.ts';
 import { allTransactions, inBaseCurrency, inMonth } from './financial-data';
-vi.mock('$lib/api/transactions', () => ({ getTransactions: vi.fn() }));
+vi.mock('#lib/api/transactions.ts', () => ({ getTransactions: vi.fn() }));
 
 describe('complete financial series', () => {
   it('loads all pages beyond the server cap and preserves every record', async () => {

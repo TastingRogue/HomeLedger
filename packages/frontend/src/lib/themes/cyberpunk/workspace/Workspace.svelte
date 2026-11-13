@@ -1,11 +1,11 @@
 <script lang="ts">
   import { setContext, untrack, type Snippet } from 'svelte';
-  import { VIEW_ACTIONS, type ViewActions, type ViewActionHost } from '$lib/themes/view-actions';
-  import Icon from '$lib/components/Icon.svelte';
-  import { logout } from '$lib/api/auth';
-  import { userProfile } from '$lib/stores/user';
-  import { preferences } from '$lib/stores/preferences';
-  import { getIntlTag } from '$lib/i18n/registry';
+  import { VIEW_ACTIONS, type ViewActions, type ViewActionHost } from '#lib/themes/view-actions.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import { logout } from '#lib/api/auth.ts';
+  import { userProfile } from '#lib/stores/user.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
   import Operations from './Operations.svelte'; import Planning from './Planning.svelte';
   import Daily from './Daily.svelte'; import Analysis from './Analysis.svelte'; import Administration from './Administration.svelte'; import Editor from './Editor.svelte';
   import { routes, loadWorkspace, emptyData, buildModel, type Row, type Actions } from './model';

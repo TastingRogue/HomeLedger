@@ -1,8 +1,9 @@
+import kitConfig from './kit.config.js';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
-// Frontend test config. Uses the SvelteKit Vite plugin so `$lib/*` and `$app/*`
+// Frontend test config. Uses the SvelteKit Vite plugin so `#lib/*` and `$app/*`
 // virtual imports resolve exactly as they do in the app, and jsdom so code that
 // touches `window`/`localStorage` (currency formatting, token storage) runs.
 // `root` is pinned to this package dir so the `src/**` include resolves whether
@@ -11,10 +12,10 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   // Pin the Vite root to this package so the SvelteKit plugin finds `src/app.html`
-  // and resolves `$lib/*` aliases even when this config runs as a project
+  // and resolves `#lib/*` aliases even when this config runs as a project
   // referenced by path from the repo-root vitest.config.ts.
   root,
-  plugins: [sveltekit()],
+  plugins: [sveltekit(kitConfig)],
   // Load the *client* build of Svelte components (DOM lifecycle available),
   // not the SSR build — otherwise mounting throws `lifecycle_function_unavailable`.
   resolve: {

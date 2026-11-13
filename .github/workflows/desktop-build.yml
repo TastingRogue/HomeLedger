@@ -6,6 +6,11 @@ on:
     paths:
       - 'packages/**'
       - 'package*.json'
+      - 'locales/**'
+      - 'scripts/locales.mjs'
+      - 'scripts/add-locale.mjs'
+      - 'ha-addon/config.yaml'
+      - 'tsconfig.base.json'
       - '.github/workflows/desktop-build.yml'
   workflow_dispatch:
     inputs:

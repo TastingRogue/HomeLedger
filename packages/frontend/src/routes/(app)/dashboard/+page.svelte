@@ -1,33 +1,33 @@
 <script lang="ts">
-  import { formatPercentage } from '$lib/utils/format';
-  import { listAlerts, type AlertData } from '$lib/api/alerts';
-  import { getAlertTitle, getAlertMessage } from '$lib/utils/alert-copy';
+  import { formatPercentage } from '#lib/utils/format.ts';
+  import { listAlerts, type AlertData } from '#lib/api/alerts.ts';
+  import { getAlertTitle, getAlertMessage } from '#lib/utils/alert-copy.ts';
   let dashboardAlerts = $state<AlertData[]>([]);
-  import { allTransactions, inBaseCurrency } from "$lib/utils/financial-data";
-  import { getViewCharts } from '$lib/themes/view-actions';
-  import { dashboardSeries, dashboardCategories } from '$lib/utils/dashboard-period';
+  import { allTransactions, inBaseCurrency } from "#lib/utils/financial-data.ts";
+  import { getViewCharts } from '#lib/themes/view-actions.ts';
+  import { dashboardSeries, dashboardCategories } from '#lib/utils/dashboard-period.ts';
   const viewCharts=getViewCharts();
   const CashFlow=viewCharts?.cashFlow;
   const chartMoney=(value:number)=>viewCharts?new Intl.NumberFormat(getIntlTag($preferences.locale),{style:'currency',currency:$preferences.currency,currencyDisplay:'narrowSymbol',minimumFractionDigits:0,maximumFractionDigits:2}).format(value):formatCurrency(value);
   import { onMount } from 'svelte';
-  import { apiGet, apiPost, apiPut, apiDelete } from '$lib/api/client';
-  import { createTransfer } from '$lib/api/transfers';
-  import { createGoal, type GoalType } from '$lib/api/goals';
-  import { uploadAttachment, downloadAttachment as apiDownloadAttachment } from '$lib/api/attachments';
-  import { formatCurrency, formatDateShort, formatDaysRemaining, toDatetimeLocal } from '$lib/utils/format';
-  import BarChart from '$lib/components/BarChart.svelte';
-  import DoughnutChart from '$lib/components/DoughnutChart.svelte';
-  import ComboChart from '$lib/components/ComboChart.svelte';
-  import Dropdown from '$lib/components/Dropdown.svelte';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { modalPanel, scrim } from '$lib/motion';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import { userProfile } from '$lib/stores/user';
+  import { apiGet, apiPost, apiPut, apiDelete } from '#lib/api/client.ts';
+  import { createTransfer } from '#lib/api/transfers.ts';
+  import { createGoal, type GoalType } from '#lib/api/goals.ts';
+  import { uploadAttachment, downloadAttachment as apiDownloadAttachment } from '#lib/api/attachments.ts';
+  import { formatCurrency, formatDateShort, formatDaysRemaining, toDatetimeLocal } from '#lib/utils/format.ts';
+  import BarChart from '#lib/components/BarChart.svelte';
+  import DoughnutChart from '#lib/components/DoughnutChart.svelte';
+  import ComboChart from '#lib/components/ComboChart.svelte';
+  import Dropdown from '#lib/components/Dropdown.svelte';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import ThemeToggle from '#lib/components/ThemeToggle.svelte';
+  import { userProfile } from '#lib/stores/user.ts';
 
   // Localized short month names for chart labels/date ranges (follows app language).
   const shortMonths = $derived(
@@ -38,7 +38,7 @@
     })
   );
 
-  import type { AccountData, DashboardData, Transaction, SubscriptionCalendar, CategoryAnalysis, Goal, Category, TransferData, TrendEntry } from '$lib/types/dashboard';
+  import type { AccountData, DashboardData, Transaction, SubscriptionCalendar, CategoryAnalysis, Goal, Category, TransferData, TrendEntry } from '#lib/types/dashboard.ts';
 
   // ─── State ───
   let loading = $state(true);

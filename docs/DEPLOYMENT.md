@@ -76,7 +76,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/homeledger.example.com/privkey.pem;
 
     # Attachments/receipts and JSON backups can be large — raise the upload cap.
-    client_max_body_size 25m;
+    client_max_body_size 33m;
 
     location / {
         proxy_pass http://localhost:3000;
@@ -155,7 +155,7 @@ different purposes — you can use more than one.
 
 **What:** a single JSON file containing one user's data (accounts,
 transactions, budgets, goals, categories, rules, attachments inlined as base64,
-receipts, etc.). **Who:** any user, for their own data.
+receipts and saved custom reports). **Who:** any user, for their own data.
 
 - **Export:** **Settings → Data & Backup → Export** (or `POST /api/v1/backup/export`).
   Downloads `homeledger-backup-<date>.json`.
@@ -164,6 +164,12 @@ receipts, etc.). **Who:** any user, for their own data.
   what you currently have (and will be replaced), plus warnings for anything that
   would be skipped — so you confirm before the replace. Import is atomic and
   remaps ids safely, so restoring never collides with other users' data.
+
+Portable JSON backups are limited to **32 MiB**, including base64 attachment
+content. Export, preview and import enforce the same limit and return
+`BACKUP_TOO_LARGE` (HTTP 413) when exceeded. Configure reverse proxies to allow
+at least 33 MiB for the request envelope. For larger datasets, use the full
+volume backup below. Older 1.x exports without saved reports remain importable.
 
 Use this for portability ("give me my data"), moving a user between instances,
 or a personal restore point.

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import ThemeComposition from '$lib/themes/ThemeComposition.svelte';
-  import { activeTheme } from '$lib/stores/theme';
+  import ThemeComposition from '#lib/themes/ThemeComposition.svelte';
+  import { activeTheme } from '#lib/stores/theme.ts';
   const ThemeFrame = $derived($activeTheme.authFrame);
   import { goto } from '$app/navigation';
-  import { authApi, ApiError } from '$lib/api';
-  import { authStore } from '$lib/stores';
-  import { t } from '$lib/i18n';
-  import Logo from '$lib/components/Logo.svelte';
+  import { authApi, ApiError } from '#lib/api/index.ts';
+  import { authStore } from '#lib/stores/index.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import Logo from '#lib/components/Logo.svelte';
 
   let name = $state('');
   let email = $state('');

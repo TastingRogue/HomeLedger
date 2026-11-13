@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { search, type SearchResult, type SearchEntity } from '$lib/api/search';
-  import { listAccounts, type AccountData } from '$lib/api/accounts';
-  import { apiGet, ApiError } from '$lib/api/client';
-  import { formatCurrency, formatDateShort } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
+  import { search, type SearchResult, type SearchEntity } from '#lib/api/search.ts';
+  import { listAccounts, type AccountData } from '#lib/api/accounts.ts';
+  import { apiGet, ApiError } from '#lib/api/client.ts';
+  import { formatCurrency, formatDateShort } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
 
   interface Category { id: number; name: string }
 

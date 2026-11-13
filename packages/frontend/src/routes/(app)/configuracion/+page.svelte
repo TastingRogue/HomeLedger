@@ -1,42 +1,42 @@
 <script lang="ts">
-  import { formatNumber } from '$lib/utils/format';
-  import { formatDateTime } from '$lib/utils/format';
+  import { formatNumber } from '#lib/utils/format.ts';
+  import { formatDateTime } from '#lib/utils/format.ts';
   import { onMount } from 'svelte';
-  import { apiGet, apiPut, apiPost } from '$lib/api/client';
-  import Icon from '$lib/components/Icon.svelte';
-  import AppearancePicker from '$lib/components/AppearancePicker.svelte';
-  import Dropdown from '$lib/components/Dropdown.svelte';
+  import { apiGet, apiPut, apiPost, clearTokens } from '#lib/api/client.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import AppearancePicker from '#lib/components/AppearancePicker.svelte';
+  import Dropdown from '#lib/components/Dropdown.svelte';
   import { get } from 'svelte/store';
-  import { preferences, setLocale, setCurrency as applyLocalCurrency, currencyConfig, type SupportedLocale, type SupportedCurrency } from '$lib/stores/preferences';
-  import { localeOptions as registryLocaleOptions } from '$lib/i18n/registry';
-  import { theme, setTheme, activeTheme, type Theme } from '$lib/stores/theme';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
-  import { ApiError } from '$lib/api/client';
+  import { preferences, setLocale, setCurrency as applyLocalCurrency, currencyConfig, type SupportedLocale, type SupportedCurrency } from '#lib/stores/preferences.ts';
+  import { localeOptions as registryLocaleOptions } from '#lib/i18n/registry.ts';
+  import { theme, setTheme, activeTheme, type Theme } from '#lib/stores/theme.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
+  import { ApiError } from '#lib/api/client.ts';
   import {
     listUsers, setUserDisabled, resetUserPassword, deleteUser,
     getRegistration, setRegistration, getInstanceCurrency, setInstanceCurrency,
     type AdminUser, type RegistrationMode,
-  } from '$lib/api/users';
+  } from '#lib/api/users.ts';
   import {
     listSnapshots, createSnapshot, restoreSnapshot,
     type SnapshotInfo,
-  } from '$lib/api/backup';
+  } from '#lib/api/backup.ts';
   import {
     getTotpStatus, enrollTotp, confirmTotp, disableTotp,
     listSessions, revokeSession,
     type TotpStatus, type SessionInfo,
-  } from '$lib/api/auth';
+  } from '#lib/api/auth.ts';
   import {
     listApiKeys, listScopes, createApiKey, revokeApiKey,
     listWebhookEvents, listWebhooks, createWebhook, updateWebhook, deleteWebhook, testWebhook,
     getMcpStatus, enableMcp, disableMcp,
     type ApiKeyInfo, type CreatedApiKey, type WebhookInfo, type McpStatus,
-  } from '$lib/api/developer';
+  } from '#lib/api/developer.ts';
   import {
     getLockConfig, webauthnSupported, enableWebauthnLock, enablePinLock, disableLock,
     type LockConfig,
-  } from '$lib/stores/lock';
+  } from '#lib/stores/lock.ts';
 
   // User profile
   let userName = $state('');
@@ -335,14 +335,15 @@
 
   async function changePassword() {
     if (!currentPassword || !newPassword) { passwordError = $t('settings.fill_all_fields'); return; }
-    if (newPassword.length < 6) { passwordError = $t('settings.min_chars'); return; }
+    if (newPassword.length < 8) { passwordError = $t('settings.min_chars'); return; }
     if (newPassword !== confirmPassword) { passwordError = $t('settings.passwords_mismatch'); return; }
 
     passwordSaving = true; passwordError = '';
     try {
       await apiPost('/auth/change-password', { currentPassword, newPassword });
       passwordSuccess = true;
-      setTimeout(() => { showPasswordModal = false; }, 1500);
+      clearTokens();
+      setTimeout(() => { window.location.href = '/login'; }, 1500);
     } catch (e: unknown) { passwordError = e instanceof Error ? e.message : 'Error'; }
     finally { passwordSaving = false; }
   }

@@ -2,11 +2,11 @@
   let { close, saved }: { close: () => void; saved: () => void } = $props();
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { apiGet, apiPost, ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { preferences, currencyConfig } from '$lib/stores/preferences';
+  import { apiGet, apiPost, ApiError } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { preferences, currencyConfig } from '#lib/stores/preferences.ts';
   import type { Account, Category } from '@homeledger/shared';
 
   // --- Constants ---

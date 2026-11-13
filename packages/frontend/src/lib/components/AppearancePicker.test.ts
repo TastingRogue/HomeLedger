@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 import AppearancePicker from './AppearancePicker.svelte';
-import { getTheme, setTheme, setUiSkin } from '$lib/stores/theme';
+import { getTheme, setTheme, setUiSkin } from '#lib/stores/theme.ts';
 
 describe('interface appearance', () => {
   beforeEach(() => { setTheme('light'); setUiSkin('normal'); });

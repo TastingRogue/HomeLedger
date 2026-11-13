@@ -64,8 +64,7 @@ El add-on HA hace esta preparación al arrancar.
 ## Límites pendientes
 
 No hay una instancia real de Home Assistant conectada. No se declara validada
-su instalación completa. La cadena de herramientas SvelteKit 2 conserva avisos
-bajos heredados de deepmerge; la versión upstream compatible consultada no los
-resuelve. No se ocultaron: migrar a SvelteKit 3 exige también Vite 8, plugin 7,
-adapter-node 6 y TypeScript 6, y necesita una migración independiente con regresión
-completa. Producción no presenta avisos en el escaneo omit=dev.
+su instalación completa. La migración de herramientas y los hallazgos siguientes
+se documentan en [la auditoría del 11 de noviembre](audits/app-audit-2026-11-11.md).
+SvelteKit 3 corrige los avisos del framework; queda el aviso de `deepmerge` sin
+parche upstream, limitado a configuración de compilación y vigilado por CI.

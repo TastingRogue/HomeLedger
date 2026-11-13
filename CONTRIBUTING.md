@@ -10,7 +10,7 @@ issue.
 
 ## Prerequisites
 
-- **Node.js ≥ 22.13** (Docker images build on Node 22)
+- **Node.js ≥ 22.17** (Docker images build on Node 22)
 - **npm ≥ 9**
 
 ## Setup
@@ -60,7 +60,7 @@ bake the source at build time — rebuild the image to see your changes (see
 A monorepo with three workspaces under `packages/`:
 
 - `packages/backend` — Fastify API, Drizzle/SQLite, services, migrations, cron jobs
-- `packages/frontend` — SvelteKit 5 app (routes, `lib/api` clients, i18n, components)
+- `packages/frontend` — SvelteKit 3 + Svelte 5 app (routes, `lib/api` clients, i18n, components)
 - `packages/shared` — shared TypeScript types
 
 The full structure is documented in the
@@ -71,7 +71,8 @@ The full structure is documented in the
 - **TypeScript everywhere**; keep `typecheck` clean (no new errors/warnings).
 - **Tests**: add or update tests for backend logic changes; run `npm run test`.
   Backend tests use a temp SQLite DB; frontend tests run under jsdom via the
-  SvelteKit Vite plugin.
+  SvelteKit Vite plugin. Shared frontend imports use `#lib/*` with explicit
+  file extensions; `kit.config.js` is shared by Vite and Vitest.
 - **Migrations**: schema changes go through Drizzle migrations
   (`npm run db:generate -w packages/backend`) **and** the matching `index()` /
   column in `schema.ts`. Keep them additive and idempotent where practical
@@ -212,7 +213,7 @@ homeledger/
 │   ├── backend/          # Fastify API — routes/v1, services, db (schema/
 │   │   │                 #   migrations), middleware, scheduler, importers
 │   │   └── data/         # SQLite DB + attachments (DATA_DIR)
-│   ├── frontend/         # SvelteKit 5 — routes, lib/api, lib/stores,
+│   ├── frontend/         # SvelteKit 3 + Svelte 5 — routes, lib/api, lib/stores,
 │   │   │                 #   lib/components, lib/i18n (generated language registry), app.css
 │   │   └── ...
 │   └── shared/           # Shared TypeScript types

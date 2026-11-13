@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { themes, isThemeId, getThemeDefinition } from '../themes/registry';
 import { resolveAppearance, applyDocumentAppearance } from '../themes/runtime';
 import type { ThemeId, ColorMode } from '../themes/types';

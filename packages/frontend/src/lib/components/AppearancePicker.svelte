@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { uiSkin, setUiSkin, activeTheme } from '$lib/stores/theme';
-  import { t } from '$lib/i18n';
+  import { uiSkin, setUiSkin, activeTheme } from '#lib/stores/theme.ts';
+  import { t } from '#lib/i18n/index.ts';
 
-  import { themes, themePreviewStyle } from '$lib/themes/registry';
-  import { preferences } from '$lib/stores/preferences';
+  import { themes, themePreviewStyle } from '#lib/themes/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
 </script>
 
 <fieldset class="appearance-picker">

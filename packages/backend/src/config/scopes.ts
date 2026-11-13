@@ -63,12 +63,13 @@ export function scopesSatisfy(granted: string[] | null | undefined, required: st
 }
 
 /**
- * Normalize a user-supplied scope list: trim, dedupe, drop invalid entries.
+ * Normalize a user-supplied scope list: trim and dedupe; reject unknown entries.
  * Returns null when the result is empty (meaning "full access").
  */
 export function normalizeScopes(input: unknown): string[] | null {
-  if (!Array.isArray(input)) return null;
-  const cleaned = [...new Set(input.map((s) => String(s).trim()).filter((s) => s && isValidScope(s)))];
+  if (input == null) return null;
+  if (!Array.isArray(input) || input.some(s => typeof s !== 'string' || !isValidScope(s.trim()))) throw new Error('INVALID_SCOPES');
+  const cleaned = [...new Set(input.map((s: string) => s.trim()))];
   return cleaned.length > 0 ? cleaned : null;
 }
 

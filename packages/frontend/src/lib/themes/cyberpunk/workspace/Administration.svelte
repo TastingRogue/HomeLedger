@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy, type Snippet } from 'svelte';
-  import Panel from './Panel.svelte'; import Icon from '$lib/components/Icon.svelte';
+  import Panel from './Panel.svelte'; import Icon from '#lib/components/Icon.svelte';
   import { number as n, text, rows, type Row, type Model, type Actions } from './model';
-  import { apiGet, apiPatch } from '$lib/api/client';
-  import { uploadAttachment, fetchAttachmentBlob } from '$lib/api/attachments';
-  import { analyzeAttachment } from '$lib/api/receipts';
-  import { getParsers, uploadImport, previewImport as previewBankImport, confirmImport, getImportHistory, undoImport, type ImportSession, type ParserInfo, type ImportPreview as BankPreview } from '$lib/api/imports';
-  import { exportBackup, previewImport as previewBackup, importBackup, type ImportPreview } from '$lib/api/backup';
+  import { apiGet, apiPatch } from '#lib/api/client.ts';
+  import { uploadAttachment, fetchAttachmentBlob } from '#lib/api/attachments.ts';
+  import { analyzeAttachment } from '#lib/api/receipts.ts';
+  import { getParsers, uploadImport, previewImport as previewBankImport, confirmImport, getImportHistory, undoImport, type ImportSession, type ParserInfo, type ImportPreview as BankPreview } from '#lib/api/imports.ts';
+  import { exportBackup, previewImport as previewBackup, importBackup, type ImportPreview } from '#lib/api/backup.ts';
   let { m, a, children }: { m: Model; a: Actions; children: Snippet } = $props();
   let importHistory=$state<ImportSession[]>([]);let undoTarget=$state<number|null>(null);const attachments=$derived(m.attachments);
   let busy=$state(false); let error=$state(''); let selected=$state<Row | null>(null); let previewUrl=$state(''); let receiptFilter=$state('');

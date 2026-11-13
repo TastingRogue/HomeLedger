@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { hasViewActions } from '$lib/themes/view-actions';
-  import Icon from '$lib/components/Icon.svelte';
-  import TransactionLog from '$lib/components/TransactionLog.svelte';
+  import { hasViewActions } from '#lib/themes/view-actions.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import TransactionLog from '#lib/components/TransactionLog.svelte';
   const composedView=hasViewActions();
   import { onMount } from 'svelte';
-  import { groupTransactionsByMonth } from '$lib/utils/transaction-groups';
+  import { groupTransactionsByMonth } from '#lib/utils/transaction-groups.ts';
   import { goto } from '$app/navigation';
-  import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '$lib/api/client';
-  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '$lib/api/transactions';
-  import { suggestRule, createRule, applyRules, type RuleSuggestion } from '$lib/api/rules';
-  import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '$lib/utils/format';
+  import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '#lib/api/client.ts';
+  import { getTransactionById, splitTransaction, clearSplits, exportTransactionsCsv, setTransactionTags, getTransactionAudit, type TransactionSplit, type TransactionAudit } from '#lib/api/transactions.ts';
+  import { suggestRule, createRule, applyRules, type RuleSuggestion } from '#lib/api/rules.ts';
+  import { formatCurrency, formatDateShort, toDatetimeLocal, nowDatetimeLocal } from '#lib/utils/format.ts';
   import type { Transaction, Account, Category, PaginatedResult, TransactionType as TxType } from '@homeledger/shared';
-  import Dropdown from '$lib/components/Dropdown.svelte';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
-  import { modalPanel, scrim } from '$lib/motion';
+  import Dropdown from '#lib/components/Dropdown.svelte';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // --- State ---
   let transactions = $state<Transaction[]>([]);

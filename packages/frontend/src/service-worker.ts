@@ -3,7 +3,8 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { build, files, prerendered, version } from '$service-worker';
+import { immutable, assets, prerendered } from '$app/manifest';
+import { version } from '$app/env';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
@@ -17,9 +18,7 @@ const OFFLINE_URL = '/offline';
 
 // Assets to cache (app shell)
 const APP_SHELL = [
-	...build, // built JS/CSS bundles
-	...files, // static files
-	...prerendered // prerendered pages (includes /offline)
+	...[...immutable, ...assets, ...prerendered].map(({ path }) => '/' + path.replace(/^\//, ''))
 ];
 
 // Install: cache app shell

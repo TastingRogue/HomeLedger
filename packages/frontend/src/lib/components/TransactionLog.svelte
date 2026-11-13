@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { formatCurrency, formatDateShort } from '$lib/utils/format';
-  import { t } from '$lib/i18n';
+  import { formatCurrency, formatDateShort } from '#lib/utils/format.ts';
+  import { t } from '#lib/i18n/index.ts';
   interface Entry { id:number;name:string;amount:number;type:string;date:string;categoryName?:string|null;accountName?:string|null }
   let {items,open,edit,remove}:{items:Entry[];open:(row:Entry)=>void;edit:(row:Entry)=>void;remove:(row:Entry)=>void}=$props();
 </script>

@@ -24,15 +24,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        # `npm ci` on Linux can skip rollup's platform-specific optional binary
-        # (@rollup/rollup-linux-x64-gnu) due to a long-standing npm bug with
-        # optionalDependencies (npm/cli#4828). When that binary is missing,
-        # svelte-check/vite fail with "Cannot find module @rollup/rollup-linux-x64-gnu".
-        # Explicitly (re)install it after the clean install so the native module
-        # is present. The version is pinned to match the lockfile's rollup.
-        run: |
-          npm ci
-          npm install --no-save @rollup/rollup-linux-x64-gnu@4.67.4
+        run: npm ci
 
       - name: Verify language packs and generated integrations
         run: npm run locales:check && npm run locales:test
@@ -61,8 +53,14 @@ jobs:
       - name: Verify Pages resources
         run: node scripts/check-pages.mjs
 
-      - name: Check production dependencies
-        run: npm audit --omit=dev
+      - name: Check dependencies (including build tools)
+        run: |
+          node --test scripts/check-dependencies.test.mjs
+          node scripts/check-dependencies.mjs
+          npm audit --omit=dev
+
+      - name: Check Home Assistant options and currencies
+        run: python3 scripts/check-ha.py
 
       - name: Verify isolated runtime workflows
         shell: bash

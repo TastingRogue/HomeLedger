@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { t } from '$lib/i18n';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
+  import { t } from '#lib/i18n/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
 
-  import { localDateString, toDatetimeLocal } from '$lib/utils/format';
+  import { localDateString, toDatetimeLocal } from '#lib/utils/format.ts';
 
   let { value = $bindable(), showTime = false }: { value: string; showTime?: boolean } = $props();
 

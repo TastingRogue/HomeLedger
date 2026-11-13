@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { allTransactions, inMonth, inBaseCurrency } from '$lib/utils/financial-data';
+  import { allTransactions, inMonth, inBaseCurrency } from '#lib/utils/financial-data.ts';
   import Panel from './Panel.svelte'; import Meter from './Meter.svelte'; import Transactions from './Transactions.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { apiPost, apiGet } from '$lib/api/client';
-  import { search as searchApi, type SearchResult } from '$lib/api/search';
-  import { getIntlTag } from '$lib/i18n/registry';
+  import Icon from '#lib/components/Icon.svelte';
+  import { apiPost, apiGet } from '#lib/api/client.ts';
+  import { search as searchApi, type SearchResult } from '#lib/api/search.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
   import { number as n, text, rows, type Model, type Actions, type Row } from './model';
   let { m, a }: { m: Model; a: Actions } = $props();
   let status = $state(''); let query = $state(''); let results = $state<SearchResult | null>(null); let busy = $state(false); let error = $state('');

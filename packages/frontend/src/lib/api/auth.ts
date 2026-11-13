@@ -142,8 +142,7 @@ export interface SessionInfo {
 
 /** List the current user's active sessions (marks the current one). */
 export async function listSessions(): Promise<SessionInfo[]> {
-  const refreshToken = getRefreshToken();
-  return apiGet<SessionInfo[]>('/auth/sessions', refreshToken ? { refreshToken } : undefined);
+  return apiGet<SessionInfo[]>('/auth/sessions');
 }
 
 /** Revoke a single session by id. */

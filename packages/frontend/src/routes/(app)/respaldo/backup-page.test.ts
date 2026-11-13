@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { ApiError } from '$lib/api/client';
+import { ApiError } from '#lib/api/client.ts';
 import BackupPage from './+page.svelte';
 
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 
 // Instant, no-op transitions so the confirm dialog mounts/unmounts synchronously.
-vi.mock('$lib/motion', () => ({
+vi.mock('#lib/motion/index.ts', () => ({
   modalPanel: () => ({ duration: 0, css: () => '' }),
   scrim: () => ({ duration: 0, css: () => '' }),
 }));
@@ -15,7 +15,7 @@ const exportBackup = vi.fn();
 const importBackup = vi.fn();
 const getBackupHistory = vi.fn();
 const previewImport = vi.fn();
-vi.mock('$lib/api/backup', () => ({
+vi.mock('#lib/api/backup.ts', () => ({
   exportBackup: (...a: unknown[]) => exportBackup(...a),
   importBackup: (...a: unknown[]) => importBackup(...a),
   getBackupHistory: (...a: unknown[]) => getBackupHistory(...a),

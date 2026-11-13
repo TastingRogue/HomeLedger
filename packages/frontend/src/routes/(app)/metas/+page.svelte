@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { formatNumber } from '$lib/utils/format';
-  import { formatPercentage } from '$lib/utils/format';
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { formatNumber } from '#lib/utils/format.ts';
+  import { formatPercentage } from '#lib/utils/format.ts';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listGoals,
@@ -14,13 +14,13 @@
     type GoalType,
     type CreateGoalPayload,
     type GoalForecast,
-  } from '$lib/api/goals';
-  import { ApiError } from '$lib/api/client';
-  import { formatCurrency, formatDateShort } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/goals.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { formatCurrency, formatDateShort } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── State ───
   let goals: GoalData[] = $state([]);

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent, waitFor, within } from '@testing-library/svelte';
 import Harness from './IntegratedHarness.test.svelte';
-import { apiGet } from '$lib/api/client';
-import { setLocale } from '$lib/stores/preferences';
-vi.mock('$app/environment',()=>({browser:false}));
-vi.mock('$lib/api/client',()=>({apiGet:vi.fn(),apiPost:vi.fn(),apiPut:vi.fn(),apiPatch:vi.fn(),apiDelete:vi.fn()}));
+import { apiGet } from '#lib/api/client.ts';
+import { setLocale } from '#lib/stores/preferences.ts';
+vi.mock('$app/env',()=>({browser:false}));
+vi.mock('#lib/api/client.ts',()=>({apiGet:vi.fn(),apiPost:vi.fn(),apiPut:vi.fn(),apiPatch:vi.fn(),apiDelete:vi.fn()}));
 beforeEach(()=>{
   vi.clearAllMocks();setLocale('en');
   vi.mocked(apiGet).mockImplementation(async path=>{

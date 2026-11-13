@@ -6,6 +6,7 @@ import { AccountService } from '../../services/account.service.js';
 import { NetWorthService } from '../../services/networth.service.js';
 import { BudgetService } from '../../services/budget.service.js';
 import { CategoryService } from '../../services/category.service.js';
+import { roundMoney } from '../../utils/money.js';
 import { getInstanceCurrency } from '../../config/currency.js';
 import type { TokenPayload } from '../../services/auth.service.js';
 
@@ -43,8 +44,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
 
     // Monthly expenses
     const expenseResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, user.userId),
@@ -57,8 +59,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
 
     // Monthly income
     const incomeResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, user.userId),
@@ -85,7 +88,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
     let consolidatedBalance = 0;
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      consolidatedBalance += balance;
+      consolidatedBalance = roundMoney(consolidatedBalance + balance * account.exchangeRate);
     }
 
     // Highest credit utilization across credit accounts
@@ -146,8 +149,8 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
       )
       .get();
 
-    const monthlyExpenses = expenseResult?.total ?? 0;
-    const monthlyIncome = incomeResult?.total ?? 0;
+    const monthlyExpenses = roundMoney(expenseResult?.total ?? 0);
+    const monthlyIncome = roundMoney(incomeResult?.total ?? 0);
     const roundedBalance = Math.round(consolidatedBalance * 100) / 100;
     const roundedCreditUtil = Math.round(creditUtilization * 100) / 100;
 
@@ -170,6 +173,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
       activeAccounts.map(async (a) => ({
         id: a.id,
         name: a.name,
+        currency: a.currency,
         balance: await AccountService.calculateBalance(a.id),
       })),
     );
@@ -274,8 +278,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
 
     // Monthly expenses
     const expenseResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, user.userId),
@@ -288,8 +293,9 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
 
     // Monthly income
     const incomeResult = db
-      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)` })
+      .select({ total: sql<number>`COALESCE(SUM(${transactions.amount} * ${accounts.exchangeRate}), 0)` })
       .from(transactions)
+      .innerJoin(accounts, eq(transactions.accountId, accounts.id))
       .where(
         and(
           eq(transactions.userId, user.userId),
@@ -315,7 +321,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
     let consolidatedBalance = 0;
     for (const account of activeAccounts) {
       const balance = await AccountService.calculateBalance(account.id);
-      consolidatedBalance += balance;
+      consolidatedBalance = roundMoney(consolidatedBalance + balance * account.exchangeRate);
     }
 
     // Credit utilization
@@ -382,7 +388,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
     const sensors = [
       {
         entity_id: 'sensor.homeledger_monthly_expenses',
-        state: expenseResult?.total ?? 0,
+        state: roundMoney(expenseResult?.total ?? 0),
         unit_of_measurement: currency,
         device_class: 'monetary',
         attributes: {
@@ -392,7 +398,7 @@ export async function haRoutes(app: FastifyInstance): Promise<void> {
       },
       {
         entity_id: 'sensor.homeledger_monthly_income',
-        state: incomeResult?.total ?? 0,
+        state: roundMoney(incomeResult?.total ?? 0),
         unit_of_measurement: currency,
         device_class: 'monetary',
         attributes: {

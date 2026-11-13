@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { t } from '$lib/i18n';
+  import { t } from '#lib/i18n/index.ts';
 
   // Reflects navigator.onLine and window online/offline events. Purely a UX hint
   // — the service worker still serves cached content when offline.

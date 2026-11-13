@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { formatPercentage } from '$lib/utils/format';
-  import { localDateString } from '$lib/utils/format';
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { formatPercentage } from '#lib/utils/format.ts';
+  import { localDateString } from '#lib/utils/format.ts';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listBudgets,
@@ -15,15 +15,15 @@
     type CategoryAllocation,
     type TagAllocation,
     type CreateBudgetPayload,
-  } from '$lib/api/budgets';
-  import { apiGet, ApiError } from '$lib/api/client';
-  import { formatCurrency } from '$lib/utils/format';
-  import DatePicker from '$lib/components/DatePicker.svelte';
-  import { t } from '$lib/i18n';
-  import { getIntlTag } from '$lib/i18n/registry';
-  import { preferences } from '$lib/stores/preferences';
-  import { enumLabel } from '$lib/i18n/labels';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/budgets.ts';
+  import { apiGet, ApiError } from '#lib/api/client.ts';
+  import { formatCurrency } from '#lib/utils/format.ts';
+  import DatePicker from '#lib/components/DatePicker.svelte';
+  import { t } from '#lib/i18n/index.ts';
+  import { getIntlTag } from '#lib/i18n/registry.ts';
+  import { preferences } from '#lib/stores/preferences.ts';
+  import { enumLabel } from '#lib/i18n/labels.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── Types ───
   interface Category {

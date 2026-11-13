@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { exposeViewActions } from '$lib/themes/view-actions';
+  import { exposeViewActions } from '#lib/themes/view-actions.ts';
   import { onMount } from 'svelte';
   import {
     listRules,
@@ -15,11 +15,11 @@
     type RuleOperator,
     type RuleActionType,
     type CreateRulePayload,
-  } from '$lib/api/rules';
-  import { listCategories, type Category } from '$lib/api/categories';
-  import { ApiError } from '$lib/api/client';
-  import { t } from '$lib/i18n';
-  import { modalPanel, scrim } from '$lib/motion';
+  } from '#lib/api/rules.ts';
+  import { listCategories, type Category } from '#lib/api/categories.ts';
+  import { ApiError } from '#lib/api/client.ts';
+  import { t } from '#lib/i18n/index.ts';
+  import { modalPanel, scrim } from '#lib/motion/index.ts';
 
   // ─── State ───
   let rules = $state<Rule[]>([]);
